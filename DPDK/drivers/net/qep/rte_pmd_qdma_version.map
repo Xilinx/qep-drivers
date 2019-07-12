@@ -1,0 +1,9 @@
+DPDK_17.11 {
+	global:
+	rte_pmd_qep_dbg_regdump;
+	rte_pmd_qep_dbg_qinfo;
+	rte_pmd_qep_dbg_qdesc;
+	rte_pmd_qep_dbg_stmninfo;
+
+	local: *;
+};
