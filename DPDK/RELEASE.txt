@@ -1,21 +1,26 @@
 Release: 0.1.0
 ==============
 
-
+This release is based on DPDK v18.11.
+This release is validated on QEP HW design with standard DPDK example
+applications like test-pmd, dpdk-pktgen, proc-info, and pdump.
 
 
 SUPPORTED FEATURES:
 ===================
-
+- 100G Ethernet MAC
+- Streaming Traffic Manager for Networking
+- QDMA for data transfer
+- 256 streaming queues for Network PF
+- Additional driver APIs for debug
 
 
 KNOWN BUGS:
 ===========
-
-
+- Traffic stops on abrupty killing testpmd and restarting it.
+- One packet is dropped sometimes in Rx and Tx paths for the first burst of packets.
 
 
 LIMITATIONS:
 ===========
-
-
+- Multiple restart of pdump application cannot be verified due to cleanup issues in pdump application in DPDK v18.11

@@ -1,21 +1,23 @@
 Release: 0.1.0
 ==============
 
-
+This release is based on 4.15.0-45-generic linux kernel and verified on Ubuntu 18.04.1 LTS.
+This release is validated on QEP HW design with standard Linux tools such as
+hping3 and standard inteface is configured through ifconfig and IP utility.
 
 
 SUPPORTED FEATURES:
 ===================
+- 100G Ethernet MAC
+- Streaming Traffic Manager for Networking
+- QDMA for data transfer
+- 256 streaming queues for Network PF
+- Additional driver APIs for debug
 
 
-
-KNOWN BUGS:
-===========
-
-
-
-
-LIMITATIONS:
-===========
+KNOWN ISSUES:
+=============
+- One packet is dropped sometimes in Rx and Tx paths for the first burst of packets.
+ 
 
 
