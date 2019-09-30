@@ -770,6 +770,10 @@ int qdma_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 		goto unmap_bars;
 	}
 #endif
+	rv = qdma_dev_update(pdev->bus->number, xdev->func_id,
+			     xdev->conf.qsets_max, &xdev->conf.qsets_base);
+	if (rv < 0)
+		return rv;
 
 	memcpy(conf, &xdev->conf, sizeof(*conf));
 

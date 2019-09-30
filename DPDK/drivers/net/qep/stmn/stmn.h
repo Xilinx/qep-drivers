@@ -59,8 +59,6 @@
 #define STMN_BAR_NUM 2
 #define STMN_BAR_OFFSET 0x000D0000
 
-#define STMN_EN_MEM_DUMP 0
-
 /****************************************************************************/
 /* Need Platform dependent implementation for Linux and DPDK */
 void stmn_reg_write(void *dev_hndl, uint32_t reg_offst, uint32_t val);
@@ -69,7 +67,11 @@ uint32_t stmn_reg_read(void *dev_hndl, uint32_t reg_offst);
 /****************************************************************************/
 struct stmn_dev {
 	unsigned short bar_num;
+#ifdef __KERNEL__
+	void __iomem *stm_regs;
+#else
 	void *stm_regs;
+#endif
 	void *xdev;
 };
 int stmn_initialize(void *dev_hndl, struct stmn_dev *stmn,
@@ -332,8 +334,9 @@ struct stmn_ctrl_ram_status {
 int stmn_get_idle_status(void *dev_hndl, struct stmn_idle_status *idle);
 int stmn_get_axis_debug_status(void *dev_hndl, struct stmn_axis_debug *debug);
 int stmn_get_ctrl_ram_status(void *dev_hndl, uint16_t qid,
-			     struct stmn_ctrl_ram_status *ram_info);
-int stmn_print_ram_status_msg(void *dev_hndl, char *buf, int len);
+			struct stmn_ctrl_ram_status *ram_info);
+int stmn_print_ram_status_msg(void *dev_hndl, char *buf, int len, int tx_numq,
+			int rx_numq, int qbase);
 int stmn_print_status_msg(void *dev_hndl, char *buf, int len);
 
 enum stmn_reg_group {
@@ -365,4 +368,6 @@ extern const char stmn_reg_name_dscsts_minmax[][STMN_REG_NAME_LEN_MAX];
 extern const char stmn_reg_name_fifo_fill[][STMN_REG_NAME_LEN_MAX];
 extern const char *stmn_reg_name_stats[STMN_REG_NAME_LEN_MAX];
 extern const struct stmn_reg_offset stmn_regs;
+
+int stmn_snap_stats(void *dev_hndl);
 #endif

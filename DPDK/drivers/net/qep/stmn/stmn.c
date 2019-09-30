@@ -59,28 +59,28 @@ static unsigned int sleep(unsigned int msec)
 
 /**************************************************************************/
 /** Boiler Plate Macros for null and failure check, code reuse and readability*/
-#define stmn_null_check(arg, msg)                                              \
-	do {                                                                   \
-		if ((arg) == NULL) {                                           \
+#define stmn_null_check(arg, msg) \
+	do { \
+		if ((arg) == NULL) { \
 			pr_err("%s : %s null pointer! \r\n", __func__, (msg)); \
-			return -STMN_INVALID_ARGS;                             \
-		}                                                              \
+			return -STMN_INVALID_ARGS; \
+		} \
 	} while (0)
 
-#define stmn_fail_check(arg, msg)                                              \
-	do {                                                                   \
-		if ((arg) < STMN_SUCCESS) {                                    \
-			pr_err("%s : %s Failed! Error Code: %d \r\n",          \
-			       __func__, (msg), arg);                          \
-			return arg;                                            \
-		}                                                              \
+#define stmn_fail_check(arg, msg) \
+	do { \
+		if ((arg) < STMN_SUCCESS) { \
+			pr_err("%s : %s Failed! Error Code: %d \r\n", \
+			       __func__, (msg), arg); \
+			return arg; \
+		} \
 	} while (0)
 
 /************************************************************************/
 #define STMN_REGS_VERSION 0x00000000
 #define STMN_BLOCK_ID 0x0
 #define STMN_MAJOR_VERSION 0x0
-#define STMN_MINOR_VERSION 0x1
+#define STMN_MINOR_VERSION 0x2
 
 #define STMN_BLOCK_ID_SHIFT 16
 #define STMN_MAJOR_VERSION_SHIFT 8
@@ -333,6 +333,8 @@ int stmn_initialize(void *dev_hndl, struct stmn_dev *stmn,
 
 	stmn->xdev = dev_hndl;
 
+	stmn_snap_stats(dev_hndl);
+
 	return ret;
 }
 
@@ -348,7 +350,7 @@ int stmn_deinitialize(void *dev_hndl, struct stmn_dev *stmn)
 	return 0;
 }
 /******************************************************************************/
-static int stmn_snap_stats(void *dev_hndl)
+int stmn_snap_stats(void *dev_hndl)
 {
 	uint32_t reg, counter = 0;
 #ifdef STMN_TEST_US
@@ -430,7 +432,7 @@ enum stmn_stats_group {
 	STMN_STATS_AXIS_MASTER,
 	STMN_STATS_DESC_STATS,
 	STMN_STATS_CREDT_BYPOUT
-} stmn_stats_group;
+};
 
 static void stmn_print_stats_group(struct stmn_stats *stats,
 				   enum stmn_stats_group subgroup, char *buf,
@@ -475,7 +477,7 @@ static void stmn_print_stats_group(struct stmn_stats *stats,
 	snprintf(buf + strlen(buf), len - strlen(buf), "%s", rg);
 	for (i = 0; i < num_entry; i++)
 		snprintf(buf + strlen(buf), len - strlen(buf),
-			 "  %-30s 0x%lx\n", stmn_reg_name_stats[offset + i],
+			 "  %-30s %lu\n", stmn_reg_name_stats[offset + i],
 			 *(stats_ptr + offset + i));
 }
 
@@ -487,8 +489,11 @@ int stmn_print_stats_msg(void *dev_hndl, char *buf, int len)
 	stmn_null_check(dev_hndl, "dev_hndl");
 	stmn_null_check(buf, "buf");
 
+	memset(&stats, 0, sizeof(stats));
+
 	ret = stmn_get_stats(dev_hndl, &stats);
 	stmn_fail_check(ret, "stmn_get_stats");
+
 	stmn_print_stats_group(&stats, STMN_STATS_AXIS_SLAVE, buf, len);
 	stmn_print_stats_group(&stats, STMN_STATS_AXIS_MASTER, buf, len);
 	stmn_print_stats_group(&stats, STMN_STATS_DESC_STATS, buf, len);
@@ -514,7 +519,7 @@ int stmn_print_fifo_level_msg(void *dev_hndl, char *buf, int len)
 	snprintf(buf + strlen(buf), len - strlen(buf), "%s",
 		 "STMN_FIFO_FILL_LEVEL\n");
 	for (i = 0; i < num_entry; i++)
-		snprintf(buf + strlen(buf), len - strlen(buf), "  %-30s 0x%x\n",
+		snprintf(buf + strlen(buf), len - strlen(buf), "  %-30s %d\n",
 			 stmn_reg_name_fifo_fill[i], *(reg_val + i));
 	return STMN_SUCCESS;
 }
@@ -534,7 +539,7 @@ int stmn_print_dsc_minmax_msg(void *dev_hndl, char *buf, int len)
 	snprintf(buf + strlen(buf), len - strlen(buf), "%s",
 		 "STMN_DSC_MIN_MAX\n");
 	for (i = 0; i < num_entry; i++)
-		snprintf(buf + strlen(buf), len - strlen(buf), "  %-30s 0x%x\n",
+		snprintf(buf + strlen(buf), len - strlen(buf), "  %-30s %d\n",
 			 stmn_reg_name_dscsts_minmax[i], *(reg_val + i));
 	return STMN_SUCCESS;
 }
@@ -566,9 +571,12 @@ int stmn_get_err_capture_info(void *dev_hndl, struct stmn_err_capture *err_info)
 	stmn_null_check(dev_hndl, "Invalid dev_hndl");
 	stmn_null_check(err_info, "Invalid stmn_err_capture param");
 
-	for (i = 0; i < num_reg; i++)
+	for (i = 0; i < num_reg; i++) {
 		*(val + i) = stmn_reg_read(dev_hndl,
 					   stmn_regs.err_capture + (4 * i));
+		/* Write 1 to clear the register*/
+		stmn_reg_write(dev_hndl, stmn_regs.err_capture + (4 * i), 1);
+	}
 
 	return STMN_SUCCESS;
 }
@@ -586,7 +594,7 @@ static void stmn_prn_byp_err(struct stmn_bypass_err_info *byp, char *buf,
 			     int len, const char *msg)
 {
 	snprintf(buf + strlen(buf), len - strlen(buf),
-		 "%s error:%d  st_mm:%d mrkr_rsp:%d  dsc_sz:%d port_id:%d  func:%d  cidx%d  qid:%u\n",
+		 "%s error:%d  st_mm:%d mrkr_rsp:%d  dsc_sz:%d port_id:%d  func:%d  cidx:%d  qid:%u\n",
 		 msg, byp->error, byp->st_mm, byp->mrkr_rsp, byp->dsc_sz,
 		 byp->port_id, byp->func, byp->cidx, byp->qid);
 }
@@ -688,30 +696,45 @@ static void stmn_prn_sts_ram(struct stmn_sts_ram_val *ram, char *buf, int len,
 }
 
 static void stmn_prn_str_ram(struct stmn_store_ram_val *ram, char *buf, int len,
-			     const char *msg, uint16_t qid)
+			const char *msg, uint16_t qid)
 {
 	snprintf(buf + strlen(buf), len - strlen(buf),
 		 "%-16s: qid:%d en:%d err:%d rst:%d in_arb:%d ptr1:%d ptr2:%d\n",
 		 msg, qid, ram->en, ram->err, ram->rst, ram->in_arb,
 		 ram->rd_ptr, ram->wr_ptr);
 }
-
-int stmn_print_ram_status_msg(void *dev_hndl, char *buf, int len)
+int stmn_print_ram_status_msg(void *dev_hndl, char *buf, int len, int tx_numq,
+			int rx_numq, int qbase)
 {
 	int ret;
+	int i, num_entry;
+	uint32_t *reg_val;
+	struct stmn_idle_status debug;
 	struct stmn_ctrl_ram_status ram;
-	uint16_t i;
-	uint16_t qid_base = STMN_CRL_RAM_QID_BASE;
-	uint16_t nq = STMN_CRL_RAM_NUM_QID;
 
-	for (i = qid_base; i < qid_base + nq; i++) {
+	snprintf(buf + strlen(buf), len - strlen(buf),
+			 "***********Memory and IDLE Status***********\n");
+
+	ret = stmn_get_idle_status(dev_hndl, &debug);
+	stmn_fail_check(ret, "stmn_get_idle_status");
+	reg_val = (uint32_t *)&debug;
+	num_entry = sizeof(struct stmn_idle_status) / sizeof(uint32_t);
+	for (i = 0; i < num_entry; i++)
+		snprintf(buf + strlen(buf), len - strlen(buf), "%-30s 0x%x\n",
+			 stmn_reg_name_idle_status[i], *(reg_val + i));
+
+	for (i = qbase; i < rx_numq + qbase; i++) {
 		ret = stmn_get_ctrl_ram_status(dev_hndl, i, &ram);
-		//TODO BUG in HW
 		stmn_fail_check(ret, "stmn_get_ctrl_ram_status");
 		stmn_prn_sts_ram(&ram.c2h_dsc, buf, len, "C2H Desc RAM", i);
-		stmn_prn_sts_ram(&ram.h2c_dsc, buf, len, "H2C Desc RAM", i);
 		stmn_prn_str_ram(&ram.c2h_wr, buf, len, "C2H Desc Wr RAM", i);
 		stmn_prn_str_ram(&ram.c2h_rd, buf, len, "C2H Desc Rd RAM", i);
+		memset(&ram, 0, sizeof(struct stmn_ctrl_ram_status));
+	}
+	for (i = qbase; i < tx_numq + qbase; i++) {
+		ret = stmn_get_ctrl_ram_status(dev_hndl, i, &ram);
+		stmn_fail_check(ret, "stmn_get_ctrl_ram_status");
+		stmn_prn_sts_ram(&ram.h2c_dsc, buf, len, "H2C Desc RAM", i);
 		stmn_prn_str_ram(&ram.h2c_wr, buf, len, "H2C Desc Wr RAM", i);
 		stmn_prn_str_ram(&ram.h2c_rd, buf, len, "H2C Desc Rd RAM", i);
 		memset(&ram, 0, sizeof(struct stmn_ctrl_ram_status));
@@ -745,9 +768,12 @@ int stmn_get_axis_debug_status(void *dev_hndl, struct stmn_axis_debug *debug)
 	stmn_null_check(dev_hndl, "Invalid dev_hndl");
 	stmn_null_check(debug, "Invalid stmn_axis_debug param");
 
-	for (i = 0; i < num_reg; i++)
+	for (i = 0; i < num_reg; i++) {
 		*(val + i) =
 			stmn_reg_read(dev_hndl, stmn_regs.s_axis_dbg + (4 * i));
+		/* Write 1 to clear the registers*/
+		stmn_reg_write(dev_hndl, stmn_regs.s_axis_dbg + (4 * i), 1);
+	}
 
 	return STMN_SUCCESS;
 }
@@ -762,21 +788,11 @@ static void stmn_prn_axis_rsp(struct stmn_axis_resp *rsp, char *buf, int len,
 int stmn_print_status_msg(void *dev_hndl, char *buf, int len)
 {
 	int ret;
-	uint32_t i, num_entry;
-	uint32_t *reg_val;
-
-	struct stmn_idle_status debug;
 	struct stmn_axis_debug axis_dbg;
 	struct stmn_axis_resp_flags *flags;
 	struct stmn_qdma_c2h_sts_flags *c2h_flags;
 
-	ret = stmn_get_idle_status(dev_hndl, &debug);
-	stmn_fail_check(ret, "stmn_get_idle_status");
-	reg_val = (uint32_t *)&debug;
-	num_entry = sizeof(struct stmn_idle_status) / sizeof(uint32_t);
-	for (i = 0; i < num_entry; i++)
-		snprintf(buf + strlen(buf), len - strlen(buf), "%-30s 0x%x\n",
-			 stmn_reg_name_idle_status[i], *(reg_val + i));
+	memset(&axis_dbg, 0, sizeof(axis_dbg));
 
 	ret = stmn_get_axis_debug_status(dev_hndl, &axis_dbg);
 	stmn_fail_check(ret, "stmn_get_axis_debug_status");
@@ -852,13 +868,7 @@ int stmn_print_debug(void *dev_hndl, char *msg, uint32_t len)
 		 "***********Error***********\n");
 	ret = stmn_print_error_msg(dev_hndl, msg, len);
 	stmn_fail_check(ret, "stmn_print_error_msg");
-#if STMN_EN_MEM_DUMP
-	snprintf(msg + strlen(msg), len - strlen(msg),
-		 "***********Memory***********\n");
-	stmn_print_ram_status_msg(dev_hndl, msg, len);
 
-	pr_debug("%s buf_len: %lu\n", __func__, strlen(msg));
-#endif
 	return STMN_SUCCESS;
 }
 

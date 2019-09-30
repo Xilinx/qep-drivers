@@ -95,8 +95,11 @@ static int make_sw_context(struct qdma_descq *descq,
 		} else if (descq->conf.c2h) {  /* st c2h */
 			sw_ctxt->frcd_en = descq->conf.fetch_credit;
 			sw_ctxt->desc_sz = DESC_SZ_8B;
-		} else /* st h2c */
+		} else {/* st h2c */
+			sw_ctxt->frcd_en = descq->conf.fetch_credit;
 			sw_ctxt->desc_sz = DESC_SZ_16B;
+			sw_ctxt->frcd_en = descq->conf.fetch_credit;
+		}
 	}
 
 	/* pidx = 0; irq_ack = 0 */

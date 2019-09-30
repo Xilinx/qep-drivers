@@ -36,8 +36,8 @@
 #define qep_stringify1(x...)	#x
 #define qep_stringify(x...)	qep_stringify1(x)
 
-#define QEP_PMD_MAJOR		0
-#define QEP_PMD_MINOR		1
+#define QEP_PMD_MAJOR		1
+#define QEP_PMD_MINOR		0
 #define QEP_PMD_PATCHLEVEL	0
 
 #define QEP_PMD_VERSION      \

@@ -15,6 +15,13 @@
 # *  the file called "COPYING".
 # */
 
+# /* BUILD VARIANT
+#  * 1. By default, make the driver for QEP design
+#  * 2. DESIGN=qap : compiles the driver for QAP only design
+#  * 3. DESIGN=qap_stmn : compiles the driver for QAP_STMN  design
+#  */
+
+
 MOD_NAME := qep_drv
 QEP_DRV_HOME := $(shell pwd)
 QEP_DRV_KVER := $(shell uname -r)
@@ -29,15 +36,14 @@ ifneq ($(SUBDIRS),)
 	QEP_LIBQDMA_OBJS += $(patsubst $(SUBDIRS)/libqdma/%.c,libqdma/%.o,$(wildcard $(SUBDIRS)/libqdma/*.c))
 endif
 
-STM_ENABLE = 1
-ifneq ($(STM_ENABLE), 0)
-EXTRA_CFLAGS += -DSTMN_ENABLE
+ifeq ($(DESIGN), qap)
+EXTRA_CFLAGS += -DQAP_DESIGN
 else
-EXTRA_CFLAGS += -DQEP_ONLY_DESIGN
+ifeq ($(DESIGN), qap_stmn)
+EXTRA_CFLAGS += -DQAP_STMN_DESIGN
 endif
-ifneq ($(QUEUE_BASE),)
-EXTRA_CFLAGS += -DQEP_QUEUE_BASE=$(QUEUE_BASE)
 endif
+
 EXTRA_CFLAGS += -DDEBUGFS
 EXTRA_CFLAGS += -DMAILBOX_INTERRUPT_DISABLE -DUSER_INTERRUPT_DISABLE 
 

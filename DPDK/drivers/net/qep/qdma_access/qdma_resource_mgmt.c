@@ -569,6 +569,10 @@ int qdma_dev_increment_active_queue(uint32_t pci_bus_num, uint32_t func_id)
 		return -QDMA_DEV_DOES_NOT_EXIST;
 
 	qdma_resource_lock_take();
+	if (dev_entry->entry.total_q < (dev_entry->active_qcnt + 1)) {
+		qdma_resource_lock_give();
+		return -QDMA_RESOURCE_NOT_ENOUGH_QUEUE;
+	}
 	dev_entry->active_qcnt++;
 	q_resource->active_qcnt++;
 	qdma_resource_lock_give();

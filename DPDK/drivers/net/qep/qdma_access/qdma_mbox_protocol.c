@@ -275,7 +275,7 @@ struct mbox_msg_qctxt {
 	/** @c2h: c2h direction */
 	uint8_t c2h:1;
 	/** @cmpt_ctxt_type: completion context type */
-	uint8_t cmpt_ctxt_type:2;
+	enum mbox_cmpt_ctxt_type cmpt_ctxt_type:2;
 	/** @rsvd: reserved */
 	uint8_t rsvd:4;
 	/** union compiled_message - complete hw configuration */

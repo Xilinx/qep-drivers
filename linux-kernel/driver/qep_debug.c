@@ -16,12 +16,12 @@
  */
 
 #include <linux/debugfs.h>
-#include "qep.h"
 #include <linux/pci.h>
+#include "qep.h"
 #include "stmn.h"
 
-#define QDMA_DEV_NAME_SZ 32
-#define CMAC_MSG_BUF_LEN_MAX 4096
+#define QDMA_DEV_NAME_SZ (32)
+#define CMAC_MSG_BUF_LEN_MAX (4096)
 
 struct dentry *qep_debugfs_root;
 
@@ -48,8 +48,8 @@ static ssize_t config_read(struct file *filp, char __user *buffer, size_t count,
 
 	sprintf(temp,
 		"rs_fec_en			= %d\n"
-		"num_queues			= %d\n"
-		"ind_intr_mode			= %d\n"
+		"num_rx_queues			= %d\n"
+		"num_tx_queues			= %d\n"
 		"num_msix			= %d\n"
 		"rx_desc_rng_sz_idx		= %d\n"
 		"rx_desc_rng_sz			= %d\n"
@@ -59,7 +59,8 @@ static ssize_t config_read(struct file *filp, char __user *buffer, size_t count,
 		"rx_buf_sz			= %d\n"
 		"cmpl_rng_sz_idx                = %d\n"
 		"cmpl_rng_sz			= %d\n",
-		xpriv->rs_fec_en, xpriv->num_queues, ind_intr_mode,
+		xpriv->rs_fec_en, xpriv->netdev->real_num_rx_queues,
+		xpriv->netdev->real_num_rx_queues,
 		xpriv->qdma_dev_conf.msix_qvec_max, xpriv->rx_desc_rng_sz_idx,
 		l_global_csr_conf.ring_sz[xpriv->rx_desc_rng_sz_idx],
 		xpriv->tx_desc_rng_sz_idx,
@@ -99,7 +100,7 @@ static ssize_t stmn_read(struct file *filp, char __user *buffer, size_t count,
 	if (*ppos != 0)
 		return 0;
 
-	msg = kmalloc(len * sizeof(unsigned char), GFP_KERNEL);
+	msg = kcalloc(len, sizeof(unsigned char), GFP_KERNEL);
 	if (!msg)
 		return 0;
 
@@ -107,7 +108,10 @@ static ssize_t stmn_read(struct file *filp, char __user *buffer, size_t count,
 	if (ret < STMN_SUCCESS)
 		pr_warn("%s : stmn_print_msg failed", __func__);
 
-	stmn_print_ram_status_msg(dev_hndl, msg, len, dev_hndl->num_queues, 0);
+	stmn_print_ram_status_msg(dev_hndl, msg, len,
+				  dev_hndl->netdev->real_num_tx_queues,
+				  dev_hndl->netdev->real_num_rx_queues,
+				  0);
 
 	if (*ppos >= strlen(msg))
 		return 0;
@@ -133,7 +137,7 @@ static ssize_t cmac_read(struct file *filp, char __user *buffer, size_t count,
 	if (*ppos != 0)
 		return 0;
 
-	msg = kmalloc(len * sizeof(unsigned char), GFP_KERNEL);
+	msg = kcalloc(len, sizeof(unsigned char), GFP_KERNEL);
 	if (!msg)
 		return 0;
 
@@ -154,19 +158,19 @@ static ssize_t cmac_read(struct file *filp, char __user *buffer, size_t count,
 	return count;
 }
 
-static struct file_operations config_fops = {
+static const struct file_operations config_fops = {
 	.owner = THIS_MODULE,
 	.open = config_open,
 	.read = config_read,
 };
 
-static struct file_operations stmn_fops = {
+static const struct file_operations stmn_fops = {
 	.owner = THIS_MODULE,
 	.open = stmn_open,
 	.read = stmn_read,
 };
 
-static struct file_operations cmac_fops = {
+static const struct file_operations cmac_fops = {
 	.owner = THIS_MODULE,
 	.open = stmn_open,
 	.read = cmac_read,
@@ -214,10 +218,12 @@ func_exit:
 	debugfs_remove_recursive(xpriv->debugfs_dev_root);
 	return -1;
 }
+
 void qep_debugfs_dev_exit(struct qep_priv *xpriv)
 {
 	debugfs_remove_recursive(xpriv->debugfs_dev_root);
 }
+
 int qep_debugfs_init(void)
 {
 	qep_debugfs_root = debugfs_create_dir("qep_dev", NULL);
@@ -235,8 +241,8 @@ void qep_debugfs_exit(void)
 	qep_debugfs_root = NULL;
 }
 
-#ifdef DEBUG_5
-static void dump_skb(struct qep_priv *xpriv, struct sk_buff *skb)
+#if (QEP_DBG_DUMP_EN)
+void dump_skb(struct qep_priv *xpriv, struct sk_buff *skb)
 {
 	if (xpriv && skb) {
 		char prefix[30];
@@ -255,7 +261,7 @@ static void dump_skb(struct qep_priv *xpriv, struct sk_buff *skb)
 	}
 }
 
-static void dump_pg(struct qep_priv *xpriv, struct page *pg)
+void dump_pg(struct qep_priv *xpriv, struct page *pg)
 {
 	if (xpriv && pg) {
 		char prefix[30];
@@ -269,26 +275,25 @@ static void dump_pg(struct qep_priv *xpriv, struct page *pg)
 	}
 }
 
-/* TODO Make a generic function*/
 void dump_link_stats(struct qep_priv *xpriv, struct rtnl_link_stats64 stats)
 {
 	int i;
 
 	memset(&stats, 0, sizeof(struct rtnl_link_stats64));
-	for (i = 0; i < xpriv->num_queues; i++) {
+	for (i = 0; i < xpriv->netdev->real_num_rx_queues; i++) {
 		stats.rx_bytes += xpriv->rx_q[i].stats.rx_bytes;
 		stats.rx_packets += xpriv->rx_q[i].stats.rx_packets;
 		stats.rx_errors += xpriv->rx_q[i].stats.rx_errors;
 		stats.rx_dropped += xpriv->rx_q[i].stats.rx_dropped;
-
+	}
+	for (i = 0; i < xpriv->netdev->real_num_tx_queues; i++) {
 		stats.tx_bytes += xpriv->tx_q[i].stats.tx_bytes;
 		stats.tx_packets += xpriv->tx_q[i].stats.tx_packets;
 		stats.tx_errors += xpriv->tx_q[i].stats.tx_errors;
 		stats.tx_dropped += xpriv->tx_q[i].stats.tx_dropped;
 	}
 
-	qep_info(
-		drv,
+	qep_info(drv,
 		"%s : RX-> pkts:%llu byte:%llu error:%llu dropped:%llu TX-> pkts:%llu byte:%llu error:%llu dropped:%llu",
 		__func__, stats.rx_packets, stats.rx_bytes, stats.rx_errors,
 		stats.rx_dropped, stats.tx_packets, stats.tx_bytes,
@@ -297,6 +302,8 @@ void dump_link_stats(struct qep_priv *xpriv, struct rtnl_link_stats64 stats)
 
 void dump_csr_config(struct qep_priv *xpriv, struct global_csr_conf *csr_conf)
 {
+	int index;
+
 	qep_dbg(xpriv->netdev, "%s: Dumping Ring Size Global CSR\n", __func__);
 	for (index = 0; index < QDMA_GLOBAL_CSR_ARRAY_SZ; index++)
 		qep_dbg(xpriv->netdev, "%d ", csr_conf->ring_sz[index]);
@@ -313,28 +320,6 @@ void dump_csr_config(struct qep_priv *xpriv, struct global_csr_conf *csr_conf)
 	qep_dbg(xpriv->netdev, "%s: Dumping c2h_buf_sz Global CSR\n", __func__);
 	for (index = 0; index < QDMA_GLOBAL_CSR_ARRAY_SZ; index++)
 		qep_dbg(xpriv->netdev, "%d ", csr_conf->c2h_buf_sz[index]);
-}
-
-/*TODO Fix Crash in dump*/
-void dump_queue(struct qep_priv *xpriv, int q_no, char error_str[], bool tx)
-{
-	int len = 0;
-	unsigned long handle;
-
-	if (tx)
-		handle = xpriv->base_tx_q_handle + q_no;
-	else
-		handle = xpriv->base_rx_q_handle + q_no;
-
-	memset(error_str, 0, QEP_ERROR_STR_BUF_LEN);
-	len = qdma_queue_dump(xpriv->dev_handle, handle, error_str,
-			      QEP_ERROR_STR_BUF_LEN);
-	if (len < 0) {
-		qep_err(drv,
-			"%s: qdma_queue_dump() failed for queue %d with error %d(%s)\n",
-			__func__, q_no, len, error_str);
-	}
-	qep_dbg(xpriv->netdev, "%s: Rx Queue DUMP = %s\n", __func__, error_str);
 }
 
 void dump_qdma_sw_sgl(unsigned int sgcnt, struct qdma_sw_sg *sgl)

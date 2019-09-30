@@ -15,16 +15,17 @@
  * the file called "COPYING".
  */
 
-#ifndef QDMA_UL_EXT_STMN_H
-#define QDMA_UL_EXT_STMN_H
-#include "qdma_ul_ext.h"
+#ifndef QEP_STMN_H
+#define QEP_STMN_H
+
 #include <linux/types.h>
+#include "qdma_ul_ext.h"
 
 
-int qdma_stmn_bypass_desc_fill(void *q_hndl, enum qdma_q_mode q_mode,
+int qep_stmn_bypass_desc_fill(void *q_hndl, enum qdma_q_mode q_mode,
 			       enum qdma_q_dir q_dir, struct qdma_request *req);
 
-int qdma_stmn_parse_cmpl_entry(void *cmpl_entry,
+int qep_stmn_parse_cmpl_entry(void *cmpl_entry,
 			       struct qdma_ul_cmpt_info *cmpl);
 
-#endif /* QDMA_UL_EXT_STMN_H */
+#endif /* QEP_STMN_H */

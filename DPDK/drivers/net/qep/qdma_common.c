@@ -57,48 +57,6 @@ void qdma_write_reg(uint64_t reg_addr, uint32_t val)
 	*((volatile uint32_t *)(reg_addr)) = val;
 }
 
-uint32_t qdma_pci_read_reg(struct rte_eth_dev *dev, uint32_t bar, uint32_t reg)
-{
-	struct qdma_pci_dev *qdma_dev = dev->data->dev_private;
-	uint64_t baseaddr;
-	uint32_t val;
-
-	if (bar >= (QDMA_NUM_BARS - 1)) {
-		printf("Error: PCI BAR number:%d not supported\n"
-			"Please enter valid BAR number\n", bar);
-		return -1;
-	}
-
-	baseaddr = (uint64_t)qdma_dev->bar_addr[bar];
-	if (!baseaddr) {
-		printf("Error: PCI BAR number:%d not mapped\n", bar);
-		return -1;
-	}
-	val = *((volatile uint32_t *)(baseaddr + reg));
-
-	return val;
-}
-
-void qdma_pci_write_reg(struct rte_eth_dev *dev, uint32_t bar,
-			uint32_t reg, uint32_t val)
-{
-	struct qdma_pci_dev *qdma_dev = dev->data->dev_private;
-	uint64_t baseaddr;
-
-	if (bar >= (QDMA_NUM_BARS - 1)) {
-		printf("Error: PCI BAR index:%d not supported\n"
-			"Please enter valid BAR index\n", bar);
-		return;
-	}
-
-	baseaddr = (uint64_t)qdma_dev->bar_addr[bar];
-	if (!baseaddr) {
-		printf("Error: PCI BAR number:%d not mapped\n", bar);
-		return;
-	}
-	*((volatile uint32_t *)(baseaddr + reg)) = val;
-}
-
 void qdma_desc_dump(struct rte_eth_dev *dev, uint32_t qid)
 {
 	struct qdma_rx_queue *rxq;

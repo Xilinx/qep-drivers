@@ -900,6 +900,24 @@ void qdma_dev_rx_queue_release(void *rqueue)
 	}
 }
 
+static void qdma_user_h2c_c2h_reset(struct rte_eth_dev *dev)
+{
+
+	struct qdma_pci_dev *dma_priv;
+
+	dma_priv = (struct qdma_pci_dev *)dev->data->dev_private;
+
+	qdma_write_reg((uint64_t)(dma_priv->bar_addr[dma_priv->user_bar_idx]) +
+				(QEP_BASE_OFFSET + QEP_USER_H2C_CONV_RST), 1);
+	qdma_write_reg((uint64_t)(dma_priv->bar_addr[dma_priv->user_bar_idx]) +
+				(QEP_BASE_OFFSET + QEP_USER_H2C_CONV_RST), 0);
+	qdma_write_reg((uint64_t)(dma_priv->bar_addr[dma_priv->user_bar_idx]) +
+				(QEP_BASE_OFFSET + QEP_USER_C2H_CONV_RST), 1);
+	qdma_write_reg((uint64_t)(dma_priv->bar_addr[dma_priv->user_bar_idx]) +
+				(QEP_BASE_OFFSET + QEP_USER_C2H_CONV_RST), 0);
+
+}
+
 /**
  * DPDK callback to start the device.
  *
@@ -921,7 +939,7 @@ static int qdma_dev_start(struct rte_eth_dev *dev)
 	int err;
 
 	PMD_DRV_LOG(INFO, "qdma-dev-start: Starting\n");
-
+	qdma_user_h2c_c2h_reset(dev);
 	/* prepare descriptor rings for operation */
 	for (qid = 0; qid < dev->data->nb_tx_queues; qid++) {
 		txq = (struct qdma_tx_queue *)dev->data->tx_queues[qid];

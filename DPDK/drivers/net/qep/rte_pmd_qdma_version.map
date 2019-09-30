@@ -1,9 +1,13 @@
 DPDK_17.11 {
 	global:
+	rte_pmd_qep_get_bar_details;
+	rte_pmd_qep_get_queue_base;
 	rte_pmd_qep_dbg_regdump;
 	rte_pmd_qep_dbg_qinfo;
 	rte_pmd_qep_dbg_qdesc;
 	rte_pmd_qep_dbg_stmninfo;
+	rte_pmd_qep_addr_read;
+	rte_pmd_qep_addr_write;
 
 	local: *;
 };

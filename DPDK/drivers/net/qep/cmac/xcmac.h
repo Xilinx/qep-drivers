@@ -96,6 +96,7 @@ enum xcmac_caui_mode {
 	/*!< RO Indicates Runtime Switchable CAUI-10 mode */
 	XCMAC_RUNTIME_SWITCHABLE_CAUI_MODE_4 = 3,
 	/*!< RO Indicates Runtime Switchable CAUI-4 mode */
+	XCMAC_CAUI_INVALID,
 };
 
 /**
@@ -117,6 +118,7 @@ enum xcmac_gt_loopback_type {
 	/*!< Indicates normal operation (External Loopback) */
 	XCMAC_GT_LOOPBACK_INTERNAL,
 	/*!< Indicates near end PMA internal Loopback */
+	XCMAC_GT_LOOPBACK_INVALID,
 };
 
 /**

@@ -49,6 +49,7 @@
 #include "qdma_mbox.h"
 #include "rte_pmd_qdma.h"
 #include "stmn.h"
+#include "qep_user_regs.h"
 
 #ifdef RTE_LIBRTE_QDMA_DEBUG_DRIVER
 #define PMD_DRV_LOG(level, fmt, args...) \
@@ -67,7 +68,7 @@
 #define QDMA_VF_MAX             252
 #define QDMA_FUNC_ID_INVALID    (QDMA_PF_MAX + QDMA_VF_MAX)
 
-#define DEFAULT_QUEUE_BASE	(0) //TODO: 256
+#define DEFAULT_QUEUE_BASE	(256)
 #define QDMA_QUEUES_NUM_MAX (2048)
 #define QEP_MAX_STMN_QUEUES (256)
 #define QDMA_MAX_BURST_SIZE (256)
@@ -431,6 +432,7 @@ struct rte_memzone *qdma_zone_reserve(struct rte_eth_dev *dev,
 }
 
 bool is_qdma_supported(struct rte_eth_dev *dev);
+bool is_dev_qep_supported(struct rte_eth_dev *dev);
 bool is_vf_device_supported(struct rte_eth_dev *dev);
 bool is_pf_device_supported(struct rte_eth_dev *dev);
 #endif /* ifndef __QDMA_H__ */

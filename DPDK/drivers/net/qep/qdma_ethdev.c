@@ -55,7 +55,14 @@
 #include "qdma_mbox.h"
 #include "qep_version.h"
 
-/* Poll for QDMA errors every 1 second */
+/* Register offsets for MAC address */
+#define QEP_USR_RX_META_LOW_R (0x200000)
+#define QEP_USR_RX_META_HIGH_R (0x201000)
+
+#define BITS_IN_BYTE (8)
+#define BITS_IN_WORD (sizeof(uint32_t) * BITS_IN_BYTE)
+
+/* QDMA error poll frequency in microseconds */
 #define QDMA_ERROR_POLL_FRQ (1000000)
 
 static void qdma_device_attributes_get(struct rte_eth_dev *dev);
@@ -252,6 +259,38 @@ static void pcie_perf_enable(const struct rte_pci_device *pci_dev)
 	}
 }
 
+#ifndef QEP_USE_DEFAULT_MAC_ADDR
+static void read_mac_addr(struct qdma_pci_dev *dev, uint8_t *mac_addr)
+{
+	uint64_t addr;
+	uint32_t reg_val;
+	int i;
+
+	reg_val = qdma_read_reg(
+			(uint64_t)(dev->bar_addr[dev->user_bar_idx]) +
+			QEP_USR_RX_META_LOW_R);
+	addr = reg_val;
+
+	reg_val = qdma_read_reg(
+			(uint64_t)(dev->bar_addr[dev->user_bar_idx]) +
+			QEP_USR_RX_META_HIGH_R);
+	addr |= ((uint64_t)reg_val << BITS_IN_WORD);
+
+	for (i = 0; i < ETHER_ADDR_LEN; i++)
+		mac_addr[ETHER_ADDR_LEN - 1 - i] =
+			(uint8_t)((addr >> (BITS_IN_BYTE * i)) & 0xFF);
+}
+
+static int is_mac_addr_zero(const uint8_t *mac_addr)
+{
+	int i;
+	for (i = 0; i < ETHER_ADDR_LEN; i++) {
+		if (mac_addr[i] != 0x00)
+			return 0;
+	}
+	return -1;
+}
+#endif //QEP_USE_DEFAULT_MAC_ADDR
 
 /**
  * DPDK callback to register a PCI device.
@@ -271,6 +310,10 @@ static int eth_qdma_dev_init(struct rte_eth_dev *dev)
 	uint8_t *baseaddr;
 	int idx, ret;
 	struct rte_pci_device *pci_dev;
+	uint8_t func_id;
+#ifdef QEP_USE_DEFAULT_MAC_ADDR
+	uint8_t mac_addr[ETHER_ADDR_LEN] = {0x00, 0x5D, 0x03, 0x00, 0x00, 0x02};
+#endif
 
 	/* sanity checks */
 	if (dev == NULL)
@@ -292,26 +335,8 @@ static int eth_qdma_dev_init(struct rte_eth_dev *dev)
 		return 0;
 	}
 
-
-	/* allocate space for a single Ethernet MAC address */
-	dev->data->mac_addrs = rte_zmalloc("qdma", ETHER_ADDR_LEN * 1, 0);
-	if (dev->data->mac_addrs == NULL)
-		return -ENOMEM;
-
-	/* Copy some dummy Ethernet MAC address for QDMA device
-	 * This will change in real NIC device...
-	 */
-
-	dev->data->mac_addrs[0].addr_bytes[0] = 0x00;
-	dev->data->mac_addrs[0].addr_bytes[1] = 0x5d;
-	dev->data->mac_addrs[0].addr_bytes[2] = 0x03;
-	dev->data->mac_addrs[0].addr_bytes[3] = 0x00;
-	dev->data->mac_addrs[0].addr_bytes[4] = 0x00;
-	dev->data->mac_addrs[0].addr_bytes[5] = 0x02;
-
 	/* Init system & device */
 	dma_priv = (struct qdma_pci_dev *)dev->data->dev_private;
-	dma_priv->pf = PCI_DEVFN(pci_dev->addr.devid, pci_dev->addr.function);
 	dma_priv->is_vf = 0;
 	dma_priv->is_master = 0;
 	dma_priv->timer_count = DEFAULT_TIMER_CNT_TRIG_MODE_TIMER;
@@ -336,7 +361,6 @@ static int eth_qdma_dev_init(struct rte_eth_dev *dev)
 	/* Check and handle device devargs*/
 	if (qdma_check_kvargs(dev->device->devargs, dma_priv)) {
 		PMD_DRV_LOG(INFO, "devargs failed\n");
-		rte_free(dev->data->mac_addrs);
 		return -EINVAL;
 	}
 
@@ -346,10 +370,8 @@ static int eth_qdma_dev_init(struct rte_eth_dev *dev)
 	dma_priv->bar_addr[dma_priv->config_bar_idx] = baseaddr;
 
 	idx = qdma_identify_bars(dev);
-	if (idx < 0) {
-		rte_free(dev->data->mac_addrs);
+	if (idx < 0)
 		return -EINVAL;
-	}
 
 	/* Store BAR address and length of User BAR */
 	if (dma_priv->user_bar_idx >= 0) {
@@ -360,11 +382,16 @@ static int eth_qdma_dev_init(struct rte_eth_dev *dev)
 
 	PMD_DRV_LOG(INFO, "QDMA device driver probe:");
 
-	idx = qdma_get_hw_version(dev);
-	if (idx < 0) {
-		rte_free(dev->data->mac_addrs);
+	ret = qdma_get_function_number(dev, &func_id);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Function Number read fail: %d\n", ret);
 		return -EINVAL;
 	}
+	dma_priv->pf = func_id;
+
+	idx = qdma_get_hw_version(dev);
+	if (idx < 0)
+		return -EINVAL;
 
 	qdma_dev_ops_init(dev);
 
@@ -387,10 +414,8 @@ static int eth_qdma_dev_init(struct rte_eth_dev *dev)
 	 */
 	ret = qdma_master_resource_create(pci_dev->addr.bus,
 				dma_priv->queue_base, QEP_MAX_STMN_QUEUES);
-	if (ret == -QDMA_RESOURCE_MGMT_MEMALLOC_FAIL) {
-		rte_free(dev->data->mac_addrs);
+	if (ret == -QDMA_RESOURCE_MGMT_MEMALLOC_FAIL)
 		return -ENOMEM;
-	}
 
 	/* CSR programming is done once per given board or bus number,
 	 * done by the master PF
@@ -401,7 +426,7 @@ static int eth_qdma_dev_init(struct rte_eth_dev *dev)
 		qdma_set_default_global_csr(dev);
 		ret = xcmac_setup(dev);
 		if (ret != 0) {
-			PMD_DRV_LOG(INFO, "\nXcmac setup failed");
+			PMD_DRV_LOG(ERR, "\nXcmac setup failed");
 			return ret;
 		}
 		qdma_error_enable(dev, QDMA_ERRS_ALL);
@@ -423,11 +448,26 @@ static int eth_qdma_dev_init(struct rte_eth_dev *dev)
 		return -ENOMEM;
 	}
 
-
 	pcie_perf_enable(pci_dev);
 	if (dma_priv->dev_cap.mailbox_en && pci_dev->max_vfs)
 		qdma_mbox_init(dev);
 
+	/* allocate space for a single Ethernet MAC address */
+	dev->data->mac_addrs = rte_zmalloc("qdma", ETHER_ADDR_LEN * 1, 0);
+	if (dev->data->mac_addrs == NULL)
+		return -ENOMEM;
+
+#ifdef QEP_USE_DEFAULT_MAC_ADDR
+	rte_memcpy(&(dev->data->mac_addrs[0].addr_bytes[0]),
+		mac_addr, ETHER_ADDR_LEN);
+#else
+	/* Read MAC address from device */
+	read_mac_addr(dma_priv, &(dev->data->mac_addrs[0].addr_bytes[0]));
+	if (is_mac_addr_zero(&(dev->data->mac_addrs[0].addr_bytes[0])) < 0) {
+		PMD_DRV_LOG(ERR, "Invalid MAC address read from the device\n");
+		return -EINVAL;
+	}
+#endif //QEP_USE_DEFAULT_MAC_ADDR
 
 	return 0;
 }
@@ -496,7 +536,7 @@ static int eth_qdma_pci_remove(struct rte_pci_device *pci_dev)
 	return rte_eth_dev_pci_generic_remove(pci_dev, eth_qdma_dev_uninit);
 }
 
-static struct rte_pci_driver rte_qdma_pmd = {
+static struct rte_pci_driver rte_qep_pmd = {
 	.id_table = qdma_pci_id_tbl,
 	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
 	.probe = eth_qdma_pci_probe,
@@ -506,7 +546,7 @@ static struct rte_pci_driver rte_qdma_pmd = {
 bool
 is_pf_device_supported(struct rte_eth_dev *dev)
 {
-	if (strcmp(dev->device->driver->name, rte_qdma_pmd.driver.name))
+	if (strcmp(dev->device->driver->name, rte_qep_pmd.driver.name))
 		return false;
 
 	return true;
@@ -525,5 +565,18 @@ bool is_qdma_supported(struct rte_eth_dev *dev)
 	return true;
 }
 
-RTE_PMD_REGISTER_PCI(net_qdma, rte_qdma_pmd);
-RTE_PMD_REGISTER_PCI_TABLE(net_qdma, qdma_pci_id_tbl);
+bool is_dev_qep_supported(struct rte_eth_dev *dev)
+{
+	bool is_pf, is_vf;
+
+	is_pf = is_pf_device_supported(dev);
+	is_vf = is_vf_device_supported(dev);
+
+	if (!is_pf && !is_vf)
+		return false;
+
+	return true;
+}
+
+RTE_PMD_REGISTER_PCI(net_qep, rte_qep_pmd);
+RTE_PMD_REGISTER_PCI_TABLE(net_qep, qdma_pci_id_tbl);

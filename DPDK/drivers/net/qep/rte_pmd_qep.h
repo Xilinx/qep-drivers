@@ -41,10 +41,72 @@ enum rte_pmd_qep_desc_type {
 	RTE_PMD_QEP_DESC_MAX,
 };
 
+/******************************************************************************/
+/**
+ * Function Name:	rte_pmd_qdma_get_bar_details
+ * Description:		Returns the BAR indices of the QDMA BARs
+ *
+ * @param	portid : Port ID
+ * @param	config_bar_idx : Config BAR index
+ * @param	user_bar_idx   : User BAR index
+ * @param	bypass_bar_idx : Bypass BAR index
+ *
+ * @return	'0' on success and '< 0' on failure.
+ *
+ * @note	None.
+ ******************************************************************************/
+int rte_pmd_qep_get_bar_details(int portid, int32_t *config_bar_idx,
+			int32_t *user_bar_idx, int32_t *bypass_bar_idx);
+
+/******************************************************************************/
+/**
+ * Function Name:	rte_pmd_qdma_get_queue_base
+ * Description:		Returns queue base for given port
+ *
+ * @param	portid : Port ID.
+ * @param	queue_base : queue base.
+ *
+ * @return	'0' on success and '< 0' on failure.
+ *
+ * @note    Application can call this API only after successful
+ *          call to rte_eh_dev_configure() API.
+ ******************************************************************************/
+int rte_pmd_qep_get_queue_base(int portid, uint32_t *queue_base);
+
 int rte_pmd_qep_dbg_regdump(uint8_t port_id);
 int rte_pmd_qep_dbg_qinfo(uint8_t port_id, uint16_t queue);
 int rte_pmd_qep_dbg_qdesc(uint8_t port_id, uint16_t queue, int start, int end,
 			  enum rte_pmd_qep_desc_type type);
 int rte_pmd_qep_dbg_stmninfo(uint8_t port_id);
+
+/******************************************************************************/
+/**
+ * Function Name:	rte_pmd_qep_addr_read
+ * Description:		Returns the value at the given BAR offset
+ *
+ * @param	portid : Port ID.
+ * @param	bar : PCIe BAR number.
+ * @param	addr : BAR offset to read.
+ * @param	val : Pointer holding the read value.
+ *
+ * @return	'0' on success and '< 0' on failure.
+ ******************************************************************************/
+int rte_pmd_qep_addr_read(int portid, uint32_t bar,
+			uint32_t addr, uint32_t *val);
+
+/******************************************************************************/
+/**
+ * Function Name:	rte_pmd_qep_addr_write
+ * Description:		Writes the value at the given BAR offset
+ *
+ * @param	portid : Port ID.
+ * @param	bar : PCIe BAR number.
+ * @param	addr : BAR offset to write.
+ * @param	val : Value to be written.
+ *
+ * @return	'0' on success and '< 0' on failure.
+ ******************************************************************************/
+int rte_pmd_qep_addr_write(int portid, uint32_t bar,
+			uint32_t addr, uint32_t val);
 
 #endif /* ifndef __RTE_PMD_QEP_EXPORT_H__ */

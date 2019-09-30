@@ -15,21 +15,22 @@
  * the file called "COPYING".
  */
 
-#include "qdma_ul_ext_stmn.h"
-#include "libqdma_export.h"
 #include <linux/kernel.h>
 #include <linux/delay.h>
+#include "libqdma_export.h"
+#include "qep_stmn.h"
+#include "qep.h"
 
 #define H2C_DESC_MAX_DATA_LEN   (PAGE_SIZE)
 #define H2C_STMN_GL_SHIFT       (5)
 #define H2C_STMN_SDI_SHIFT      (15)
 #define H2C_STMN_EOT_SHIFT      (14)
 
+#define stmn_fls      (fls(H2C_DESC_MAX_DATA_LEN) - 1)
+#define stmn_get_desc_cnt(x) \
+	((x) ? ((x + H2C_DESC_MAX_DATA_LEN - 1) >> stmn_fls) : 1)
 
-/**
- * @struct - smtn_cmpt_entry
- * @brief	STMN Completion entry
- */
+/* STMN Completion(CMPT) entry  format */
 struct stmn_cmpt_entry {
 	u64 format:1;
 	u64 color:1;
@@ -41,22 +42,15 @@ struct stmn_cmpt_entry {
 	u64 metadata:40;
 };
 
-/**
- * @struct - qdma_h2c_desc
- * @brief	memory mapped descriptor format
- */
+/* H2C memory mapped descriptor format for STMN */
 struct qdma_stmn_h2c_desc {
-	__be16 cdh_flags;	/**< cdh flags */
-	__be16 pld_len;		/**< current packet length */
-	__be16 len;		/**< total packet length */
-	__be16 flags;		/**< descriptor flags */
-	__be64 src_addr;	/**< source address */
+	__be32 metadata;
+	__be16 len;
+	__be16 flags;
+	__be64 src_addr;
 };
 
-#define stmn_fls      (fls(H2C_DESC_MAX_DATA_LEN) - 1)
-#define stmn_get_desc_cnt(x) \
-	((x) ? ((x + H2C_DESC_MAX_DATA_LEN - 1) >> stmn_fls) : 1)
-
+/* Calculate number of desc required for DMA request  */
 static unsigned int calculate_stmn_gl_count(struct qdma_request *req)
 {
 	struct qdma_sw_sg *sg = req->sgl;
@@ -69,6 +63,7 @@ static unsigned int calculate_stmn_gl_count(struct qdma_request *req)
 	return count;
 }
 
+/* Update desc for a single H2C DMA request */
 static int stmn_proc_h2c_request_single(void *qhndl,
 					struct qdma_request *req)
 {
@@ -81,8 +76,8 @@ static int stmn_proc_h2c_request_single(void *qhndl,
 	int rv;
 	unsigned int gl_count = 0;
 
-#ifdef DEBUG
-	sgl_dump(req->sgl, sg_max);
+#if (QEP_DBG_DUMP_EN)
+	dump_qdma_sw_sgl(sg_max, req->sgl);
 #endif
 	i = qdma_sgl_find_offset(req, &sg, &sg_offset);
 	if (i < 0)
@@ -116,7 +111,6 @@ static int stmn_proc_h2c_request_single(void *qhndl,
 					H2C_DESC_MAX_DATA_LEN);
 			desc->src_addr = addr;
 			desc->len = len;
-			desc->pld_len = len;
 			if ((i == 0) && (j == 0))
 				desc->flags = (gl_count <<
 						H2C_STMN_GL_SHIFT);
@@ -129,13 +123,15 @@ static int stmn_proc_h2c_request_single(void *qhndl,
 		}
 	}
 	sg = NULL;
+
 update_req:
 	qdma_update_request(qhndl, req, desc_cnt, data_cnt, 0, sg);
 
 	return desc_cnt;
 }
 
-int qdma_stmn_parse_cmpl_entry(void *cmpl_entry, struct qdma_ul_cmpt_info *cmpl)
+/* Parse CMPT dsc entry */
+int qep_stmn_parse_cmpl_entry(void *cmpl_entry, struct qdma_ul_cmpt_info *cmpl)
 {
 	struct stmn_cmpt_entry *cmpt = (struct stmn_cmpt_entry *)cmpl_entry;
 
@@ -157,7 +153,8 @@ int qdma_stmn_parse_cmpl_entry(void *cmpl_entry, struct qdma_ul_cmpt_info *cmpl)
 	return 0;
 }
 
-int qdma_stmn_bypass_desc_fill(void *q_hndl, enum qdma_q_mode q_mode,
+/* Fill desc entry for DMA request */
+int qep_stmn_bypass_desc_fill(void *q_hndl, enum qdma_q_mode q_mode,
 			       enum qdma_q_dir q_dir, struct qdma_request *req)
 {
 	if ((q_mode == QDMA_Q_MODE_ST) && (q_dir == QDMA_Q_DIR_H2C))

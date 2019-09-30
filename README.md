@@ -8,9 +8,12 @@ The platform has three physical functions, two physical functions for device man
 The Ethernet subsystem is accessible to the host via PF2.
 
 Both the linux kernel driver and the DPDK driver can be run on a PCI Express root port host PC to interact with the QEP endpoint IP via PCI Express.
+qep-ctl is a utility to configure the QDMA Ethernet platform.
 
 ### Getting Started
 
 * [QEP DPDK Driver User Guide](DPDK/ug03-2000-0158.pdf)
 
 * [QEP Linux Kernel Driver User Guide](linux-kernel/ug02-2000-0158.pdf)
+
+* [QEP control application User Guide](qep-ctl/readme.txt)

@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2018-2019 Xilinx, Inc. All rights reserved.
+ *   Copyright(c) 2019 Xilinx, Inc. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -30,35 +30,14 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <rte_ethdev.h>
-#include "qdma.h"
+#ifndef __QEP_USER_REGS__
+#define __QEP_USER_REGS__
 
-void qep_set_rx_mode(struct rte_eth_dev *dev, uint32_t mode)
-{
-	struct qdma_pci_dev *dma_priv;
-	uint32_t reg_val;
+#define QEP_USER_H2C_CONV_RST		0x00000028
+#define QEP_USER_C2H_CONV_RST		0x0000002C
 
-	dma_priv = (struct qdma_pci_dev *)dev->data->dev_private;
-	reg_val = qdma_read_reg(
-			(uint64_t)(dma_priv->bar_addr[dma_priv->user_bar_idx]) +
-				DMA_C2H_BASE_ADDR + DMA_CLCR_BASE_OFFSET);
+#endif /* ifndef __QEP_USER_REGS___ */
 
-	reg_val = reg_val & (~DMA_CLCR_QCTRL_MASK);
-	/*0 -  Sending all traffic to single queue
-	 *1 - Round robin
-	 *2 - 2 for TCAM input
-	 */
-	reg_val |= (mode << DMA_CLCR_QCTRL_BIT);
-	/* Setting q num to default zero*/
-	reg_val &= (~DMA_CLCR_QNUM_MASK);
 
-	/* Setting num queues for Round Robin Mode*/
-	if (mode == QEP_RX_MODE_RR)
-		reg_val |= ((dev->data->nb_rx_queues - 1) & DMA_CLCR_QNUM_MASK);
 
-	qdma_write_reg((uint64_t)(dma_priv->bar_addr[dma_priv->user_bar_idx]) +
-	       DMA_C2H_BASE_ADDR + DMA_CLCR2_OFFSET, 0);
-	qdma_write_reg((uint64_t)(dma_priv->bar_addr[dma_priv->user_bar_idx]) +
-		       DMA_C2H_BASE_ADDR + DMA_CLCR_BASE_OFFSET, reg_val);
-}
 

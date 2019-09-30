@@ -289,6 +289,7 @@ static ssize_t descq_mm_proc_request(struct qdma_descq *descq)
 		qdma_update_request(descq, req, desc_cnt, data_cnt, sg_offset,
 				    sg);
 		descq->pidx = pidx;
+		descq->avail -= desc_cnt;
 update_pidx:
 
 		desc_written += desc_cnt;
@@ -297,7 +298,6 @@ update_pidx:
 			descq->conf.name, desc_cnt, pidx, descq->avail,
 			req->ep_addr, data_cnt, data_cnt);
 
-		descq->avail -= desc_cnt;
 		descq->pend_req_desc -= desc_cnt;
 	}
 
@@ -478,6 +478,7 @@ static ssize_t descq_proc_st_h2c_request(struct qdma_descq *descq)
 		qdma_update_request(descq, req, desc_cnt, data_cnt, sg_offset,
 				    sg);
 		descq->pidx = pidx;
+		descq->avail -= desc_cnt;
 update_pidx:
 		if (!desc_cnt)
 			break;
@@ -487,7 +488,6 @@ update_pidx:
 			descq->conf.name, desc_cnt, pidx, descq->avail,
 			data_cnt, data_cnt, cb->offset);
 
-		descq->avail -= desc_cnt;
 		descq->pend_req_desc -= desc_cnt;
 	}
 
@@ -742,6 +742,7 @@ int qdma_q_desc_get(void *q_hndl, const unsigned int desc_cnt,
 	descq->pidx = incr_pidx(descq->pidx,
 				desc_cnt,
 				descq->conf.rngsz);
+	descq->avail -= desc_cnt;
 
 	return 0;
 }

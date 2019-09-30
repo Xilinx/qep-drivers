@@ -390,11 +390,11 @@ int xcmac_set_caui_mode(struct xcmac *instance, enum xcmac_caui_mode caui_mode)
  * @note none.
  *
  **************************************************************************/
-enum xcmac_caui_mode xcmac_get_caui_mode(struct xcmac *instance)
+enum xcmac_caui_mode  xcmac_get_caui_mode(struct xcmac *instance)
 {
 	is_null(instance);
 	if (instance->is_ready != XIL_COMPONENT_IS_READY)
-		return -EINVAL;
+		return XCMAC_CAUI_INVALID;
 	return read_mem_with_mask(XCMAC_MODE_REG_OFFSET, XCMAC_CAUI_MODE_MASK);
 }
 
@@ -409,11 +409,11 @@ enum xcmac_caui_mode xcmac_get_caui_mode(struct xcmac *instance)
  * @note none.
  *
  **************************************************************************/
-enum xcmac_caui_mode xcmac_get_core_mode(struct xcmac *instance)
+enum xcmac_caui_mode  xcmac_get_core_mode(struct xcmac *instance)
 {
 	is_null(instance);
 	if (instance->is_ready != XIL_COMPONENT_IS_READY)
-		return -EINVAL;
+		return XCMAC_CAUI_INVALID;
 	return read_mem_with_mask(XCMAC_CORE_MODE_REG_OFFSET,
 			XCMAC_CORE_MODE_MASK);
 }
@@ -1053,7 +1053,7 @@ enum xcmac_gt_loopback_type xcmac_get_gt_loopback_config(struct xcmac *instance)
 {
 	is_null(instance);
 	if (instance->is_ready != XIL_COMPONENT_IS_READY)
-		return -EINVAL;
+		return XCMAC_GT_LOOPBACK_INVALID;
 
 	return read_mem_with_mask(XCMAC_GT_LOOPBACK_REG_OFFSET,
 			XCMAC_GT_LOOPBACK_CTL_BIT);
@@ -2591,7 +2591,7 @@ int xcmac_get_autoneg_link_ctrl(struct xcmac *instance,
 int xcmac_get_link_training_status(struct xcmac *instance,
 		struct xcmac_link_training_status *status)
 {
-	uint32_t offset = XCMAC_STAT_AN_LINK_CTL_OFFSET;
+	uint32_t offset;
 	uint32_t value = 0;
 
 	is_null(instance);

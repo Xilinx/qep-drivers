@@ -1,23 +1,25 @@
-Release: 0.1.0
+Release: 1.0.0
 ==============
 
-This release is based on 4.15.0-45-generic linux kernel and verified on Ubuntu 18.04.1 LTS.
-This release is validated on QEP HW design with standard Linux tools such as
-hping3 and standard inteface is configured through ifconfig and IP utility.
+This release is verified on Ubuntu 18.04.1 LTS, Linux kernel 4.15.0-64-generic.
 
+This release is validated on QEP HW design with standard Linux tools such as
+hping3 and standard interface is configured through ifconfig and IP utility.
+
+This release is validated to confirm the functionality of security block for
+MAC & VLAN filtering.
 
 SUPPORTED FEATURES:
 ===================
 - 100G Ethernet MAC
+- Read MAC address from security block
 - Streaming Traffic Manager for Networking
 - QDMA for data transfer
 - 256 streaming queues for Network PF
-- Additional driver APIs for debug
+- Debugfs support for CMAC, STMN and QDMA
 
 
-KNOWN ISSUES:
-=============
-- One packet is dropped sometimes in Rx and Tx paths for the first burst of packets.
+
  
 
 

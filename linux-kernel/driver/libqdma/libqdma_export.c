@@ -167,7 +167,10 @@ static int qdma_dev_notify_qadd(struct qdma_descq *descq)
 	if (!m)
 		return -ENOMEM;
 
-	qdma_mbox_compose_vf_notify_qadd(xdev->func_id, descq->qidx_hw, m->raw);
+	qdma_mbox_compose_vf_notify_qadd(xdev->func_id, descq->qidx_hw,
+					 descq->conf.c2h ? QDMA_DEV_Q_TYPE_C2H :
+							 QDMA_DEV_Q_TYPE_H2C,
+							 m->raw);
 	rv = qdma_mbox_msg_send(xdev, m, 1, QDMA_MBOX_MSG_TIMEOUT_MS);
 
 	qdma_mbox_msg_free(m);
@@ -184,7 +187,10 @@ static int qdma_dev_notify_qdel(struct qdma_descq *descq)
 	if (!m)
 		return -ENOMEM;
 
-	qdma_mbox_compose_vf_notify_qdel(xdev->func_id, descq->qidx_hw, m->raw);
+	qdma_mbox_compose_vf_notify_qdel(xdev->func_id, descq->qidx_hw,
+					 descq->conf.c2h ? QDMA_DEV_Q_TYPE_C2H :
+							 QDMA_DEV_Q_TYPE_H2C,
+					 m->raw);
 	rv = qdma_mbox_msg_send(xdev, m, 1, QDMA_MBOX_MSG_TIMEOUT_MS);
 
 	qdma_mbox_msg_free(m);
@@ -824,7 +830,9 @@ int qdma_queue_remove(unsigned long dev_hndl, unsigned long id, char *buf,
 #endif
 #ifndef __QDMA_VF__
 	qdma_dev_decrement_active_queue(xdev->conf.pdev->bus->number,
-					xdev->func_id);
+					xdev->func_id,
+					descq->conf.c2h ? QDMA_DEV_Q_TYPE_C2H :
+							QDMA_DEV_Q_TYPE_H2C);
 #else
 	qdma_dev_notify_qdel(descq);
 #endif
@@ -1225,14 +1233,19 @@ int qdma_queue_add(unsigned long dev_hndl, struct qdma_queue_conf *qconf,
 		}
 	}
 #endif
+	/** fill in config. info */
+	qdma_descq_config(descq, qconf, 0);
 #ifndef __QDMA_VF__
-	qdma_dev_increment_active_queue(xdev->conf.pdev->bus->number,
-					xdev->func_id);
+	rv = qdma_dev_increment_active_queue(xdev->conf.pdev->bus->number,
+					xdev->func_id,
+					 descq->conf.c2h ? QDMA_DEV_Q_TYPE_C2H :
+							 QDMA_DEV_Q_TYPE_H2C);
+	if (rv < 0) {
+		return -EINVAL;
+	}
 #else
 	qdma_dev_notify_qadd(descq);
 #endif
-	/** fill in config. info */
-	qdma_descq_config(descq, qconf, 0);
 
 	/** copy back the name in config*/
 	memcpy(qconf->name, descq->conf.name, QDMA_QUEUE_NAME_MAXLEN);

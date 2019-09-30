@@ -439,20 +439,23 @@ int intr_setup(struct xlnx_dma_dev *xdev)
 {
 	int rv = 0;
 	int i = 0;
+	int num_vecs;
 
 	if ((xdev->conf.qdma_drv_mode == POLL_MODE) ||
 			(xdev->conf.qdma_drv_mode == LEGACY_INTR_MODE)) {
 		goto exit;
 	}
-	xdev->num_vecs = pci_msix_vec_count(xdev->conf.pdev);
+	num_vecs = pci_msix_vec_count(xdev->conf.pdev);
 	pr_debug("dev %s, xdev->num_vecs = %d\n",
 			dev_name(&xdev->conf.pdev->dev), xdev->num_vecs);
 
-	if (!xdev->num_vecs) {
+	if (!num_vecs) {
 		pr_warn("MSI-X not supported, running in polled mode\n");
 		return 0;
 	}
+	xdev->num_vecs = min_t(int, num_vecs, xdev->conf.msix_qvec_max);
 
+	pr_debug("xdev->num_vecs = %u", xdev->num_vecs);
 	xdev->msix = kzalloc((sizeof(struct msix_entry) * xdev->num_vecs),
 						GFP_KERNEL);
 	if (!xdev->msix) {

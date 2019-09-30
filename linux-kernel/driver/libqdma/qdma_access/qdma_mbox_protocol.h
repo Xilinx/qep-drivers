@@ -26,6 +26,7 @@
 
 #include "qdma_platform_env.h"
 #include "qdma_access.h"
+#include "qdma_resource_mgmt.h"
 
 /**
  * Error codes
@@ -229,12 +230,15 @@ int qdma_mbox_compose_vf_qreq(uint16_t func_id,
  *
  * @func_id:   destination function id
  * @qid_hw: number of queues being requested
+ * @q_type: type of q
  * @raw_data: output raw message to be sent
  *
  * Return:	0  : success and < 0: failure
  *****************************************************************************/
 int qdma_mbox_compose_vf_notify_qadd(uint16_t func_id,
-				     uint16_t qid_hw, uint32_t *raw_data);
+				     uint16_t qid_hw,
+				     enum qdma_dev_q_type q_type,
+				     uint32_t *raw_data);
 
 /*****************************************************************************/
 /**
@@ -242,12 +246,16 @@ int qdma_mbox_compose_vf_notify_qadd(uint16_t func_id,
  *
  * @func_id:   destination function id
  * @qid_hw: number of queues being requested
+ * @q_type: type of q
  * @raw_data: output raw message to be sent
  *
  * Return:	0  : success and < 0: failure
  *****************************************************************************/
 int qdma_mbox_compose_vf_notify_qdel(uint16_t func_id,
-				     uint16_t qid_hw, uint32_t *raw_data);
+				     uint16_t qid_hw,
+				     enum qdma_dev_q_type q_type,
+				     uint32_t *raw_data);
+
 /*****************************************************************************/
 /**
  * qdma_mbox_compose_vf_fmap_prog(): handles the raw message received

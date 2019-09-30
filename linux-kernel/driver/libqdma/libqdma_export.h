@@ -317,7 +317,7 @@ struct qdma_dev_conf {
 	 *  @msix_qvec_max: max. of vectors used for queues.
 	 *  libqdma update w/ actual #
 	 */
-	u8 msix_qvec_max;
+	u16 msix_qvec_max;
 	/** @uld: upper layer data, i.e. callback data */
 	unsigned long uld;
 	/** @qdma_drv_mode: qdma driver mode */

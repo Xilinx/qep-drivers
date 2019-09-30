@@ -26,7 +26,8 @@ struct qdma_resource_entry {
 
 struct qdma_dev_entry {
 	uint16_t  func_id;
-	uint32_t active_qcnt;
+	uint32_t active_h2c_qcnt;
+	uint32_t active_c2h_qcnt;
 	struct qdma_resource_entry entry;
 };
 
@@ -471,7 +472,7 @@ int qdma_dev_update(uint32_t pci_bus_num, uint32_t func_id,
 	/* if any active queue on device, no more new qmax
 	 * configuration allowed
 	 */
-	if (dev_entry->active_qcnt) {
+	if (dev_entry->active_h2c_qcnt || dev_entry->active_c2h_qcnt) {
 		qdma_resource_lock_give();
 		return -QDMA_QMAX_PROG_FREEZE;
 	}
@@ -538,11 +539,14 @@ enum qdma_dev_q_range qdma_dev_is_queue_in_range(uint32_t pci_bus_num,
 	return QDMA_DEV_Q_OUT_OF_RANGE;
 }
 
-int qdma_dev_increment_active_queue(uint32_t pci_bus_num, uint32_t func_id)
+int qdma_dev_increment_active_queue(uint32_t pci_bus_num, uint32_t func_id,
+				    enum qdma_dev_q_type q_type)
 {
 	struct qdma_resource_master *q_resource =
 			qdma_get_master_reousrce_entry(pci_bus_num);
 	struct qdma_dev_entry *dev_entry;
+	int rv = QDMA_RESOURCE_MGMT_SUCCESS;
+	unsigned int *active_qcnt = NULL;
 
 	if (!q_resource)
 		return -QDMA_MASTER_RESOURCE_DOES_NOT_EXIST;
@@ -553,19 +557,37 @@ int qdma_dev_increment_active_queue(uint32_t pci_bus_num, uint32_t func_id)
 		return -QDMA_DEV_DOES_NOT_EXIST;
 
 	qdma_resource_lock_take();
-	dev_entry->active_qcnt++;
-	q_resource->active_qcnt++;
+	switch (q_type) {
+		case QDMA_DEV_Q_TYPE_H2C:
+			active_qcnt = &dev_entry->active_h2c_qcnt;
+			break;
+		case QDMA_DEV_Q_TYPE_C2H:
+			active_qcnt = &dev_entry->active_c2h_qcnt;
+			break;
+		default:
+			rv = -QDMA_DEV_DOES_NOT_EXIST;
+	}
+	if (active_qcnt && (dev_entry->entry.total_q < ((*active_qcnt) + 1))) {
+		qdma_resource_lock_give();
+		return -QDMA_RESOURCE_NOT_ENOUGH_QUEUE;
+	}
+	if (active_qcnt) {
+		*active_qcnt = (*active_qcnt) + 1;
+		q_resource->active_qcnt++;
+	}
 	qdma_resource_lock_give();
 
-	return QDMA_RESOURCE_MGMT_SUCCESS;
+	return rv;
 }
 
 
-int qdma_dev_decrement_active_queue(uint32_t pci_bus_num, uint32_t func_id)
+int qdma_dev_decrement_active_queue(uint32_t pci_bus_num, uint32_t func_id,
+				    enum qdma_dev_q_type q_type)
 {
 	struct qdma_resource_master *q_resource =
 			qdma_get_master_reousrce_entry(pci_bus_num);
 	struct qdma_dev_entry *dev_entry;
+	int rv = QDMA_RESOURCE_MGMT_SUCCESS;
 
 	if (!q_resource)
 		return -QDMA_MASTER_RESOURCE_DOES_NOT_EXIST;
@@ -576,9 +598,17 @@ int qdma_dev_decrement_active_queue(uint32_t pci_bus_num, uint32_t func_id)
 		return -QDMA_DEV_DOES_NOT_EXIST;
 
 	qdma_resource_lock_take();
-	if (dev_entry->active_qcnt) {
-		dev_entry->active_qcnt--;
-		q_resource->active_qcnt--;
+	switch (q_type) {
+		case QDMA_DEV_Q_TYPE_H2C:
+			if (dev_entry->active_h2c_qcnt)
+				dev_entry->active_h2c_qcnt--;
+			break;
+		case QDMA_DEV_Q_TYPE_C2H:
+			if (dev_entry->active_c2h_qcnt)
+				dev_entry->active_c2h_qcnt--;
+			break;
+		default:
+			rv = -QDMA_DEV_DOES_NOT_EXIST;
 	}
 	qdma_resource_lock_give();
 
@@ -602,7 +632,8 @@ uint32_t qdma_get_active_queue_count(uint32_t pci_bus_num)
 }
 
 uint32_t qdma_get_device_active_queue_count(uint32_t pci_bus_num,
-					uint32_t func_id)
+					    uint32_t func_id,
+					    enum qdma_dev_q_type q_type)
 {
 	struct qdma_resource_master *q_resource =
 			qdma_get_master_reousrce_entry(pci_bus_num);
@@ -618,7 +649,16 @@ uint32_t qdma_get_device_active_queue_count(uint32_t pci_bus_num,
 		return 0;
 
 	qdma_resource_lock_take();
-	dev_active_qcnt = dev_entry->active_qcnt;
+	switch (q_type) {
+		case QDMA_DEV_Q_TYPE_H2C:
+			dev_active_qcnt = dev_entry->active_h2c_qcnt;
+			break;
+		case QDMA_DEV_Q_TYPE_C2H:
+			dev_active_qcnt = dev_entry->active_c2h_qcnt;
+			break;
+		default:
+			dev_active_qcnt = 0;
+	}
 	qdma_resource_lock_give();
 
 	return dev_active_qcnt;

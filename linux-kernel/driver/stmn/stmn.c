@@ -43,28 +43,28 @@ static unsigned int sleep(unsigned int msec)
 
 /**************************************************************************/
 /** Boiler Plate Macros for null and failure check, code reuse and readability*/
-#define stmn_null_check(arg, msg)                                              \
-	do {                                                                   \
-		if ((arg) == NULL) {                                           \
+#define stmn_null_check(arg, msg) \
+	do { \
+		if ((arg) == NULL) { \
 			pr_err("%s : %s null pointer! \r\n", __func__, (msg)); \
-			return -STMN_INVALID_ARGS;                             \
-		}                                                              \
+			return -STMN_INVALID_ARGS; \
+		} \
 	} while (0)
 
-#define stmn_fail_check(arg, msg)                                              \
-	do {                                                                   \
-		if ((arg) < STMN_SUCCESS) {                                    \
-			pr_err("%s : %s Failed! Error Code: %d \r\n",          \
-			       __func__, (msg), arg);                          \
-			return arg;                                            \
-		}                                                              \
+#define stmn_fail_check(arg, msg) \
+	do { \
+		if ((arg) < STMN_SUCCESS) { \
+			pr_err("%s : %s Failed! Error Code: %d \r\n", \
+			       __func__, (msg), arg); \
+			return arg; \
+		} \
 	} while (0)
 
 /************************************************************************/
 #define STMN_REGS_VERSION 0x00000000
 #define STMN_BLOCK_ID 0x0
 #define STMN_MAJOR_VERSION 0x0
-#define STMN_MINOR_VERSION 0x1
+#define STMN_MINOR_VERSION 0x2
 
 #define STMN_BLOCK_ID_SHIFT 16
 #define STMN_MAJOR_VERSION_SHIFT 8
@@ -680,15 +680,15 @@ static void stmn_prn_sts_ram(struct stmn_sts_ram_val *ram, char *buf, int len,
 }
 
 static void stmn_prn_str_ram(struct stmn_store_ram_val *ram, char *buf, int len,
-			     const char *msg, uint16_t qid)
+			const char *msg, uint16_t qid)
 {
 	snprintf(buf + strlen(buf), len - strlen(buf),
 		 "%-16s: qid:%d en:%d err:%d rst:%d in_arb:%d ptr1:%d ptr2:%d\n",
 		 msg, qid, ram->en, ram->err, ram->rst, ram->in_arb,
 		 ram->rd_ptr, ram->wr_ptr);
 }
-int stmn_print_ram_status_msg(void *dev_hndl, char *buf, int len, int numq,
-		int qbase)
+int stmn_print_ram_status_msg(void *dev_hndl, char *buf, int len, int tx_numq,
+			int rx_numq, int qbase)
 {
 	int ret;
 	int i, num_entry;
@@ -707,13 +707,18 @@ int stmn_print_ram_status_msg(void *dev_hndl, char *buf, int len, int numq,
 		snprintf(buf + strlen(buf), len - strlen(buf), "%-30s 0x%x\n",
 			 stmn_reg_name_idle_status[i], *(reg_val + i));
 
-	for (i = qbase; i < numq + qbase; i++) {
+	for (i = qbase; i < rx_numq + qbase; i++) {
 		ret = stmn_get_ctrl_ram_status(dev_hndl, i, &ram);
 		stmn_fail_check(ret, "stmn_get_ctrl_ram_status");
 		stmn_prn_sts_ram(&ram.c2h_dsc, buf, len, "C2H Desc RAM", i);
-		stmn_prn_sts_ram(&ram.h2c_dsc, buf, len, "H2C Desc RAM", i);
 		stmn_prn_str_ram(&ram.c2h_wr, buf, len, "C2H Desc Wr RAM", i);
 		stmn_prn_str_ram(&ram.c2h_rd, buf, len, "C2H Desc Rd RAM", i);
+		memset(&ram, 0, sizeof(struct stmn_ctrl_ram_status));
+	}
+	for (i = qbase; i < tx_numq + qbase; i++) {
+		ret = stmn_get_ctrl_ram_status(dev_hndl, i, &ram);
+		stmn_fail_check(ret, "stmn_get_ctrl_ram_status");
+		stmn_prn_sts_ram(&ram.h2c_dsc, buf, len, "H2C Desc RAM", i);
 		stmn_prn_str_ram(&ram.h2c_wr, buf, len, "H2C Desc Wr RAM", i);
 		stmn_prn_str_ram(&ram.h2c_rd, buf, len, "H2C Desc Rd RAM", i);
 		memset(&ram, 0, sizeof(struct stmn_ctrl_ram_status));

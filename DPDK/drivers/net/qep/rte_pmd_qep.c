@@ -35,6 +35,44 @@
 #include "rte_pmd_qdma.h"
 #include "qdma.h"
 
+/******************************************************************************/
+/**
+ * Function Name:	rte_pmd_qdma_get_bar_details
+ * Description:		Returns the BAR indices of the QDMA BARs
+ *
+ * @param	portid : Port ID
+ * @param	config_bar_idx : Config BAR index
+ * @param	user_bar_idx   : User BAR index
+ * @param	bypass_bar_idx : Bypass BAR index
+ *
+ * @return	'0' on success and '< 0' on failure.
+ *
+ * @note   None.
+ ******************************************************************************/
+int rte_pmd_qep_get_bar_details(int portid, int32_t *config_bar_idx,
+			int32_t *user_bar_idx, int32_t *bypass_bar_idx)
+{
+	return rte_pmd_qdma_get_bar_details(portid, config_bar_idx,
+				user_bar_idx, bypass_bar_idx);
+}
+
+/******************************************************************************/
+/**
+ * Function Name:	rte_pmd_qdma_get_queue_base
+ * Description:		Returns queue base for given port
+ *
+ * @param	portid : Port ID.
+ * @param	queue_base : queue base.
+ *
+ * @return	'0' on success and '< 0' on failure.
+ *
+ * @note    Application can call this API only after successful
+ *          call to rte_eh_dev_configure() API.
+ ******************************************************************************/
+int rte_pmd_qep_get_queue_base(int portid, uint32_t *queue_base)
+{
+	return rte_pmd_qdma_get_queue_base(portid, queue_base);
+}
 
 static int qdma_desc_type(enum rte_pmd_qep_desc_type type,
 		   enum rte_pmd_qdma_xdebug_desc_type *qtype)
@@ -96,3 +134,95 @@ int rte_pmd_qep_dbg_stmninfo(uint8_t port_id)
 
 }
 
+/******************************************************************************/
+/**
+ * Function Name:	rte_pmd_qep_addr_read
+ * Description:		Returns the value at the given BAR offset
+ *
+ * @param	portid : Port ID.
+ * @param	bar : PCIe BAR number.
+ * @param	addr : BAR offset to read.
+ * @param	val : Pointer holding the read value.
+ *
+ * @return	'0' on success and '< 0' on failure.
+ ******************************************************************************/
+int rte_pmd_qep_addr_read(int portid, uint32_t bar,
+			uint32_t addr, uint32_t *val)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[portid];
+	struct qdma_pci_dev *qdma_dev = dev->data->dev_private;
+	uint64_t baseaddr;
+
+	if (portid < 0 || portid >= rte_eth_dev_count_avail()) {
+		PMD_DRV_LOG(ERR, "Wrong port id %d\n", portid);
+		return -ENOTSUP;
+	}
+
+	if (val == NULL) {
+		PMD_DRV_LOG(ERR, "Caught NULL pointer for val\n");
+		return -EINVAL;
+	}
+
+	if (!is_dev_qep_supported(dev)) {
+		PMD_DRV_LOG(ERR, "Device is not supported\n");
+		return -ENOTSUP;
+	}
+
+	if (bar >= (QDMA_NUM_BARS - 1)) {
+		PMD_DRV_LOG(ERR, "Invalid PCI BAR number:%d\n", bar);
+		return -ENOTSUP;
+	}
+
+	baseaddr = (uint64_t)qdma_dev->bar_addr[bar];
+	if (!baseaddr) {
+		PMD_DRV_LOG(ERR, "PCI BAR number %d not mapped\n", bar);
+		return -ENOTSUP;
+	}
+
+	*val = *((volatile uint32_t *)(baseaddr + addr));
+	return 0;
+}
+
+/******************************************************************************/
+/**
+ * Function Name:	rte_pmd_qep_addr_write
+ * Description:		Writes the value at the given BAR offset
+ *
+ * @param	portid : Port ID.
+ * @param	bar : PCIe BAR number.
+ * @param	addr : BAR offset to write.
+ * @param	val : Value to be written.
+ *
+ * @return	'0' on success and '< 0' on failure.
+ ******************************************************************************/
+int rte_pmd_qep_addr_write(int portid, uint32_t bar,
+			uint32_t addr, uint32_t val)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[portid];
+	struct qdma_pci_dev *qdma_dev = dev->data->dev_private;
+	uint64_t baseaddr;
+
+	if (portid < 0 || portid >= rte_eth_dev_count_avail()) {
+		PMD_DRV_LOG(ERR, "Wrong port id %d\n", portid);
+		return -ENOTSUP;
+	}
+
+	if (!is_dev_qep_supported(dev)) {
+		PMD_DRV_LOG(ERR, "Device is not supported\n");
+		return -ENOTSUP;
+	}
+
+	if (bar >= (QDMA_NUM_BARS - 1)) {
+		PMD_DRV_LOG(ERR, "Invalid PCI BAR number:%d\n", bar);
+		return -ENOTSUP;
+	}
+
+	baseaddr = (uint64_t)qdma_dev->bar_addr[bar];
+	if (!baseaddr) {
+		PMD_DRV_LOG(ERR, "PCI BAR number %d not mapped\n", bar);
+		return -ENOTSUP;
+	}
+
+	*((volatile uint32_t *)(baseaddr + addr)) = val;
+	return 0;
+}
