@@ -264,7 +264,8 @@ static int qdma_pf_fmap_prog(struct rte_eth_dev *dev)
 	return ret;
 }
 
-int qdma_dev_notify_qadd(struct rte_eth_dev *dev, uint32_t qidx_hw)
+int qdma_dev_notify_qadd(struct rte_eth_dev *dev, uint32_t qidx_hw,
+						enum qdma_dev_q_type q_type)
 {
 	struct qdma_pci_dev *qdma_dev = dev->data->dev_private;
 	struct qdma_mbox_msg *m;
@@ -274,14 +275,16 @@ int qdma_dev_notify_qadd(struct rte_eth_dev *dev, uint32_t qidx_hw)
 	if (!m)
 		return -ENOMEM;
 
-	qdma_mbox_compose_vf_notify_qadd(qdma_dev->pf, qidx_hw, m->raw_data);
+	qdma_mbox_compose_vf_notify_qadd(qdma_dev->pf, qidx_hw, q_type,
+					 m->raw_data);
 	rv = qdma_mbox_msg_send(dev, m, MBOX_OP_RSP_TIMEOUT);
 
 	qdma_mbox_msg_free(m);
 	return rv;
 }
 
-int qdma_dev_notify_qdel(struct rte_eth_dev *dev, uint32_t qidx_hw)
+int qdma_dev_notify_qdel(struct rte_eth_dev *dev, uint32_t qidx_hw,
+						enum qdma_dev_q_type q_type)
 {
 	struct qdma_pci_dev *qdma_dev = dev->data->dev_private;
 	struct qdma_mbox_msg *m;
@@ -291,7 +294,8 @@ int qdma_dev_notify_qdel(struct rte_eth_dev *dev, uint32_t qidx_hw)
 	if (!m)
 		return -ENOMEM;
 
-	qdma_mbox_compose_vf_notify_qdel(qdma_dev->pf, qidx_hw, m->raw_data);
+	qdma_mbox_compose_vf_notify_qdel(qdma_dev->pf, qidx_hw, q_type,
+					 m->raw_data);
 	rv = qdma_mbox_msg_send(dev, m, MBOX_OP_RSP_TIMEOUT);
 
 	qdma_mbox_msg_free(m);
@@ -361,14 +365,18 @@ int qdma_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 				nb_rx_desc);
 		return -EINVAL;
 	}
-	if (!qdma_dev->is_vf)
-		qdma_dev_increment_active_queue(pci_dev->addr.bus,
-						qdma_dev->pf);
-	else {
+	if (!qdma_dev->is_vf) {
+		err = qdma_dev_increment_active_queue(pci_dev->addr.bus,
+						qdma_dev->pf,
+						QDMA_DEV_Q_TYPE_C2H);
+		if (err != QDMA_RESOURCE_MGMT_SUCCESS)
+			return -EINVAL;
+	} else {
 		err = qdma_dev_notify_qadd(dev, rx_queue_id +
-						 qdma_dev->queue_base);
+					   qdma_dev->queue_base,
+					   QDMA_DEV_Q_TYPE_C2H);
 		if (err < 0)
-			return err;
+			return -EINVAL;
 	}
 	if (!qdma_dev->init_q_range) {
 		if (qdma_dev->is_vf) {
@@ -602,10 +610,11 @@ int qdma_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 rx_setup_err:
 	if (!qdma_dev->is_vf)
 		qdma_dev_decrement_active_queue(pci_dev->addr.bus,
-						qdma_dev->pf);
+						qdma_dev->pf,
+						QDMA_DEV_Q_TYPE_C2H);
 	else
 		qdma_dev_notify_qdel(dev, rx_queue_id +
-				qdma_dev->queue_base);
+				qdma_dev->queue_base, QDMA_DEV_Q_TYPE_C2H);
 	if (rxq) {
 		if (rxq->rx_mz)
 			rte_memzone_free(rxq->rx_mz);
@@ -650,14 +659,18 @@ int qdma_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 	PMD_DRV_LOG(INFO, "Configuring Tx queue id:%d with %d desc\n",
 		    tx_queue_id, nb_tx_desc);
 
-	if (!qdma_dev->is_vf)
-		qdma_dev_increment_active_queue(pci_dev->addr.bus,
-						qdma_dev->pf);
-	else {
-		err = qdma_dev_notify_qadd(dev, tx_queue_id +
-						 qdma_dev->queue_base);
+	if (!qdma_dev->is_vf) {
+		err = qdma_dev_increment_active_queue(pci_dev->addr.bus,
+						qdma_dev->pf,
+						QDMA_DEV_Q_TYPE_H2C);
+		if (err != QDMA_RESOURCE_MGMT_SUCCESS)
+			return -EINVAL;
+	} else {
+		err = qdma_dev_notify_qadd(dev,
+					   tx_queue_id + qdma_dev->queue_base,
+					   QDMA_DEV_Q_TYPE_H2C);
 		if (err < 0)
-			return err;
+			return -EINVAL;
 	}
 	if (!qdma_dev->init_q_range) {
 		if (qdma_dev->is_vf) {
@@ -802,10 +815,11 @@ tx_setup_err:
 	PMD_DRV_LOG(ERR, " Tx queue setup failed");
 	if (!qdma_dev->is_vf)
 		qdma_dev_decrement_active_queue(pci_dev->addr.bus,
-						qdma_dev->pf);
+						qdma_dev->pf,
+						QDMA_DEV_Q_TYPE_H2C);
 	else
 		qdma_dev_notify_qdel(dev, tx_queue_id +
-				     qdma_dev->queue_base);
+				     qdma_dev->queue_base, QDMA_DEV_Q_TYPE_H2C);
 	if (txq) {
 		if (txq->tx_mz)
 			rte_memzone_free(txq->tx_mz);
@@ -857,10 +871,12 @@ void qdma_dev_tx_queue_release(void *tqueue)
 
 		if (!qdma_dev->is_vf)
 			qdma_dev_decrement_active_queue(pci_dev->addr.bus,
-							qdma_dev->pf);
+							qdma_dev->pf,
+							QDMA_DEV_Q_TYPE_H2C);
 		else
 			qdma_dev_notify_qdel(txq->dev, txq->queue_id +
-					     qdma_dev->queue_base);
+					     qdma_dev->queue_base,
+					     QDMA_DEV_Q_TYPE_H2C);
 		if (txq->sw_ring)
 			rte_free(txq->sw_ring);
 		if (txq->tx_mz)
@@ -883,10 +899,10 @@ void qdma_dev_rx_queue_release(void *rqueue)
 
 		if (!qdma_dev->is_vf)
 			qdma_dev_decrement_active_queue(pci_dev->addr.bus,
-							qdma_dev->pf);
+					qdma_dev->pf, QDMA_DEV_Q_TYPE_C2H);
 		else
 			qdma_dev_notify_qdel(rxq->dev, rxq->queue_id +
-					     qdma_dev->queue_base);
+				qdma_dev->queue_base, QDMA_DEV_Q_TYPE_C2H);
 		if (rxq->sw_ring)
 			rte_free(rxq->sw_ring);
 		if (rxq->st_mode) { /** if ST-mode **/
@@ -1139,7 +1155,7 @@ static void qdma_dev_close(struct rte_eth_dev *dev)
 			PMD_DRV_LOG(INFO, "C2H queue %d removed", qid);
 
 			qdma_dev_decrement_active_queue(pci_dev->addr.bus,
-							qdma_dev->pf);
+					qdma_dev->pf, QDMA_DEV_Q_TYPE_C2H);
 		}
 	}
 
@@ -1157,7 +1173,7 @@ static void qdma_dev_close(struct rte_eth_dev *dev)
 			PMD_DRV_LOG(INFO, "H2C queue %d removed", qid);
 
 			qdma_dev_decrement_active_queue(pci_dev->addr.bus,
-							qdma_dev->pf);
+					qdma_dev->pf, QDMA_DEV_Q_TYPE_H2C);
 		}
 	}
 
@@ -1173,7 +1189,7 @@ static void qdma_dev_close(struct rte_eth_dev *dev)
 			PMD_DRV_LOG(INFO, "PF-%d(DEVFN) CMPT queue %d removed",
 					qdma_dev->pf, qid);
 			qdma_dev_decrement_active_queue(pci_dev->addr.bus,
-							qdma_dev->pf);
+					qdma_dev->pf, QDMA_DEV_Q_TYPE_C2H);
 		}
 	}
 

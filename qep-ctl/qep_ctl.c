@@ -23,7 +23,7 @@
 
 /************************Macros**********************************************/
 
-#define PCIE_DEV_ID_MGMT_PF  0x7000
+#define PCIE_DEV_ID_MGMT_PF  0x5014
 #define DEFAULT_USER_BAR 	2
 #define DEFAULT_USER_BAR_LEN  0x4000000
 

@@ -523,7 +523,8 @@ static void qdma_vf_dev_close(struct rte_eth_dev *dev)
 							qdma_dev->pf, qid);
 
 			qdma_dev_notify_qdel(rxq->dev, rxq->queue_id +
-					     qdma_dev->queue_base);
+					     qdma_dev->queue_base,
+					     QDMA_DEV_Q_TYPE_C2H);
 			if (rxq->sw_ring)
 				rte_free(rxq->sw_ring);
 
@@ -547,7 +548,8 @@ static void qdma_vf_dev_close(struct rte_eth_dev *dev)
 							qdma_dev->pf, qid);
 
 			qdma_dev_notify_qdel(txq->dev, txq->queue_id +
-					     qdma_dev->queue_base);
+					     qdma_dev->queue_base,
+					     QDMA_DEV_Q_TYPE_H2C);
 			if (txq->sw_ring)
 				rte_free(txq->sw_ring);
 			if (txq->tx_mz)
@@ -565,7 +567,8 @@ static void qdma_vf_dev_close(struct rte_eth_dev *dev)
 			PMD_DRV_LOG(INFO, "VF-%d(DEVFN) Remove CMPT queue: %d",
 					qdma_dev->pf, qid);
 			qdma_dev_notify_qdel(cmptq->dev, cmptq->queue_id +
-					     qdma_dev->queue_base);
+					     qdma_dev->queue_base,
+					     QDMA_DEV_Q_TYPE_C2H);
 			if (cmptq->cmpt_mz)
 				rte_memzone_free(cmptq->cmpt_mz);
 			rte_free(cmptq);

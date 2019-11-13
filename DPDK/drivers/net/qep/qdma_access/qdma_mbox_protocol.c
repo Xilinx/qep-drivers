@@ -259,6 +259,8 @@ struct mbox_msg_q_nitfy {
 	struct mbox_msg_hdr hdr;
 	/** @qid_hw: queue ID */
 	uint16_t qid_hw;
+	/** @q_type: type of q */
+	enum qdma_dev_q_type q_type;
 };
 
 /**
@@ -896,7 +898,8 @@ int qdma_mbox_pf_rcv_msg_handler(void *dev_hndl, uint8_t pci_bus_num,
 		else
 			rv = qdma_dev_increment_active_queue(
 					pci_bus_num,
-					q_notify->hdr.src_func_id);
+					q_notify->hdr.src_func_id,
+					q_notify->q_type);
 	}
 	break;
 	case MBOX_OP_QNOTIFY_DEL:
@@ -913,7 +916,8 @@ int qdma_mbox_pf_rcv_msg_handler(void *dev_hndl, uint8_t pci_bus_num,
 		else
 			rv = qdma_dev_decrement_active_queue(
 					pci_bus_num,
-					q_notify->hdr.src_func_id);
+					q_notify->hdr.src_func_id,
+					q_notify->q_type);
 	}
 	break;
 	case MBOX_OP_INTR_CTXT_WRT:
@@ -1101,7 +1105,9 @@ int qdma_mbox_compose_vf_qreq(uint16_t func_id,
 }
 
 int qdma_mbox_compose_vf_notify_qadd(uint16_t func_id,
-				     uint16_t qid_hw, uint32_t *raw_data)
+				     uint16_t qid_hw,
+				     enum qdma_dev_q_type q_type,
+				     uint32_t *raw_data)
 {
 	union qdma_mbox_txrx *msg = (union qdma_mbox_txrx *)raw_data;
 
@@ -1112,12 +1118,15 @@ int qdma_mbox_compose_vf_notify_qadd(uint16_t func_id,
 	msg->hdr.op = MBOX_OP_QNOTIFY_ADD;
 	msg->hdr.src_func_id = func_id;
 	msg->q_notify.qid_hw = qid_hw;
+	msg->q_notify.q_type = q_type;
 
 	return 0;
 }
 
 int qdma_mbox_compose_vf_notify_qdel(uint16_t func_id,
-				     uint16_t qid_hw, uint32_t *raw_data)
+				     uint16_t qid_hw,
+				     enum qdma_dev_q_type q_type,
+				     uint32_t *raw_data)
 {
 	union qdma_mbox_txrx *msg = (union qdma_mbox_txrx *)raw_data;
 
@@ -1128,6 +1137,7 @@ int qdma_mbox_compose_vf_notify_qdel(uint16_t func_id,
 	msg->hdr.op = MBOX_OP_QNOTIFY_DEL;
 	msg->hdr.src_func_id = func_id;
 	msg->q_notify.qid_hw = qid_hw;
+	msg->q_notify.q_type = q_type;
 
 	return 0;
 }

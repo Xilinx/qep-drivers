@@ -558,14 +558,14 @@ int qdma_dev_increment_active_queue(uint32_t pci_bus_num, uint32_t func_id,
 
 	qdma_resource_lock_take();
 	switch (q_type) {
-		case QDMA_DEV_Q_TYPE_H2C:
-			active_qcnt = &dev_entry->active_h2c_qcnt;
-			break;
-		case QDMA_DEV_Q_TYPE_C2H:
-			active_qcnt = &dev_entry->active_c2h_qcnt;
-			break;
-		default:
-			rv = -QDMA_DEV_DOES_NOT_EXIST;
+	case QDMA_DEV_Q_TYPE_H2C:
+		active_qcnt = &dev_entry->active_h2c_qcnt;
+		break;
+	case QDMA_DEV_Q_TYPE_C2H:
+		active_qcnt = &dev_entry->active_c2h_qcnt;
+		break;
+	default:
+		rv = -QDMA_DEV_DOES_NOT_EXIST;
 	}
 	if (active_qcnt && (dev_entry->entry.total_q < ((*active_qcnt) + 1))) {
 		qdma_resource_lock_give();
@@ -599,20 +599,20 @@ int qdma_dev_decrement_active_queue(uint32_t pci_bus_num, uint32_t func_id,
 
 	qdma_resource_lock_take();
 	switch (q_type) {
-		case QDMA_DEV_Q_TYPE_H2C:
-			if (dev_entry->active_h2c_qcnt)
-				dev_entry->active_h2c_qcnt--;
-			break;
-		case QDMA_DEV_Q_TYPE_C2H:
-			if (dev_entry->active_c2h_qcnt)
-				dev_entry->active_c2h_qcnt--;
-			break;
-		default:
-			rv = -QDMA_DEV_DOES_NOT_EXIST;
+	case QDMA_DEV_Q_TYPE_H2C:
+		if (dev_entry->active_h2c_qcnt)
+			dev_entry->active_h2c_qcnt--;
+		break;
+	case QDMA_DEV_Q_TYPE_C2H:
+		if (dev_entry->active_c2h_qcnt)
+			dev_entry->active_c2h_qcnt--;
+		break;
+	default:
+		rv = -QDMA_DEV_DOES_NOT_EXIST;
 	}
 	qdma_resource_lock_give();
 
-	return QDMA_RESOURCE_MGMT_SUCCESS;
+	return rv;
 }
 
 uint32_t qdma_get_active_queue_count(uint32_t pci_bus_num)
@@ -650,14 +650,14 @@ uint32_t qdma_get_device_active_queue_count(uint32_t pci_bus_num,
 
 	qdma_resource_lock_take();
 	switch (q_type) {
-		case QDMA_DEV_Q_TYPE_H2C:
-			dev_active_qcnt = dev_entry->active_h2c_qcnt;
-			break;
-		case QDMA_DEV_Q_TYPE_C2H:
-			dev_active_qcnt = dev_entry->active_c2h_qcnt;
-			break;
-		default:
-			dev_active_qcnt = 0;
+	case QDMA_DEV_Q_TYPE_H2C:
+		dev_active_qcnt = dev_entry->active_h2c_qcnt;
+		break;
+	case QDMA_DEV_Q_TYPE_C2H:
+		dev_active_qcnt = dev_entry->active_c2h_qcnt;
+		break;
+	default:
+		dev_active_qcnt = 0;
 	}
 	qdma_resource_lock_give();
 

@@ -101,7 +101,7 @@ static unsigned int sleep(unsigned int msec)
 #define STMN_C2H_BUF_16384 16384
 
 static const unsigned short stmn_enabled_device_id[] = { 0x903f, 0x6aa0,
-							 0x7002 };
+							 0x7002, 0x5016 };
 
 const struct stmn_reg_offset stmn_regs = { 0x00000100, 0x00000140, 0x00000180,
 					   0x00000200, 0x00000280, 0x00000310,

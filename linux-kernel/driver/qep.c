@@ -55,6 +55,7 @@ static const struct pci_device_id qep_pci_ids[] = {
 #else
 	{
 		PCI_DEVICE(0x10ee, 0x7002),
+		PCI_DEVICE(0x10ee, 0x5016),
 	},
 #endif
 	{

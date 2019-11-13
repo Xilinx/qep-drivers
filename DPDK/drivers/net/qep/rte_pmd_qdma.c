@@ -981,15 +981,17 @@ int rte_pmd_qdma_dev_cmptq_setup(int portid, uint32_t cmpt_queue_id,
 		return -EINVAL;
 	}
 
-	if (!qdma_dev->is_vf)
-		qdma_dev_increment_active_queue(pci_dev->addr.bus,
-				qdma_dev->pf);
-	else {
+	if (!qdma_dev->is_vf) {
+		err = qdma_dev_increment_active_queue(pci_dev->addr.bus,
+				qdma_dev->pf, QDMA_DEV_Q_TYPE_C2H);
+		if (err != QDMA_RESOURCE_MGMT_SUCCESS)
+			return -EINVAL;
+	} else {
 		err = qdma_dev_notify_qadd(dev, cmpt_queue_id +
-				qdma_dev->queue_base);
+				qdma_dev->queue_base, QDMA_DEV_Q_TYPE_C2H);
 
 		if (err < 0)
-			return err;
+			return -EINVAL;
 	}
 
 	if (!qdma_dev->init_q_range) {
@@ -1091,10 +1093,10 @@ int rte_pmd_qdma_dev_cmptq_setup(int portid, uint32_t cmpt_queue_id,
 cmptq_setup_err:
 	if (!qdma_dev->is_vf)
 		qdma_dev_decrement_active_queue(pci_dev->addr.bus,
-				qdma_dev->pf);
+				qdma_dev->pf, QDMA_DEV_Q_TYPE_C2H);
 	else
 		qdma_dev_notify_qdel(dev, cmpt_queue_id +
-				qdma_dev->queue_base);
+				qdma_dev->queue_base, QDMA_DEV_Q_TYPE_C2H);
 	if (cmptq) {
 		if (cmptq->cmpt_mz)
 			rte_memzone_free(cmptq->cmpt_mz);
