@@ -1,0 +1,581 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>User Guide &mdash; QEP DPDK Driver 1.0.0 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="QEP DPDK Driver 1.0.0 documentation" href="index.html"/>
+        <link rel="next" title="Developers Guide" href="dev-guide.html"/>
+        <link rel="prev" title="System Requirements" href="system-requirements.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> QEP DPDK Driver
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.0.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <p class="caption"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="system-overview.html">System Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system-requirements.html">System Requirements</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">User Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#qep-environment-bringup">QEP Environment bringup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#installing-the-board">Installing the board</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#installing-the-xilinx-tools">Installing the Xilinx tools</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#installing-the-xrt-software">Installing the XRT Software</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#programming-the-qep-dsa">Programming the QEP DSA</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#building-qep-dpdk-software">Building QEP DPDK Software</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#xilinx-qep-dpdk-software-database-structure">Xilinx QEP DPDK Software database structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#setup-download-and-modifications">Setup: Download and modifications</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#setup-host-system">Setup: Host system</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#setup-make-commands">Setup: Make Commands</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#configure-ethernet-mac-address-for-device">Configure Ethernet MAC address for device</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#running-the-dpdk-software-test-application">Running the DPDK software test application</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuring-the-driver">Configuring the driver</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#supported-device-arguments-module-parameters">Supported Device arguments (module parameters)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#virtual-machine-vm-execution-and-test">Virtual Machine (VM) execution and test</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="dev-guide.html">Developers Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="acronyms.html">Terms and Acronyms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="references.html">References</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">QEP DPDK Driver</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>User Guide</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/userguide.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="user-guide">
+<h1>User Guide<a class="headerlink" href="#user-guide" title="Permalink to this headline">¶</a></h1>
+<p>This section outlines the steps to bringup QEP environment and build and execute DPDK driver</p>
+<div class="section" id="qep-environment-bringup">
+<h2>QEP Environment bringup<a class="headerlink" href="#qep-environment-bringup" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="installing-the-board">
+<h3>Installing the board<a class="headerlink" href="#installing-the-board" title="Permalink to this headline">¶</a></h3>
+<p>Shutdown the Host system and unplug it from its power source. Locate a Gen 3 x16 dual width
+PCIe slot on the motherboard and insert the Xilinx Alveo U250 board. Connect a USB cable between
+the host system and the U250 board.</p>
+<p>Note: Follow the safety instructions listed in <a class="reference external" href="https://www.xilinx.com/support/documentation/boards_and_kits/accelerator-cards/2019_1/ug1301-getting-started-guide-alveo-accelerator-cards.pdf">UG1301</a> while installing the card in the PCIe slot</p>
+</div>
+<div class="section" id="installing-the-xilinx-tools">
+<h3>Installing the Xilinx tools<a class="headerlink" href="#installing-the-xilinx-tools" title="Permalink to this headline">¶</a></h3>
+<ol class="arabic simple">
+<li>Power up the host system and login as root user</li>
+</ol>
+<p>2. Download the Vivado Design Suite 2019.1 from <a class="reference external" href="https://www.xilinx.com">https://www.xilinx.com</a> and install it according to the
+instructions provided in <a class="reference external" href="https://www.xilinx.com/support/documentation/sw_manuals/xilinx2019_1/ug973-vivado-release-notes-install-license.pdf">UG973</a>.</p>
+<ol class="arabic simple" start="3">
+<li>Install Cable drivers by following the instructions from <a class="reference external" href="https://www.xilinx.com/support/documentation/sw_manuals/xilinx2019_1/ug973-vivado-release-notes-install-license.pdf">UG973</a>.</li>
+</ol>
+</div>
+<div class="section" id="installing-the-xrt-software">
+<h3>Installing the XRT Software<a class="headerlink" href="#installing-the-xrt-software" title="Permalink to this headline">¶</a></h3>
+<p>Install XRT libraries and drivers from <a class="reference external" href="https://github.com/Xilinx/XRT">Github</a></p>
+</div>
+<div class="section" id="programming-the-qep-dsa">
+<h3>Programming the QEP DSA<a class="headerlink" href="#programming-the-qep-dsa" title="Permalink to this headline">¶</a></h3>
+<ol class="arabic simple">
+<li>Program the U250 board with QEP Platform deployment shell from the QEP Lounge.</li>
+<li>Once the device is programmed sucessfully with QEP Platform shell, execute the following command on the host system</li>
+</ol>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>#lspci -d 10ee:
+</pre></div>
+</div>
+<p>Following is the sample output</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>81:00.0 Processing Accelerators: Xilinx Corporation Device 5014
+81:00.1 Processing Accelerators: Xilinx Corporation Device 5015
+81:00.2 Ethernet controller: Xilinx Corporation Device 5016
+</pre></div>
+</div>
+</div></blockquote>
+</div>
+</div>
+<div class="section" id="building-qep-dpdk-software">
+<span id="build-dpdk"></span><h2>Building QEP DPDK Software<a class="headerlink" href="#building-qep-dpdk-software" title="Permalink to this headline">¶</a></h2>
+<p>DPDK requires certain packages to be installed on host system.
+For a full list, refer to the official DPDK documentation:
+<a class="reference external" href="https://doc.dpdk.org/guides/linux_gsg/sys_reqs.html">https://doc.dpdk.org/guides/linux_gsg/sys_reqs.html</a>.</p>
+<p><strong>Note</strong>: If the NUMA library is missing, it should be installed.
+For example:</p>
+<blockquote>
+<div><p>For Ubuntu: <code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">libnuma-dev</span></code></p>
+<p>For Red Hat: <code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">yum</span> <span class="pre">install</span> <span class="pre">numactl-devel</span></code></p>
+</div></blockquote>
+<div class="section" id="xilinx-qep-dpdk-software-database-structure">
+<h3>Xilinx QEP DPDK Software database structure<a class="headerlink" href="#xilinx-qep-dpdk-software-database-structure" title="Permalink to this headline">¶</a></h3>
+<p>Below Table describes the DPDK software database structure and its contents
+on the Xilinx GitHub <a class="reference external" href="https://github.com/Xilinx/qep-drivers">https://github.com/Xilinx/qep-drivers</a> .</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="30%" />
+<col width="70%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Directory</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>DPDK/drivers/net/qep</td>
+<td>Xilinx QEP DPDK poll mode driver</td>
+</tr>
+<tr class="row-odd"><td>DPDK/RELEASE.txt</td>
+<td>DPDK driver Release Notes</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="setup-download-and-modifications">
+<h3>Setup: Download and modifications<a class="headerlink" href="#setup-download-and-modifications" title="Permalink to this headline">¶</a></h3>
+<p>The QEP driver code requires DPDK version 18.11.
+Follow the steps below to download the proper version of DPDK and apply
+driver code and test application supplied in the GitHub.</p>
+<p>Extract the DPDK driver software database from the Xilinx GitHub to the server where U250 card
+is installed. Henceforth, this area is referred as &lt;dpdk_sw_database&gt;.</p>
+<p>Create a directory for the DPDK download on the server where the U250 card
+is installed and move to this directory.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>mkdir -p &lt;host_dir&gt;/&lt;dpdk_test_area&gt;
+cd &lt;host_dir&gt;/&lt;dpdk_test_area&gt;
+git clone http://dpdk.org/git/dpdk-stable
+cd dpdk-stable
+git checkout v18.11
+cp -r &lt;dpdk_sw_database&gt;/DPDK/drivers/net/qep ./drivers/net/
+</pre></div>
+</div>
+<p>Additionally, make below changes to the DPDK 18.11 tree to build QEP driver,
+and populate Xilinx devices for binding.</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>To build QDMA driver</li>
+</ol>
+<ol class="loweralpha simple">
+<li>Add below lines to <code class="docutils literal notranslate"><span class="pre">./config/common_base</span></code> in DPDK 18.11 tree</li>
+</ol>
+<div class="highlight-none notranslate"><div class="highlight"><pre>#
+#Complie Xilinx QEP PMD driver
+#
+CONFIG_RTE_LIBRTE_QEP_PMD=y
+CONFIG_RTE_LIBRTE_QDMA_DEBUG_DRIVER=n
+</pre></div>
+</div>
+<p>To enable driver debug logs, set</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>CONFIG_RTE_LIBRTE_QDMA_DEBUG_DRIVER=y
+</pre></div>
+</div>
+<ol class="loweralpha simple" start="2">
+<li>Add below lines to <code class="docutils literal notranslate"><span class="pre">drivers/net/Makefile</span></code>, where PMDs are added (e.g. after QEDE PMD)</li>
+</ol>
+<div class="highlight-none notranslate"><div class="highlight"><pre>DIRS-$(CONFIG_RTE_LIBRTE_QEP_PMD) += qep
+</pre></div>
+</div>
+<ol class="loweralpha simple" start="3">
+<li>Add below lines to <code class="docutils literal notranslate"><span class="pre">mk/rte.app.mk</span></code>, where PMDs are added (e.g. after QEDE PMD)</li>
+</ol>
+<div class="highlight-none notranslate"><div class="highlight"><pre>_LDLIBS-$(CONFIG_RTE_LIBRTE_QEP_PMD) += -lrte_pmd_qep
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li>To add Xilinx devices for device binding, add below lines to <code class="docutils literal notranslate"><span class="pre">./usertools/dpdk-devbind.py</span></code> after cavium_pkx class, where PCI base class for devices are listed.</li>
+</ol>
+<div class="highlight-none notranslate"><div class="highlight"><pre>  xilinx_qep_pf = {&#39;Class&#39;:  &#39;05&#39;, &#39;Vendor&#39;: &#39;10ee&#39;, &#39;Device&#39;: &#39;7002,5016&#39;,
+&#39;SVendor&#39;: None, &#39;SDevice&#39;: None}
+</pre></div>
+</div>
+<p>Update entries in network devices class in <code class="docutils literal notranslate"><span class="pre">./usertools/dpdk-devbind.py</span></code> to add Xilinx devices</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>network_devices = [network_class, cavium_pkx, avp_vnic, xilinx_qep_pf]
+</pre></div>
+</div>
+</div></blockquote>
+</div>
+<div class="section" id="setup-host-system">
+<h3>Setup: Host system<a class="headerlink" href="#setup-host-system" title="Permalink to this headline">¶</a></h3>
+<p>DPDK requires that hugepages are setup on the server.
+The following modifications must be made to the <code class="docutils literal notranslate"><span class="pre">/boot/grub/grub.cfg</span></code> on the host system</p>
+<ul>
+<li><p class="first">Add hugepages for DPDK</p>
+<blockquote>
+<div><p>Add following parameter to <code class="docutils literal notranslate"><span class="pre">/etc/default/grub</span> <span class="pre">file</span></code></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>GRUB_CMDLINE_LINUX=&quot;default_hugepagesz=1GB hugepagesz=1G hugepages=6&quot;
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">The example above adds six 1GB hugepages, which are required to support 256 queues, with descriptor ring of 2048 entries, and each descriptor supporting buffer size of 4KB.</div>
+<div class="line">The number of hugepages required should be changed if the above configuration (queues, ring size, buffer size) changes.</div>
+</div>
+</div></blockquote>
+</li>
+</ul>
+<p>Execute the following command to modify the <code class="docutils literal notranslate"><span class="pre">/boot/grub/grub.cfg</span></code> with the configuration set in the above steps and permanently add them to the kernel command line.</p>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>update-grub
+</pre></div>
+</div>
+</div></blockquote>
+<p>Reboot host system after making the above modifications.</p>
+</div>
+<div class="section" id="setup-make-commands">
+<h3>Setup: Make Commands<a class="headerlink" href="#setup-make-commands" title="Permalink to this headline">¶</a></h3>
+<ul>
+<li><p class="first">Compile DPDK &amp; QEP driver</p>
+<blockquote>
+<div><p>Execute the following to compile the driver.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>cd &lt;host_dir&gt;/&lt;dpdk_test_area&gt;/dpdk-stable
+make config T=x86_64-native-linuxapp-gcc install
+</pre></div>
+</div>
+<ul>
+<li><p class="first">In the make output, verify that the QEP driver files are being built.
+Below figure shows the QEP driver files that are built as part of make.</p>
+<img alt="_images/make_output.png" src="_images/make_output.png" />
+<p>The following should appear when make completes</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>Build complete [x86_64-native-linuxapp-gcc]
+</pre></div>
+</div>
+</li>
+<li><p class="first">Verify that <code class="docutils literal notranslate"><span class="pre">librte_pmd_qep.a</span></code> is installed in <code class="docutils literal notranslate"><span class="pre">./x86_64-native-linuxapp-gcc/lib</span></code> directory.</p>
+</li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<p>If any of above steps are missed or require code modifications,
+perform <code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">clean</span></code> before re-running make.
+For driver related modifications, perform <code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">clean</span></code>
+from inside <code class="docutils literal notranslate"><span class="pre">x86_64-native-linuxapp-gcc</span></code> directory.</p>
+</div>
+</div>
+<div class="section" id="configure-ethernet-mac-address-for-device">
+<span id="config-mac"></span><h2>Configure Ethernet MAC address for device<a class="headerlink" href="#configure-ethernet-mac-address-for-device" title="Permalink to this headline">¶</a></h2>
+<p>Compile qep-ctl application by executing below commands</p>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>cd &lt;dpdk_sw_database&gt;/qep-ctl
+gcc qep_ctl.c -o qep-ctl
+</pre></div>
+</div>
+</div></blockquote>
+<p>Configure the Ethernet MAC address of the device from Management PF using qep-ctl application using below example command.</p>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>./qep-ctl config  -d 81:00.0 -m 00:5D:03:00:00:02
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">This command just sets the MAC address of the network device but doesn’t enable MAC and VLAN filtering. Refer to readme.txt in qep-ctl application for usage details.</div>
+<div class="line"><br /></div>
+</div>
+</div></blockquote>
+<p>Execute the below command to verify that the MAC address is set</p>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>./qep-ctl show -d 81:00.0
+</pre></div>
+</div>
+</div></blockquote>
+</div>
+<div class="section" id="running-the-dpdk-software-test-application">
+<span id="run-dpdk"></span><h2>Running the DPDK software test application<a class="headerlink" href="#running-the-dpdk-software-test-application" title="Permalink to this headline">¶</a></h2>
+<p>The below steps describe the procedure to run the DPDK testpmd application on QEP network PF.</p>
+<ol class="arabic simple">
+<li>Navigate to DPDK root directory.</li>
+</ol>
+<div class="highlight-none notranslate"><div class="highlight"><pre>cd &lt;host_dir&gt;/&lt;dpdk_test_area&gt;/dpdk-stable/
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li>Run the ‘lspci’ command on the console and verify that the PFs are detected as shown below. Here, ‘81’ is the PCIe bus number on which Xilinx device is installed.</li>
+</ol>
+<div class="highlight-none notranslate"><div class="highlight"><pre># lspci | grep Xilinx
+81:00.0 Processing Accelerators: Xilinx Corporation Device 5014
+81:00.1 Processing Accelerators: Xilinx Corporation Device 5015
+81:00.2 Ethernet controller: Xilinx Corporation Device 5016
+</pre></div>
+</div>
+<ol class="arabic simple" start="3">
+<li>Execute the following commands required for running the DPDK application</li>
+</ol>
+<div class="highlight-none notranslate"><div class="highlight"><pre>mkdir /mnt/huge
+mount -t hugetlbfs nodev /mnt/huge
+modprobe uio
+insmod x86_64-native-linuxapp-gcc/kmod/igb_uio.ko
+</pre></div>
+</div>
+<ol class="arabic simple" start="4">
+<li>Bind PF port to the igb_uio module as shown below</li>
+</ol>
+<div class="highlight-none notranslate"><div class="highlight"><pre>./usertools/dpdk-devbind.py -b igb_uio 81:00.2
+</pre></div>
+</div>
+<ol class="arabic" start="5">
+<li><p class="first">Connect the U250 card with a peer NIC or IXIA using a QSFP+ cable and run the testpmd using the following sample command:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>./x86_64-native-linuxapp-gcc/app/testpmd -c3ff -n4 -w 81:00.2 -- -i --nb-cores=9 --rxq=8 --txq=8 --rxd=2048 --txd=2048 --burst=64 --mbuf-size=4224 --max-pkt-len=9000
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">Refer testpmd application user guide (<a class="reference external" href="https://fast.dpdk.org/doc/pdf-guides-18.11/testpmd_app_ug-18.11.pdf">https://fast.dpdk.org/doc/pdf-guides-18.11/testpmd_app_ug-18.11.pdf</a>) for details on testpmd execution.</div>
+<div class="line"><br /></div>
+</div>
+</li>
+<li><p class="first">Start traffic from peer and compare the statistics on both ends.</p>
+</li>
+</ol>
+</div>
+<div class="section" id="configuring-the-driver">
+<h2>Configuring the driver<a class="headerlink" href="#configuring-the-driver" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="supported-device-arguments-module-parameters">
+<h3>Supported Device arguments (module parameters)<a class="headerlink" href="#supported-device-arguments-module-parameters" title="Permalink to this headline">¶</a></h3>
+<p>Device specific parameters can be passed to a device by using the ‘-w’ EAL option.
+Xilinx supports following device arguments to configure QEP DPDK Driver.</p>
+<ol class="arabic">
+<li><p class="first"><strong>rsfec</strong></p>
+<blockquote>
+<div><p>This parameter Specifies whether to enable or disable RS-FEC.
+Default is set to 1 i.e. enable in the driver.</p>
+<p>Example usage:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>./x86_64-native-linuxapp-gcc/app/testpmd -c 0x1f -n 4 -w 81:00.2,rsfec=0
+</pre></div>
+</div>
+<p>This example disables RS-FEC on the MAC for device “81:00.2”.</p>
+</div></blockquote>
+</li>
+</ol>
+</div>
+</div>
+<div class="section" id="virtual-machine-vm-execution-and-test">
+<h2>Virtual Machine (VM) execution and test<a class="headerlink" href="#virtual-machine-vm-execution-and-test" title="Permalink to this headline">¶</a></h2>
+<p>Assuming that the VM image has been created with the settings outlined in Table <a class="reference internal" href="system-requirements.html#guest-system-cfg"><span class="std std-ref">Guest System Configuration</span></a>, follow below steps to execute testpmd on VM.</p>
+<ol class="arabic">
+<li><p class="first">Update <code class="docutils literal notranslate"><span class="pre">/etc/default/grub</span></code> file as below to enable IOMMU.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>GRUB_CMDLINE_LINUX=&quot;default_hugepagesz=1GB hugepagesz=1G hugepages=6 iommu=on intel_iommu=pt&quot;
+</pre></div>
+</div>
+<p>Execute the following command to modify the <code class="docutils literal notranslate"><span class="pre">/boot/grub/grub.cfg</span></code> with the configuration set in the above step and permanently add them to the kernel command line.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>update-grub
+</pre></div>
+</div>
+<p>Reboot host system after making the above modifications.</p>
+</li>
+</ol>
+<p>2. Find the Vendor Id (e.g. 10ee) and Device Id (e.g. 5016) of the PCIe function being attached to VM using <code class="docutils literal notranslate"><span class="pre">lspci</span></code> command.
+Add the Vendor Id and Device Id to vfio-pci configuration file <code class="docutils literal notranslate"><span class="pre">/etc/modprobe.d/vfio.conf</span></code> to bind the function to vfio-pci as below</p>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>options vfio-pci ids=10ee:5016
+</pre></div>
+</div>
+<p>Create the file <code class="docutils literal notranslate"><span class="pre">/etc/modprobe.d/vfio.conf</span></code>, if it doesn’t exist already.</p>
+</div></blockquote>
+<ol class="arabic" start="3">
+<li><p class="first">Insert the vfio-pci module</p>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>modprobe vfio-pci
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p class="first">On the host system, configure MAC address of the device from Management PF using qep-ctl application as outlined in section <a class="reference internal" href="#config-mac"><span class="std std-ref">Configure Ethernet MAC address for device</span></a></p>
+</li>
+<li><p class="first">Start the VM using below command by attaching the network PF (81:00.2 in this example) to VM</p>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>qemu-system-x86_64 -cpu host -enable-kvm -m 24576 -smp sockets=1,cores=32 -hda vm_image.qcow2 -device vfio-pci,host=81:00.2 -vnc :1
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p class="first">Copy the DPDK source code in VM by executing below command from VM.</p>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>scp -r &lt;username&gt;@&lt;host_ip&gt;:&lt;dpdk_sources&gt; &lt;dpdk_copy_path_in_vm&gt;
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p class="first">Execute steps as outlined in section <a class="reference internal" href="#build-dpdk"><span class="std std-ref">Building QEP DPDK Software</span></a> to build DPDK on VM</p>
+</li>
+<li><p class="first">Bind the network function in VM to igb_uio driver and execute testpmd in VM as outlined in section <a class="reference internal" href="#run-dpdk"><span class="std std-ref">Running the DPDK software test application</span></a>.</p>
+</li>
+</ol>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="dev-guide.html" class="btn btn-neutral float-right" title="Developers Guide" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="system-requirements.html" class="btn btn-neutral" title="System Requirements" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Xilinx, Inc.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'1.0.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

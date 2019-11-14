@@ -1,0 +1,84 @@
+DebugFS Support
+===============
+
+The QEP Linux Kernel Driver provides rich debugfs support. Along with configuration, status, and statistics, 
+debug related information is also provided through the read-only interface. Debug information is provided for 
+CMAC, QDMA, QEP and STM-N. The debugfs files are located at  /sys/kernel/debug/qep_dev/ in the host filesystem. 
+For every QEP ethernet device detected, a filesystem tree is populated with directory name as its <BDF>
+
+::
+
+	# sudo tree /sys/kernel/debug/qep_dev/
+	
+
+The DebugFS filesystem tree is as shown below:
+
+  .. image:: /images/debugfs.png
+   :align: center
+
+   
+CMAC
+----
+
+This file contains a snapshot of error, status and statistics registers of CMAC IP. For details refer to CMAC user guide. 
+
+Command:
+::
+
+	# cat /sys/kernel/debug/qep_dev/<BDF>/cmac
+	
+QDMA Info
+---------
+This file provides information about configuration mode of QDMA. 
+
+Command:
+::
+
+	# cat /sys/kernel/debug/qep_dev/<BDF>/qdma_info
+	
+QDMA Register Dump
+------------------
+This file provides a snapshot of QDMA registers. For details of the registers, please refer to QDMA IP user guide UG302_
+
+.. _UG302: https://www.xilinx.com/support/documentation/ip_documentation/qdma/v3_0/pg302-qdma.pdf
+
+Command:
+::
+
+	# cat /sys/kernel/debug/qep_dev/<BDF>/qdma_regs
+	
+QEP Config
+----------
+This file provides information of QEP driver configuration modes.
+
+Command:
+::
+
+	# cat /sys/kernel/debug/qep_dev/<BDF>/qep_config
+	
+Queues
+------
+This directory tree is dynamic and populates following files corresponding to C2H, H2C and CMPT queue, up to max number of configured queues.
+
+* cntxt: Software and Hardware Context of queue
+
+* desc: Raw descriptor queue
+
+* info: Queue info
+
+ 
+Command:
+::
+
+	# cat /sys/kernel/debug/qep_dev/<BDF>/queues/0/c2h/info
+	
+STM-N
+-----
+This file prints a snapshot of STM-N errors, drops, status and statistics. After every read, the underlying registers get cleared.  
+
+Command:
+::
+
+	# cat /sys/kernel/debug/qep_dev/<BDF>/stmn
+
+

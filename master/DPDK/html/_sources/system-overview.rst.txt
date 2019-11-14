@@ -1,0 +1,39 @@
+System Overview
+===============
+
+QEP supports three PCIe physical functions - PF0 for device management, PF1 for compute acceleration
+and PF2 for Network acceleration. The Ethernet subsystem added to the static region
+of the shell is accessible to the host via PF2.
+
+For details on Hardware Features refer to Hardware documentation on the QEP Lounge.
+
+
+The high level system software overview using the DPDK framework for network packet processing is depicted below.
+
+.. image:: /images/qep_dpdk_overview.png
+	:align: center
+
+
+Xilinx provides DPDK driver that registers the HW platform (PF2) with DPDK framework as Ethernet device
+and implements the necessary device operations for data path setup and packet processing.
+
+
+QEP DPDK Driver supports the following list of features
+
+Hardware Features
+^^^^^^^^^^^^^^^^^
+* 100G Ethernet MAC
+* QDMA with 256 streaming queue pairs for network traffic
+* Streaming Traffic Manager for Networking
+* Security block for packet filtering based on MAC address and VLAN ID
+
+
+Software Features
+^^^^^^^^^^^^^^^^^
+
+* Support DPDK v18.11 LTS
+* Support driver binding to igb_uio and vfio-pci
+* Support device arguments (module parameters) for device level configuration
+* Debug and statistics dump through additional driver APIs
+* MTU upto 9600 bytes
+* SW versioning

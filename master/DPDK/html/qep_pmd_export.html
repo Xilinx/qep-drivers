@@ -1,0 +1,383 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>QEP DPDK PMD Exported APIs &mdash; QEP DPDK Driver 1.0.0 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="QEP DPDK Driver 1.0.0 documentation" href="index.html"/>
+        <link rel="up" title="Developers Guide" href="dev-guide.html"/>
+        <link rel="next" title="Terms and Acronyms" href="acronyms.html"/>
+        <link rel="prev" title="DPDK Callback APIs" href="dpdk-callbacks.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> QEP DPDK Driver
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.0.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <p class="caption"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="system-overview.html">System Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system-requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="userguide.html">User Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="dev-guide.html">Developers Guide</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="dev-guide.html#driver-interfaces-and-callbacks">Driver interfaces and callbacks</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="dpdk-callbacks.html">DPDK Callback APIs</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">QEP DPDK PMD Exported APIs</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="dev-guide.html#dma-hardware-error-monitoring">DMA Hardware Error Monitoring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dev-guide.html#dpdk-driver-debug">DPDK Driver debug</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="acronyms.html">Terms and Acronyms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="references.html">References</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">QEP DPDK Driver</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="dev-guide.html">Developers Guide</a> &raquo;</li>
+      
+    <li>QEP DPDK PMD Exported APIs</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/qep_pmd_export.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="qep-dpdk-pmd-exported-apis">
+<h1>QEP DPDK PMD Exported APIs<a class="headerlink" href="#qep-dpdk-pmd-exported-apis" title="Permalink to this headline">¶</a></h1>
+<p><strong>Xilinx QEP DPDK Interface Definitions</strong></p>
+<p>Header file <em>rte_pmd_qep.h</em> defines data structures and functions
+exported by QEP DPDK PMD.</p>
+<p>These APIs are subject to change.</p>
+<dl class="type">
+<dt id="c.rte_pmd_qep_desc_type">
+enum <code class="descname">rte_pmd_qep_desc_type</code><a class="headerlink" href="#c.rte_pmd_qep_desc_type" title="Permalink to this definition">¶</a></dt>
+<dd><p>Indicates the type of queue descriptor ring to dump</p>
+</dd></dl>
+
+<p><strong>Constants</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">RTE_PMD_QEP_DESC_C2H</span></code></dt>
+<dd>Dump C2H queue’s descriptor</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">RTE_PMD_QEP_DESC_H2C</span></code></dt>
+<dd>Dump H2C queue’s descriptor</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">RTE_PMD_QEP_DESC_CMPT</span></code></dt>
+<dd>Dump completion queue’s descriptor</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">RTE_PMD_QEP_DESC_MAX</span></code></dt>
+<dd>Unsupported value</dd>
+</dl>
+<dl class="function">
+<dt id="c.rte_pmd_qep_get_bar_details">
+int <code class="descname">rte_pmd_qep_get_bar_details</code><span class="sig-paren">(</span>int<em>&nbsp;portid</em>, int32_t *<em>&nbsp;config_bar_idx</em>, int32_t *<em>&nbsp;user_bar_idx</em>, int32_t *<em>&nbsp;bypass_bar_idx</em><span class="sig-paren">)</span><a class="headerlink" href="#c.rte_pmd_qep_get_bar_details" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the BAR indices of the QDMA BARs</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">portid</span></code></dt>
+<dd>Port ID</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">*</span> <span class="pre">config_bar_idx</span></code></dt>
+<dd>Config BAR index</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">*</span> <span class="pre">user_bar_idx</span></code></dt>
+<dd>User BAR index</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">*</span> <span class="pre">bypass_bar_idx</span></code></dt>
+<dd>Bypass BAR index</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>‘0’ on success, ‘&lt; 0’ on failure</p>
+<dl class="function">
+<dt id="c.rte_pmd_qep_get_queue_base">
+int <code class="descname">rte_pmd_qep_get_queue_base</code><span class="sig-paren">(</span>int<em>&nbsp;portid</em>, uint32_t *<em>&nbsp;queue_base</em><span class="sig-paren">)</span><a class="headerlink" href="#c.rte_pmd_qep_get_queue_base" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns queue base for given port</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">portid</span></code></dt>
+<dd>Port ID</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">uint32_t</span> <span class="pre">*</span> <span class="pre">queue_base</span></code></dt>
+<dd>queue base</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>‘0’ on success, ‘&lt; 0’ on failure</p>
+<p><strong>Note</strong></p>
+<p>Application can call this API only after successful
+call to <code class="xref c c-func docutils literal notranslate"><span class="pre">rte_eth_dev_configure()</span></code> API.</p>
+<dl class="function">
+<dt id="c.rte_pmd_qep_dbg_regdump">
+int <code class="descname">rte_pmd_qep_dbg_regdump</code><span class="sig-paren">(</span>uint8_t<em>&nbsp;portid</em><span class="sig-paren">)</span><a class="headerlink" href="#c.rte_pmd_qep_dbg_regdump" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dumps the QDMA configuration registers for the given port</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">uint8_t</span> <span class="pre">portid</span></code></dt>
+<dd>Port ID</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>‘0’ on success, ‘&lt; 0’ on failure</p>
+<dl class="function">
+<dt id="c.rte_pmd_qep_dbg_qinfo">
+int <code class="descname">rte_pmd_qep_dbg_qinfo</code><span class="sig-paren">(</span>uint8_t<em>&nbsp;portid</em>, uint16_t<em>&nbsp;queue</em><span class="sig-paren">)</span><a class="headerlink" href="#c.rte_pmd_qep_dbg_qinfo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dumps the queue contexts and queue specific SW structures for the given queue ID on the port</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">uint8_t</span> <span class="pre">portid</span></code></dt>
+<dd>Port ID</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">uint16_t</span> <span class="pre">queue</span></code></dt>
+<dd>Queue ID relative to the Port</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>‘0’ on success, ‘&lt; 0’ on failure</p>
+<dl class="function">
+<dt id="c.rte_pmd_qep_dbg_qdesc">
+int <code class="descname">rte_pmd_qep_dbg_qdesc</code><span class="sig-paren">(</span>uint8_t<em>&nbsp;portid</em>, uint16_t<em>&nbsp;queue</em>, int<em>&nbsp;start</em>, int<em>&nbsp;end</em>, enum <a class="reference internal" href="#c.rte_pmd_qep_desc_type" title="rte_pmd_qep_desc_type">rte_pmd_qep_desc_type</a><em>&nbsp;type</em><span class="sig-paren">)</span><a class="headerlink" href="#c.rte_pmd_qep_dbg_qdesc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dumps the Queue descriptors</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">uint8_t</span> <span class="pre">portid</span></code></dt>
+<dd>Port ID</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">uint16_t</span> <span class="pre">queue</span></code></dt>
+<dd>Queue ID relative to the Port</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">start</span></code></dt>
+<dd>start index of the descriptor to dump</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">end</span></code></dt>
+<dd>end index of the descriptor to dump</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">rte_pmd_qep_desc_type</span> <span class="pre">type</span></code></dt>
+<dd>Descriptor type</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>‘0’ on success, ‘&lt; 0’ on failure</p>
+<dl class="function">
+<dt id="c.rte_pmd_qep_dbg_stmninfo">
+int <code class="descname">rte_pmd_qep_dbg_stmninfo</code><span class="sig-paren">(</span>uint8_t<em>&nbsp;portid</em><span class="sig-paren">)</span><a class="headerlink" href="#c.rte_pmd_qep_dbg_stmninfo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dumps the STM-N status and statistics</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">uint8_t</span> <span class="pre">portid</span></code></dt>
+<dd>Port ID</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>‘0’ on success, ‘&lt; 0’ on failure</p>
+<dl class="function">
+<dt id="c.rte_pmd_qep_addr_read">
+int <code class="descname">rte_pmd_qep_addr_read</code><span class="sig-paren">(</span>int<em>&nbsp;portid</em>, uint32_t<em>&nbsp;bar</em>, uint32_t<em>&nbsp;addr</em>, uint32_t *<em>&nbsp;val</em><span class="sig-paren">)</span><a class="headerlink" href="#c.rte_pmd_qep_addr_read" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the value at the given BAR offset</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">portid</span></code></dt>
+<dd>Port ID</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">uint32_t</span> <span class="pre">bar</span></code></dt>
+<dd>PCIe BAR number</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">uint32_t</span> <span class="pre">addr</span></code></dt>
+<dd>BAR offset to read</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">uint32_t</span> <span class="pre">*</span> <span class="pre">val</span></code></dt>
+<dd>Pointer holding the read value</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>‘0’ on success, ‘&lt; 0’ on failure</p>
+<dl class="function">
+<dt id="c.rte_pmd_qep_addr_write">
+int <code class="descname">rte_pmd_qep_addr_write</code><span class="sig-paren">(</span>int<em>&nbsp;portid</em>, uint32_t<em>&nbsp;bar</em>, uint32_t<em>&nbsp;addr</em>, uint32_t<em>&nbsp;val</em><span class="sig-paren">)</span><a class="headerlink" href="#c.rte_pmd_qep_addr_write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Writes the value at the given BAR offset</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">portid</span></code></dt>
+<dd>Port ID</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">uint32_t</span> <span class="pre">bar</span></code></dt>
+<dd>PCIe BAR number</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">uint32_t</span> <span class="pre">addr</span></code></dt>
+<dd>BAR offset to write</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">uint32_t</span> <span class="pre">val</span></code></dt>
+<dd>Value to be written</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>‘0’ on success, ‘&lt; 0’ on failure</p>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="acronyms.html" class="btn btn-neutral float-right" title="Terms and Acronyms" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="dpdk-callbacks.html" class="btn btn-neutral" title="DPDK Callback APIs" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Xilinx, Inc.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'1.0.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

@@ -1,0 +1,292 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>DebugFS Support &mdash; QEP Linux Kernel Network Driver 1.0.0 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="QEP Linux Kernel Network Driver 1.0.0 documentation" href="index.html"/>
+        <link rel="up" title="Developer Guide" href="dev-guide.html"/>
+        <link rel="next" title="Terms and Acronyms" href="acronyms.html"/>
+        <link rel="prev" title="QEP Linux Driver APIs" href="qep-callback-apis.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> QEP Linux Kernel Network Driver
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.0.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <p class="caption"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="system-overview.html">System Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system-requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="userguide.html">User Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="dev-guide.html">Developer Guide</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="driver-design.html">Driver Design</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">DebugFS Support</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cmac">CMAC</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#qdma-info">QDMA Info</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#qdma-register-dump">QDMA Register Dump</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#qep-config">QEP Config</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#queues">Queues</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#stm-n">STM-N</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="acronyms.html">Terms and Acronyms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="references.html">References</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">QEP Linux Kernel Network Driver</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="dev-guide.html">Developer Guide</a> &raquo;</li>
+      
+    <li>DebugFS Support</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/debugfs.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="debugfs-support">
+<h1>DebugFS Support<a class="headerlink" href="#debugfs-support" title="Permalink to this headline">¶</a></h1>
+<p>The QEP Linux Kernel Driver provides rich debugfs support. Along with configuration, status, and statistics,
+debug related information is also provided through the read-only interface. Debug information is provided for
+CMAC, QDMA, QEP and STM-N. The debugfs files are located at  /sys/kernel/debug/qep_dev/ in the host filesystem.
+For every QEP ethernet device detected, a filesystem tree is populated with directory name as its &lt;BDF&gt;</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre># sudo tree /sys/kernel/debug/qep_dev/
+</pre></div>
+</div>
+<p>The DebugFS filesystem tree is as shown below:</p>
+<blockquote>
+<div><img alt="_images/debugfs.png" class="align-center" src="_images/debugfs.png" />
+</div></blockquote>
+<div class="section" id="cmac">
+<h2>CMAC<a class="headerlink" href="#cmac" title="Permalink to this headline">¶</a></h2>
+<p>This file contains a snapshot of error, status and statistics registers of CMAC IP. For details refer to CMAC user guide.</p>
+<p>Command:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/cmac
+</pre></div>
+</div>
+</div>
+<div class="section" id="qdma-info">
+<h2>QDMA Info<a class="headerlink" href="#qdma-info" title="Permalink to this headline">¶</a></h2>
+<p>This file provides information about configuration mode of QDMA.</p>
+<p>Command:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/qdma_info
+</pre></div>
+</div>
+</div>
+<div class="section" id="qdma-register-dump">
+<h2>QDMA Register Dump<a class="headerlink" href="#qdma-register-dump" title="Permalink to this headline">¶</a></h2>
+<p>This file provides a snapshot of QDMA registers. For details of the registers, please refer to QDMA IP user guide <a class="reference external" href="https://www.xilinx.com/support/documentation/ip_documentation/qdma/v3_0/pg302-qdma.pdf">UG302</a></p>
+<p>Command:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/qdma_regs
+</pre></div>
+</div>
+</div>
+<div class="section" id="qep-config">
+<h2>QEP Config<a class="headerlink" href="#qep-config" title="Permalink to this headline">¶</a></h2>
+<p>This file provides information of QEP driver configuration modes.</p>
+<p>Command:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/qep_config
+</pre></div>
+</div>
+</div>
+<div class="section" id="queues">
+<h2>Queues<a class="headerlink" href="#queues" title="Permalink to this headline">¶</a></h2>
+<p>This directory tree is dynamic and populates following files corresponding to C2H, H2C and CMPT queue, up to max number of configured queues.</p>
+<ul class="simple">
+<li>cntxt: Software and Hardware Context of queue</li>
+<li>desc: Raw descriptor queue</li>
+<li>info: Queue info</li>
+</ul>
+<p>Command:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/queues/0/c2h/info
+</pre></div>
+</div>
+</div>
+<div class="section" id="stm-n">
+<h2>STM-N<a class="headerlink" href="#stm-n" title="Permalink to this headline">¶</a></h2>
+<p>This file prints a snapshot of STM-N errors, drops, status and statistics. After every read, the underlying registers get cleared.</p>
+<p>Command:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/stmn
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="acronyms.html" class="btn btn-neutral float-right" title="Terms and Acronyms" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="qep-callback-apis.html" class="btn btn-neutral" title="QEP Linux Driver APIs" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Xilinx, Inc.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'1.0.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

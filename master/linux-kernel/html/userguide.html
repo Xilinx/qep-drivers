@@ -1,0 +1,594 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>User Guide &mdash; QEP Linux Kernel Network Driver 1.0.0 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="QEP Linux Kernel Network Driver 1.0.0 documentation" href="index.html"/>
+        <link rel="next" title="Developer Guide" href="dev-guide.html"/>
+        <link rel="prev" title="System Requirements" href="system-requirements.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> QEP Linux Kernel Network Driver
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.0.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <p class="caption"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="system-overview.html">System Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system-requirements.html">System Requirements</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">User Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#environment-bringup">Environment bringup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#installing-the-board">Installing the board</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#installing-the-xilinx-tools">Installing the Xilinx tools</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#installing-the-xrt-software">Installing the XRT Software</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#programming-the-qep-dsa">Programming the QEP DSA</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#building-the-driver-software">Building the driver software</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#linux-driver-software-directory-structure">Linux Driver software directory structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#compiling-linux-kernel-network-driver">Compiling Linux kernel network driver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#compiling-qep-ctl-application">Compiling qep-ctl application</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#loading-unloading-the-driver">Loading/Unloading the Driver</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#configuring-device-mac-address">Configuring Device MAC Address</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#inserting-the-driver-module">Inserting the driver module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#unloading-kernel-module">Unloading Kernel Module</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#validating-the-driver-on-baremetal-host">Validating the driver on baremetal host</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#data-path-test-in-loopback">Data Path Test in Loopback</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ping-test-with-peer-nic">Ping test with peer NIC</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#validating-the-driver-in-virtual-machine">Validating the driver in Virtual Machine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ethtool-command-usage">Ethtool command Usage</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="dev-guide.html">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="acronyms.html">Terms and Acronyms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="references.html">References</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">QEP Linux Kernel Network Driver</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>User Guide</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/userguide.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="user-guide">
+<h1>User Guide<a class="headerlink" href="#user-guide" title="Permalink to this headline">¶</a></h1>
+<p>This section describes the details on configuring QEP and running network traffic to confirm the
+working of the Platform and the driver.</p>
+<div class="section" id="environment-bringup">
+<h2>Environment bringup<a class="headerlink" href="#environment-bringup" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="installing-the-board">
+<h3>Installing the board<a class="headerlink" href="#installing-the-board" title="Permalink to this headline">¶</a></h3>
+<p>Shutdown the Host system and unplug it from its power source. Locate a Gen 3 x16 dual width
+PCIe slot on the motherboard and insert the Xilinx Alveo U250 board. Connect a USB cable between
+the host system and the U250 board.</p>
+<p>Note: Follow the safety instructions listed in <a class="reference external" href="https://www.xilinx.com/support/documentation/boards_and_kits/accelerator-cards/2019_1/ug1301-getting-started-guide-alveo-accelerator-cards.pdf">UG1301</a> while installing the card in the PCIe slot</p>
+</div>
+<div class="section" id="installing-the-xilinx-tools">
+<h3>Installing the Xilinx tools<a class="headerlink" href="#installing-the-xilinx-tools" title="Permalink to this headline">¶</a></h3>
+<ol class="arabic simple">
+<li>Power up the host system and login as root user</li>
+</ol>
+<p>2. Download the Vivado Design Suite 2019.1 from <a class="reference external" href="https://www.xilinx.com">https://www.xilinx.com</a> and install it according to the
+instructions provided in <a class="reference external" href="https://www.xilinx.com/support/documentation/sw_manuals/xilinx2019_1/ug973-vivado-release-notes-install-license.pdf">UG973</a>.</p>
+<ol class="arabic simple" start="3">
+<li>Install Cable drivers by following the instructions from <a class="reference external" href="https://www.xilinx.com/support/documentation/sw_manuals/xilinx2019_1/ug973-vivado-release-notes-install-license.pdf">UG973</a>.</li>
+</ol>
+</div>
+<div class="section" id="installing-the-xrt-software">
+<h3>Installing the XRT Software<a class="headerlink" href="#installing-the-xrt-software" title="Permalink to this headline">¶</a></h3>
+<p>Install XRT libraries and drivers from <a class="reference external" href="https://github.com/Xilinx/XRT">Github</a></p>
+</div>
+<div class="section" id="programming-the-qep-dsa">
+<h3>Programming the QEP DSA<a class="headerlink" href="#programming-the-qep-dsa" title="Permalink to this headline">¶</a></h3>
+<ol class="arabic simple">
+<li>Program the U250 board with QEP Platform deployment shell from the QEP Lounge.</li>
+<li>Once the device is programmed sucessfully with QEP Platform shell, execute the following command on the host system</li>
+</ol>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>#lspci -d 10ee:
+</pre></div>
+</div>
+<p>Following is the sample output</p>
+<img alt="_images/lspci.png" class="align-center" src="_images/lspci.png" />
+</div></blockquote>
+</div>
+</div>
+<div class="section" id="building-the-driver-software">
+<h2>Building the driver software<a class="headerlink" href="#building-the-driver-software" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="linux-driver-software-directory-structure">
+<h3>Linux Driver software directory structure<a class="headerlink" href="#linux-driver-software-directory-structure" title="Permalink to this headline">¶</a></h3>
+<p>Below Table describes the QEP Linux kernel network driver software database structure and its contents
+on the Xilinx GitHub <a class="reference external" href="https://github.com/Xilinx/qep-drivers">https://github.com/Xilinx/qep-drivers</a>, subdirectory linux-kernel.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="30%" />
+<col width="70%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Directory</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>driver</td>
+<td>Linux kernel driver source code</td>
+</tr>
+<tr class="row-odd"><td>RELEASE.txt</td>
+<td>Release Notes</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="compiling-linux-kernel-network-driver">
+<span id="build-linux"></span><h3>Compiling Linux kernel network driver<a class="headerlink" href="#compiling-linux-kernel-network-driver" title="Permalink to this headline">¶</a></h3>
+<p>Execute the following commands to install Linux headers, clone qep-drivers repo and
+compile the driver.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre># sudo apt-get install linux-headers-$(uname -r) build-essential
+# git clone https://github.com/Xilinx/qep-drivers.git
+# cd qep-drivers/linux-kernel/driver
+# make clean
+# make
+</pre></div>
+</div>
+</div>
+<div class="section" id="compiling-qep-ctl-application">
+<h3>Compiling qep-ctl application<a class="headerlink" href="#compiling-qep-ctl-application" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-none notranslate"><div class="highlight"><pre># cd qep-drivers/qep-ctl
+# gcc qep_ctl.c -o qep-ctl
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="loading-unloading-the-driver">
+<h2>Loading/Unloading the Driver<a class="headerlink" href="#loading-unloading-the-driver" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="configuring-device-mac-address">
+<span id="config-mac"></span><h3>Configuring Device MAC Address<a class="headerlink" href="#configuring-device-mac-address" title="Permalink to this headline">¶</a></h3>
+<ol class="arabic simple">
+<li>The Device MAC address must be configured before the driver can be loaded in to the Linux kernel.
+Configuring the Ethernet MAC address of the device is a priviliged operation that can be performed
+from Management PF using qep-ctl application.</li>
+</ol>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>#cd qep-drivers/qep-ctl
+#./qep-ctl config  -d 04:00.0 -m 00:5D:03:00:00:02
+</pre></div>
+</div>
+<p>In this example 04:00.0 is the BDF of the Management PF. This command sets the MAC address of the network device
+but does not enable the MAC and VLAN filtering. The MAC address must be configured in the device everytime after
+a new bitstream is programmed. However it need not be configured after every driver unload and load sequence</p>
+</div></blockquote>
+<ol class="arabic" start="2">
+<li><p class="first">Execute the below command to verify that the MAC address is set</p>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>#./qep-ctl show -d 04:00.0
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ol>
+<blockquote>
+<div><p>Sample Output:</p>
+<img alt="_images/qep-ctl_show.PNG" class="align-center" src="_images/qep-ctl_show.PNG" />
+<p>Refer to readme.txt in qep-ctl application for usage details.</p>
+</div></blockquote>
+</div>
+<div class="section" id="inserting-the-driver-module">
+<span id="insert-driver"></span><h3>Inserting the driver module<a class="headerlink" href="#inserting-the-driver-module" title="Permalink to this headline">¶</a></h3>
+<p>Execute the following commands to load the QEP Linux kernel module</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>#cd qep-drivers/linux-kernel/driver
+#insmod qep_drv.ko
+</pre></div>
+</div>
+<p>Upon successful insertion of the driver, a new network interface with the MAC address configured earlier
+is created that can be used for sending and receiving traffic.</p>
+<p>To list all network interfaces, use the following command:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>#ifconfig -a
+</pre></div>
+</div>
+<p>Sample Output:</p>
+<blockquote>
+<div><img alt="_images/interface_insmod.PNG" class="align-center" src="_images/interface_insmod.PNG" />
+</div></blockquote>
+<p>Check the dmesg logs to confim that the driver is inserted successfully without any errors.</p>
+</div>
+<div class="section" id="unloading-kernel-module">
+<h3>Unloading Kernel Module<a class="headerlink" href="#unloading-kernel-module" title="Permalink to this headline">¶</a></h3>
+<p>Execute the following command to unload the kernel module</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>#rmmod qep_drv
+</pre></div>
+</div>
+<p>Check the dmesg logs to confim that the driver is unloaded successfully without any errors.</p>
+</div>
+</div>
+<div class="section" id="validating-the-driver-on-baremetal-host">
+<h2>Validating the driver on baremetal host<a class="headerlink" href="#validating-the-driver-on-baremetal-host" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="data-path-test-in-loopback">
+<h3>Data Path Test in Loopback<a class="headerlink" href="#data-path-test-in-loopback" title="Permalink to this headline">¶</a></h3>
+<p>This is a simple test by putting CMAC IP in loopback mode. In loopback mode, CMAC core puts
+the data coming on TX path onto its RX path. So, the packets sent on TX interface would be received
+on RX interface. The CMAC core can be put in loopback mode by driver module parameter loopback_en.
+Execute the below commands for this test.</p>
+<ol class="arabic simple">
+<li>Install hping3 application on the host system</li>
+</ol>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>#apt install hping3
+</pre></div>
+</div>
+</div></blockquote>
+<ol class="arabic simple" start="2">
+<li>Verify the network interfaces before inserting the driver</li>
+</ol>
+<div class="highlight-none notranslate"><div class="highlight"><pre>#ifconfig -s -a
+</pre></div>
+</div>
+<p>Sample Output:</p>
+<blockquote>
+<div><img alt="_images/before_load.PNG" class="align-center" src="_images/before_load.PNG" />
+</div></blockquote>
+<ol class="arabic simple" start="3">
+<li>Insert the driver in loopback mode</li>
+</ol>
+<div class="highlight-none notranslate"><div class="highlight"><pre>#insmod qep_drv.ko loopback_en=1
+#ifconfig -s -a
+</pre></div>
+</div>
+<p>Sample Output:</p>
+<blockquote>
+<div><blockquote>
+<div><img alt="_images/after_load.PNG" class="align-center" src="_images/after_load.PNG" />
+</div></blockquote>
+<p>A new interface <code class="docutils literal notranslate"><span class="pre">ens4f2</span></code> as shown above is created.</p>
+</div></blockquote>
+<ol class="arabic simple" start="4">
+<li>Set IP address and send the network traffic using hping3 on the network interface</li>
+</ol>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>#ifconfig ens4f2 -arp
+#ifconfig ens4f2 192.168.1.10
+#hping3 192.168.1.20 -I ens4f2 -2 -c 10 -d 64
+</pre></div>
+</div>
+<p>Verify that difference in number of TX-OK packet and RX-OK packet before and after
+executing the above hping3 command is the same. This confirms the successful bring up of
+the network driver.</p>
+</div></blockquote>
+<ol class="arabic simple" start="5">
+<li>Remove the driver</li>
+</ol>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>#rmmod qep_drv.ko
+</pre></div>
+</div>
+</div></blockquote>
+</div>
+<div class="section" id="ping-test-with-peer-nic">
+<span id="ping-test"></span><h3>Ping test with peer NIC<a class="headerlink" href="#ping-test-with-peer-nic" title="Permalink to this headline">¶</a></h3>
+<p>Ping test ensures connectivity with a peer NIC.
+Connect U250 board on Host1 with a peer 100G NIC card on Host2 with an optical QSFP28 cable.</p>
+<blockquote>
+<div><img alt="_images/pingtest.png" class="align-center" src="_images/pingtest.png" />
+</div></blockquote>
+<p>Following are the steps to execute Ping test:</p>
+<ol class="arabic simple">
+<li>Insert the QEP Linux driver on Host1</li>
+</ol>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>#insmod qep_drv.ko
+</pre></div>
+</div>
+</div></blockquote>
+<ol class="arabic simple" start="2">
+<li>Set IP address on Host1 network interface and make the interface up
+using the following command</li>
+</ol>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre># ifconfig ens4f2 192.168.1.1 up
+</pre></div>
+</div>
+</div></blockquote>
+<ol class="arabic simple" start="3">
+<li>Set IP address on Host2 network interface and make the interface up
+using following command</li>
+</ol>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre># ifconfig enp175s0 192.168.1.2 up
+</pre></div>
+</div>
+</div></blockquote>
+<ol class="arabic simple" start="4">
+<li>From Host1 execute the following commands to check the connectivity with peer NIC</li>
+</ol>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre># ping -I ens4f2 192.168.1.2 -c 10
+64 bytes from 192.168.1.2: icmp_seq=1 ttl=63 time=0.220 ms
+64 bytes from 192.168.1.2: icmp_seq=2 ttl=63 time=0.274 ms
+64 bytes from 192.168.1.2: icmp_seq=3 ttl=63 time=0.289 ms
+</pre></div>
+</div>
+</div></blockquote>
+</div>
+</div>
+<div class="section" id="validating-the-driver-in-virtual-machine">
+<h2>Validating the driver in Virtual Machine<a class="headerlink" href="#validating-the-driver-in-virtual-machine" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic">
+<li><p class="first">Update <code class="docutils literal notranslate"><span class="pre">/etc/default/grub</span></code> file as below to enable IOMMU.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>GRUB_CMDLINE_LINUX=&quot;iommu=pt intel_iommu=on cma=14096M@0-16G&quot;
+</pre></div>
+</div>
+<p>Note: If there are any failures related to dma_alloc_coherent() in the driver, then the memory reserved for “cma” can be increased further.</p>
+<p>Execute the following command to modify the <code class="docutils literal notranslate"><span class="pre">/boot/grub/grub.cfg</span></code> with the configuration set in the above step and permanently add them to the kernel command line.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>update-grub
+</pre></div>
+</div>
+<p>Reboot host system after making the above modifications.</p>
+</li>
+</ol>
+<p>2. Find the Vendor Id (e.g. 10ee) and Device Id (e.g. 5016) of the PCIe function being attached to VM using <code class="docutils literal notranslate"><span class="pre">lspci</span></code> command.
+Add the Vendor Id and Device Id to vfio-pci configuration file <code class="docutils literal notranslate"><span class="pre">/etc/modprobe.d/vfio.conf</span></code> to bind the function to vfio-pci as below</p>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>options vfio-pci ids=10ee:5016
+</pre></div>
+</div>
+<p>Create the file <code class="docutils literal notranslate"><span class="pre">/etc/modprobe.d/vfio.conf</span></code>, if it doesn’t exist already.</p>
+</div></blockquote>
+<ol class="arabic" start="3">
+<li><p class="first">Insert the vfio-pci module</p>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>modprobe vfio-pci
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p class="first">On the host system, configure MAC address of the device from Management PF using qep-ctl application as outlined in section <a class="reference internal" href="#config-mac"><span class="std std-ref">Configuring Device MAC Address</span></a></p>
+</li>
+<li><p class="first">Start the VM using below command by attaching the network PF (04:00.2 in this example) to VM</p>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>qemu-system-x86_64 -cpu host -enable-kvm -m 24576 -smp sockets=1,cores=15 -hda vm_image.qcow2 -device vfio-pci,host=04:00.2 -vnc :1
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p class="first">Copy the Linux driver source code to the VM by executing below command from VM.</p>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>scp -r &lt;username&gt;@&lt;host_ip&gt;:&lt;qep_linux_sources&gt; &lt;qep_linux_copy_path_in_vm&gt;
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p class="first">Execute steps as outlined in section <a class="reference internal" href="#build-linux"><span class="std std-ref">Compiling Linux kernel network driver</span></a> to build the Linux driver on VM</p>
+</li>
+<li><p class="first">Insert the driver module in VM as described in section <a class="reference internal" href="#insert-driver"><span class="std std-ref">Inserting the driver module</span></a></p>
+</li>
+<li><p class="first">Perform Ping test to the peer NIC from the VM to confirm that the VM setup is successfully established, by following the steps in section <a class="reference internal" href="#ping-test"><span class="std std-ref">Ping test with peer NIC</span></a></p>
+</li>
+</ol>
+</div>
+<div class="section" id="ethtool-command-usage">
+<span id="ethtool"></span><h2>Ethtool command Usage<a class="headerlink" href="#ethtool-command-usage" title="Permalink to this headline">¶</a></h2>
+<ul>
+<li><p class="first">To check driver and device information of network interface</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>ethtool -i &lt;interface&gt;
+</pre></div>
+</div>
+</li>
+<li><p class="first">To print statistics of network interface</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>ethtool -S &lt;interface&gt;
+</pre></div>
+</div>
+</li>
+<li><p class="first">To query ring size values of network interface</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>ethtool -g &lt;interface&gt;
+</pre></div>
+</div>
+</li>
+<li><p class="first">To modify Tx and Rx ring size of network interface</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>ethtool -G &lt;interface&gt; rx &lt;Rx Ring Size&gt; tx &lt;Tx Ring Size&gt;
+</pre></div>
+</div>
+</li>
+<li><p class="first">Default number of Tx and Rx queues is the minimum of number of CPU cores and MSI-X vectors.
+To modify the number of Tx and Rx queues of network interface</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>ethtool -L &lt;interface&gt; rx &lt;num channel&gt; tx &lt;num channel&gt;
+</pre></div>
+</div>
+</li>
+<li><p class="first">To change the coalescing settings of the specified network device</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>ethtool -C &lt;interface&gt; rx-usecs &lt;N&gt; rx-frames &lt;N&gt;
+</pre></div>
+</div>
+</li>
+<li><p class="first">To dump all Tx/Rx packets of network interface</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>tcpdump -XX -i &lt;interface&gt;
+</pre></div>
+</div>
+</li>
+</ul>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="dev-guide.html" class="btn btn-neutral float-right" title="Developer Guide" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="system-requirements.html" class="btn btn-neutral" title="System Requirements" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Xilinx, Inc.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'1.0.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
