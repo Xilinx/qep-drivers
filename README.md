@@ -12,8 +12,6 @@ qep-ctl is a utility to configure the QDMA Ethernet platform.
 
 ### Getting Started
 
-* [QEP DPDK Driver User Guide](DPDK/ug03-2000-0158.pdf)
-
-* [QEP Linux Kernel Driver User Guide](linux-kernel/ug02-2000-0158.pdf)
+* [QEP Drivers Comprehensive documentation](https://xilinx.github.io/qep-drivers/)
 
 * [QEP control application User Guide](qep-ctl/readme.txt)
