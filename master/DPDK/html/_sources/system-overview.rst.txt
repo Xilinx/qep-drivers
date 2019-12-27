@@ -26,6 +26,12 @@ Hardware Features
 * QDMA with 256 streaming queue pairs for network traffic
 * Streaming Traffic Manager for Networking
 * Security block for packet filtering based on MAC address and VLAN ID
+* TCP and UDP checksum offload for IPv4 packets
+* Receive side scaling (RSS) support for below packet types
+	* IPv4
+	* IPv4 TCP
+	* IPv6
+	* IPv6 TCP
 
 
 Software Features
@@ -34,6 +40,7 @@ Software Features
 * Support DPDK v18.11 LTS
 * Support driver binding to igb_uio and vfio-pci
 * Support device arguments (module parameters) for device level configuration
+* Support rte_flow_ops for RSS configuration
 * Debug and statistics dump through additional driver APIs
 * MTU upto 9600 bytes
 * SW versioning

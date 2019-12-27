@@ -9,9 +9,11 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Index &mdash; QEP Linux Kernel Network Driver 1.0.0 documentation</title>
+  <title>Index &mdash; QEP Linux Kernel Network Driver 1.2.0 documentation</title>
   
 
+  
+  
   
   
 
@@ -29,14 +31,12 @@
   
 
   
-    <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
-  
 
   
         <link rel="index" title="Index"
               href="#"/>
         <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="QEP Linux Kernel Network Driver 1.0.0 documentation" href="index.html"/> 
+    <link rel="top" title="QEP Linux Kernel Network Driver 1.2.0 documentation" href="index.html"/> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -45,6 +45,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -64,7 +65,7 @@
             
             
               <div class="version">
-                1.0.0
+                1.2.0
               </div>
             
           
@@ -85,7 +86,10 @@
           
             
             
-                <p class="caption"><span class="caption-text">Table of Contents</span></p>
+              
+            
+            
+              <p class="caption"><span class="caption-text">Table of Contents</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="system-overview.html">System Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system-requirements.html">System Requirements</a></li>
@@ -105,8 +109,10 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="index.html">QEP Linux Kernel Network Driver</a>
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">QEP Linux Kernel Network Driver</a>
+        
       </nav>
 
 
@@ -119,17 +125,34 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="index.html">Docs</a> &raquo;</li>
-      
-    <li></li>
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Index</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
+            
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -167,14 +190,20 @@
 </li>
       <li><a href="qep-callback-apis.html#c.qep_get_ringparam">qep_get_ringparam (C function)</a>
 </li>
+      <li><a href="qep-callback-apis.html#c.qep_get_rxfh">qep_get_rxfh (C function)</a>
+</li>
+      <li><a href="qep-callback-apis.html#c.qep_get_rxfh_key_size">qep_get_rxfh_key_size (C function)</a>
+</li>
+      <li><a href="qep-callback-apis.html#c.qep_get_rxnfc">qep_get_rxnfc (C function)</a>
+</li>
       <li><a href="qep-callback-apis.html#c.qep_get_sset_count">qep_get_sset_count (C function)</a>
 </li>
       <li><a href="qep-callback-apis.html#c.qep_get_stats64">qep_get_stats64 (C function)</a>
 </li>
-      <li><a href="qep-callback-apis.html#c.qep_get_strings">qep_get_strings (C function)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="qep-callback-apis.html#c.qep_get_strings">qep_get_strings (C function)</a>
+</li>
       <li><a href="qep-callback-apis.html#c.qep_module_exit">qep_module_exit (C function)</a>
 </li>
       <li><a href="qep-callback-apis.html#c.qep_module_init">qep_module_init (C function)</a>
@@ -184,6 +213,8 @@
       <li><a href="qep-callback-apis.html#c.qep_pci_probe">qep_pci_probe (C function)</a>
 </li>
       <li><a href="qep-callback-apis.html#c.qep_pci_remove">qep_pci_remove (C function)</a>
+</li>
+      <li><a href="qep-callback-apis.html#c.qep_rss_indir_size">qep_rss_indir_size (C function)</a>
 </li>
       <li><a href="qep-callback-apis.html#c.qep_rx_pkt_process">qep_rx_pkt_process (C function)</a>
 </li>
@@ -199,6 +230,8 @@
 </li>
       <li><a href="qep-callback-apis.html#c.qep_set_ringparam">qep_set_ringparam (C function)</a>
 </li>
+      <li><a href="qep-callback-apis.html#c.qep_set_rxfh">qep_set_rxfh (C function)</a>
+</li>
       <li><a href="qep-callback-apis.html#c.qep_start_xmit">qep_start_xmit (C function)</a>
 </li>
       <li><a href="qep-callback-apis.html#c.qep_stop">qep_stop (C function)</a>
@@ -208,6 +241,9 @@
 
 
 
+           </div>
+           <div class="articleComments">
+            
            </div>
           </div>
           <footer>
@@ -239,10 +275,11 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'1.0.0',
+            VERSION:'1.2.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
         };
     </script>
       <script type="text/javascript" src="_static/jquery.js"></script>

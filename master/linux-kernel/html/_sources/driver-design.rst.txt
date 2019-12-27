@@ -30,25 +30,30 @@ The following ethtool operations supported by the driver are implemented in ``li
 ::
 
 	static const struct ethtool_ops qep_ethtool_ops = {
-	.get_drvinfo = qep_get_drvinfo,
-	.get_regs_len = qep_get_regs_len,
-	.get_regs = qep_get_regs,
-	.get_link = ethtool_op_get_link,
-	.get_msglevel = qep_get_msglevel,
-	.set_msglevel = qep_set_msglevel,
-	.get_ringparam = qep_get_ringparam,
-	.set_ringparam = qep_set_ringparam,
-	.get_channels = qep_get_channels,
-	.set_channels = qep_set_channels,
-	.get_strings = qep_get_strings,
-	.get_ethtool_stats = qep_get_ethtool_stats,
-	.get_coalesce = qep_get_coalesce,
-	.set_coalesce = qep_set_coalesce,
+	.get_drvinfo            = qep_get_drvinfo,
+	.get_regs_len           = qep_get_regs_len,
+	.get_regs               = qep_get_regs,
+	.get_link               = ethtool_op_get_link,
+	.get_msglevel           = qep_get_msglevel,
+	.set_msglevel           = qep_set_msglevel,
+	.get_ringparam          = qep_get_ringparam,
+	.set_ringparam          = qep_set_ringparam,
+	.get_channels           = qep_get_channels,
+	.set_channels           = qep_set_channels,
+	.get_strings            = qep_get_strings,
+	.get_ethtool_stats      = qep_get_ethtool_stats,
+	.get_coalesce           = qep_get_coalesce,
+	.set_coalesce           = qep_set_coalesce,
 	.get_per_queue_coalesce = qep_get_per_queue_coalesce,
 	.set_per_queue_coalesce = qep_set_per_queue_coalesce,
-	.get_fecparam = qep_get_fecparam,
-	.set_fecparam = qep_set_fecparam,
-	.get_sset_count = qep_get_sset_count
+	.get_fecparam           = qep_get_fecparam,
+	.set_fecparam           = qep_set_fecparam,
+	.get_rxfh_key_size      = qep_get_rxfh_key_size
+	.get_rxfh_indir_size    = qep_rss_indir_size,
+	.get_rxfh               = qep_get_rxfh,
+	.set_rxfh               = qep_set_rxfh,
+	.get_rxnfc              = qep_get_rxnfc,
+	.get_sset_count         = qep_get_sset_count
 	};
 
 

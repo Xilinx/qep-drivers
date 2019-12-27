@@ -17,11 +17,11 @@ QEP Linux kenel network driver release is verified on the following host system 
 +--------------------------+-------------------------------------------------------------+
 |                          | Configuration Details                                       |
 +==========================+=============================================================+
-| Host System              | Supermicro SYS-7049GP-TRT                                   |
+| Host System              | Supermicro SYS-5049A-TR                                     |
 +--------------------------+-------------------------------------------------------------+
-| Processor                | Intel Xeon Platinum 8180 Processor                          |
+| Processor                | Intel Xeon Silver 4116 Processor                            |
 +--------------------------+-------------------------------------------------------------+
-| CPU Cores                | 56                                                          |                                       
+| CPU Cores                | 24                                                          |                                       
 +--------------------------+-------------------------------------------------------------+
 | RAM                      | 64GB on local NUMA node                                     |
 +--------------------------+-------------------------------------------------------------+
@@ -50,4 +50,5 @@ Cores              		  16
 
 A 100G NIC card from a different vendor is also required for checking connectivity with a peer NIC.
 The release is verified using Mellanox ConnectX-5 as the peer NIC.
+
 *Note*: The driver is not verified on other Linux distros and kernels 

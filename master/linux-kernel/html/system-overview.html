@@ -8,9 +8,11 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>System Overview &mdash; QEP Linux Kernel Network Driver 1.0.0 documentation</title>
+  <title>System Overview &mdash; QEP Linux Kernel Network Driver 1.2.0 documentation</title>
   
 
+  
+  
   
   
 
@@ -28,14 +30,12 @@
   
 
   
-    <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
-  
 
   
         <link rel="index" title="Index"
               href="genindex.html"/>
         <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="QEP Linux Kernel Network Driver 1.0.0 documentation" href="index.html"/>
+    <link rel="top" title="QEP Linux Kernel Network Driver 1.2.0 documentation" href="index.html"/>
         <link rel="next" title="System Requirements" href="system-requirements.html"/>
         <link rel="prev" title="Xilinx QEP Linux Kernel Network Driver" href="index.html"/> 
 
@@ -46,6 +46,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -65,7 +66,7 @@
             
             
               <div class="version">
-                1.0.0
+                1.2.0
               </div>
             
           
@@ -86,7 +87,10 @@
           
             
             
-                <p class="caption"><span class="caption-text">Table of Contents</span></p>
+              
+            
+            
+              <p class="caption"><span class="caption-text">Table of Contents</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">System Overview</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#hardware-features">Hardware Features</a></li>
@@ -110,8 +114,10 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="index.html">QEP Linux Kernel Network Driver</a>
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">QEP Linux Kernel Network Driver</a>
+        
       </nav>
 
 
@@ -120,23 +126,40 @@
         <div class="rst-content">
           
 
- 
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="index.html">Docs</a> &raquo;</li>
-      
-    <li>System Overview</li>
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>System Overview</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
+            
             <a href="_sources/system-overview.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -147,8 +170,8 @@
 <p>QEP has three PCIe physical functions - PF0 for device management, PF1 for compute acceleration
 and PF2 for Network acceleration. The Ethernet subsystem added to the static region
 of the shell is accessible to the host via PF2.</p>
-<p>For details on Hardware Features refer to Hardware documentation on the QEP <a class="reference internal" href="#lounge">Lounge</a>.</p>
-<p id="lounge">The high level system overview with Linux network driver for packet processing is shown below:</p>
+<p>For details on Hardware Features refer to Hardware documentation on the QEP Lounge.</p>
+<p>The high level system overview with Linux network driver for packet processing is shown below:</p>
 <blockquote>
 <div><img alt="_images/system_overview.png" class="align-center" src="_images/system_overview.png" />
 </div></blockquote>
@@ -160,20 +183,22 @@ of the shell is accessible to the host via PF2.</p>
 <li>QDMA with 256 queue pairs for network traffic</li>
 <li>Streaming Traffic Manager for Networking (STM-N)</li>
 <li>Security block for packet filtering based on MAC address and VLAN ID</li>
+<li>TCP and UDP checksum offload for IPv4 packets</li>
+<li>Receive Side Scaling (RSS) support for IPv4, IPv4 TCP, IPv6, IPv6 TCP packet types</li>
 </ul>
 </div>
 <div class="section" id="software-features">
 <h2>Software Features<a class="headerlink" href="#software-features" title="Permalink to this headline">¶</a></h2>
-<ul>
-<li><p class="first">Standard Network Device Operations</p>
-</li>
-<li><p class="first">Ethtool operations to support configuration of various parameters of QDMA and CMAC</p>
-</li>
-<li><p class="first">Module parameter to enable the driver in loopback mode</p>
-</li>
+<ul class="simple">
+<li>Standard Network Device Operations</li>
+<li>Ethtool operations to support configuration of various parameters of QDMA and CMAC</li>
+<li>Module parameter to enable the driver in loopback mode</li>
 <li><dl class="first docutils">
 <dt>Netdevice Features</dt>
-<dd><ul class="first last simple">
+<dd><ul class="first last">
+<li>NETIF_F_IP_CSUM (Suport checksum offload of TCP/UDP over IPv4)</li>
+<li>NETIF_F_RXCSUM (Support Receive checksumming offload)</li>
+<li>NETIF_F_RXHASH (Support Receive hashing offload)</li>
 <li>NETIF_F_SG (Support Scatter Gather)</li>
 <li>NETIF_F_HIGHDMA (Support SKBs located in high memory)</li>
 <li>NETIF_F_GRO (Support Generic Receive Offload)</li>
@@ -182,10 +207,8 @@ of the shell is accessible to the host via PF2.</p>
 </dd>
 </dl>
 </li>
-<li><p class="first">DebugFS Support</p>
-</li>
-<li><p class="first">SW Versioning</p>
-</li>
+<li>DebugFS Support</li>
+<li>SW Versioning</li>
 </ul>
 <p><em>Note</em>: Refer to the Driver <a class="reference external" href="driver-design.html">Design</a> section for the list of supported Net Device and Ethtool operations</p>
 </div>
@@ -193,15 +216,18 @@ of the shell is accessible to the host via PF2.</p>
 
 
            </div>
+           <div class="articleComments">
+            
+           </div>
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="system-requirements.html" class="btn btn-neutral float-right" title="System Requirements" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="system-requirements.html" class="btn btn-neutral float-right" title="System Requirements" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="index.html" class="btn btn-neutral" title="Xilinx QEP Linux Kernel Network Driver" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="index.html" class="btn btn-neutral" title="Xilinx QEP Linux Kernel Network Driver" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -232,10 +258,11 @@ of the shell is accessible to the host via PF2.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'1.0.0',
+            VERSION:'1.2.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
         };
     </script>
       <script type="text/javascript" src="_static/jquery.js"></script>

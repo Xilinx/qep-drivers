@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>DPDK Callback APIs &mdash; QEP DPDK Driver 1.0.0 documentation</title>
+  <title>DPDK Callback APIs &mdash; QEP DPDK Driver 1.2.0 documentation</title>
   
 
   
@@ -35,7 +35,7 @@
         <link rel="index" title="Index"
               href="genindex.html"/>
         <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="QEP DPDK Driver 1.0.0 documentation" href="index.html"/>
+    <link rel="top" title="QEP DPDK Driver 1.2.0 documentation" href="index.html"/>
         <link rel="up" title="Developers Guide" href="dev-guide.html"/>
         <link rel="next" title="QEP DPDK PMD Exported APIs" href="qep_pmd_export.html"/>
         <link rel="prev" title="Developers Guide" href="dev-guide.html"/> 
@@ -66,7 +66,7 @@
             
             
               <div class="version">
-                1.0.0
+                1.2.0
               </div>
             
           
@@ -223,6 +223,32 @@ void <code class="descname">qdma_dev_link_update</code><span class="sig-paren">(
 <dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">wait_to_complete</span></code></dt>
 <dd>If 0, get the current link status else, wait till the Ethernet link is up or timeout is reached</dd>
 </dl>
+<dl class="function">
+<dt id="c.qep_dev_set_link_up">
+int <code class="descname">qep_dev_set_link_up</code><span class="sig-paren">(</span>struct rte_eth_dev *<em>&nbsp;dev</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qep_dev_set_link_up" title="Permalink to this definition">¶</a></dt>
+<dd><p>DPDK callback to Link up an Ethernet device.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_eth_dev</span> <span class="pre">*</span> <span class="pre">dev</span></code></dt>
+<dd>Pointer to Ethernet device structure.</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success, &lt; 0 on failure.</p>
+<dl class="function">
+<dt id="c.qep_dev_set_link_down">
+int <code class="descname">qep_dev_set_link_down</code><span class="sig-paren">(</span>struct rte_eth_dev *<em>&nbsp;dev</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qep_dev_set_link_down" title="Permalink to this definition">¶</a></dt>
+<dd><p>DPDK callback to Link down an Ethernet device.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_eth_dev</span> <span class="pre">*</span> <span class="pre">dev</span></code></dt>
+<dd>Pointer to Ethernet device structure.</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success, &lt; 0 on failure.</p>
 <dl class="function">
 <dt id="c.qdma_dev_rx_queue_setup">
 int <code class="descname">qdma_dev_rx_queue_setup</code><span class="sig-paren">(</span>struct rte_eth_dev *<em>&nbsp;dev</em>, uint16_t<em>&nbsp;rx_queue_id</em>, uint16_t<em>&nbsp;nb_rx_desc</em>, unsigned int<em>&nbsp;socket_id</em>, const struct rte_eth_rxconf *<em>&nbsp;rx_conf</em>, struct rte_mempool *<em>&nbsp;mb_pool</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qdma_dev_rx_queue_setup" title="Permalink to this definition">¶</a></dt>
@@ -416,7 +442,7 @@ int <code class="descname">qdma_xstats_get_names</code><span class="sig-paren">(
 <p>The number of stats names filled into the array.</p>
 <dl class="function">
 <dt id="c.qdma_xstats_get">
-int <code class="descname">qdma_xstats_get</code><span class="sig-paren">(</span>__rte_unused struct rte_eth_dev *<em>&nbsp;dev</em>, struct rte_eth_xstat *<em>&nbsp;xstats</em>, unsigned int<em>&nbsp;n</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qdma_xstats_get" title="Permalink to this definition">¶</a></dt>
+int <code class="descname">qdma_xstats_get</code><span class="sig-paren">(</span>__rte_unused struct rte_eth_dev *<em>&nbsp;dev</em>, struct rte_eth_xstat *<em>&nbsp;xstats</em>, unsigned int<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qdma_xstats_get" title="Permalink to this definition">¶</a></dt>
 <dd><p>DPDK callback to retrieve extended statistics of an Ethernet device.</p>
 </dd></dl>
 
@@ -426,8 +452,8 @@ int <code class="descname">qdma_xstats_get</code><span class="sig-paren">(</span
 <dd>Pointer to Ethernet device structure.</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_eth_xstat</span> <span class="pre">*</span> <span class="pre">xstats</span></code></dt>
 <dd>Pointer to the array of structure to be filled with device statistics ids and values</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">n</span></code></dt>
-<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">size</span></code></dt>
+<dd>Number of elements in the <code class="docutils literal notranslate"><span class="pre">xstats</span></code> array</dd>
 </dl>
 <p><strong>Description</strong></p>
 <p>This API updates device statistics ids and values in <code class="docutils literal notranslate"><span class="pre">xstats</span></code> structure array.</p>
@@ -442,7 +468,7 @@ int <code class="descname">qdma_dev_mtu_set</code><span class="sig-paren">(</spa
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
 <dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_eth_dev</span> <span class="pre">*</span> <span class="pre">dev</span></code></dt>
-<dd>Pointer to Ethernet device structure.</dd>
+<dd>Pointer to Ethernet device structure</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">uint16_t</span> <span class="pre">mtu</span></code></dt>
 <dd>MTU to set</dd>
 </dl>
@@ -459,6 +485,129 @@ int <code class="descname">qdma_dev_mtu_set</code><span class="sig-paren">(</spa
 </dl>
 <p><strong>Return</strong></p>
 <p>The number of entries successfully filled into the xstats array</p>
+<dl class="function">
+<dt id="c.qep_dev_rxq_info_get">
+void <code class="descname">qep_dev_rxq_info_get</code><span class="sig-paren">(</span>struct rte_eth_dev *<em>&nbsp;dev</em>, uint16_t<em>&nbsp;rx_queue_id</em>, struct rte_eth_rxq_info *<em>&nbsp;qinfo</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qep_dev_rxq_info_get" title="Permalink to this definition">¶</a></dt>
+<dd><p>DPDK callback to get Rx queue info of an Ethernet device.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_eth_dev</span> <span class="pre">*</span> <span class="pre">dev</span></code></dt>
+<dd>Pointer to Ethernet device structure</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">uint16_t</span> <span class="pre">rx_queue_id</span></code></dt>
+<dd>The RX queue on the Ethernet device for which information will be retrieved</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_eth_rxq_info</span> <span class="pre">*</span> <span class="pre">qinfo</span></code></dt>
+<dd>A pointer to a structure of type rte_eth_rxq_info to be filled with the information of given Rx queue</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success, &lt; 0 on failure.</p>
+<dl class="function">
+<dt id="c.qep_dev_txq_info_get">
+void <code class="descname">qep_dev_txq_info_get</code><span class="sig-paren">(</span>struct rte_eth_dev *<em>&nbsp;dev</em>, uint16_t<em>&nbsp;tx_queue_id</em>, struct rte_eth_txq_info *<em>&nbsp;qinfo</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qep_dev_txq_info_get" title="Permalink to this definition">¶</a></dt>
+<dd><p>DPDK callback to get Tx queue info of an Ethernet device.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_eth_dev</span> <span class="pre">*</span> <span class="pre">dev</span></code></dt>
+<dd>Pointer to Ethernet device structure</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">uint16_t</span> <span class="pre">tx_queue_id</span></code></dt>
+<dd>The TX queue on the Ethernet device for which information will be retrieved</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_eth_txq_info</span> <span class="pre">*</span> <span class="pre">qinfo</span></code></dt>
+<dd>A pointer to a structure of type rte_eth_txq_info to be filled with the information of given Tx queue</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success, &lt; 0 on failure.</p>
+<dl class="function">
+<dt id="c.qep_dev_rss_reta_query">
+int <code class="descname">qep_dev_rss_reta_query</code><span class="sig-paren">(</span>struct rte_eth_dev *<em>&nbsp;dev</em>, struct rte_eth_rss_reta_entry64 *<em>&nbsp;reta_conf</em>, uint16_t<em>&nbsp;reta_size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qep_dev_rss_reta_query" title="Permalink to this definition">¶</a></dt>
+<dd><p>DPDK callback to retrieve RSS Indirection table.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_eth_dev</span> <span class="pre">*</span> <span class="pre">dev</span></code></dt>
+<dd>Pointer to Ethernet device structure.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_eth_rss_reta_entry64</span> <span class="pre">*</span> <span class="pre">reta_conf</span></code></dt>
+<dd>An Array of structure used to retrieve entries of Redirection Table of
+the Receive Side Scaling (RSS). Each element of array can have 64 entries.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">uint16_t</span> <span class="pre">reta_size</span></code></dt>
+<dd>Size of the RETA table</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success, &lt; 0 on failure.</p>
+<dl class="function">
+<dt id="c.qep_dev_rss_reta_update">
+int <code class="descname">qep_dev_rss_reta_update</code><span class="sig-paren">(</span>struct rte_eth_dev *<em>&nbsp;dev</em>, struct rte_eth_rss_reta_entry64 *<em>&nbsp;reta_conf</em>, uint16_t<em>&nbsp;reta_size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qep_dev_rss_reta_update" title="Permalink to this definition">¶</a></dt>
+<dd><p>DPDK callback to update the RSS indirection table.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_eth_dev</span> <span class="pre">*</span> <span class="pre">dev</span></code></dt>
+<dd>Pointer to Ethernet device structure.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_eth_rss_reta_entry64</span> <span class="pre">*</span> <span class="pre">reta_conf</span></code></dt>
+<dd>An Array of structure used to configure entries of Redirection Table of
+the Receive Side Scaling (RSS).Each element of array can have 64 entries.
+For each requested reta entry, corresponding bit in mask must be set.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">uint16_t</span> <span class="pre">reta_size</span></code></dt>
+<dd>Size of the RETA table.</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success, a negative errno value on failure and rte_errno is set.</p>
+<dl class="function">
+<dt id="c.qep_dev_rss_conf_get">
+int <code class="descname">qep_dev_rss_conf_get</code><span class="sig-paren">(</span>struct rte_eth_dev *<em>&nbsp;dev</em>, struct rte_eth_rss_conf *<em>&nbsp;rss_conf</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qep_dev_rss_conf_get" title="Permalink to this definition">¶</a></dt>
+<dd><p>DPDK callback to get the RSS hash configuration.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_eth_dev</span> <span class="pre">*</span> <span class="pre">dev</span></code></dt>
+<dd>Pointer to Ethernet device structure.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_eth_rss_conf</span> <span class="pre">*</span> <span class="pre">rss_conf</span></code></dt>
+<dd>RSS configuration data to be stored.</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success, a negative errno value on failure and rte_errno is set.</p>
+<dl class="function">
+<dt id="c.qep_filter_ctrl">
+int <code class="descname">qep_filter_ctrl</code><span class="sig-paren">(</span>__rte_unused struct rte_eth_dev *<em>&nbsp;dev</em>, enum rte_filter_type<em>&nbsp;filter_type</em>, enum rte_filter_op<em>&nbsp;filter_op</em>, void *<em>&nbsp;arg</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qep_filter_ctrl" title="Permalink to this definition">¶</a></dt>
+<dd><p>DPDK callback to get rte_flow callbacks and manage filter operations.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">__rte_unused</span> <span class="pre">struct</span> <span class="pre">rte_eth_dev</span> <span class="pre">*</span> <span class="pre">dev</span></code></dt>
+<dd>Pointer to Ethernet device structure.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">rte_filter_type</span> <span class="pre">filter_type</span></code></dt>
+<dd>Filter type.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">rte_filter_op</span> <span class="pre">filter_op</span></code></dt>
+<dd>Operation to perform.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">arg</span></code></dt>
+<dd>Pointer to operation-specific structure.</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success, &lt; 0 on failure.</p>
+<dl class="function">
+<dt id="c.qdma_dev_rx_queue_stop">
+int <code class="descname">qdma_dev_rx_queue_stop</code><span class="sig-paren">(</span>struct rte_eth_dev *<em>&nbsp;dev</em>, uint16_t<em>&nbsp;qid</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qdma_dev_rx_queue_stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>DPDK callback to stop a C2H queue</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_eth_dev</span> <span class="pre">*</span> <span class="pre">dev</span></code></dt>
+<dd>Pointer to Ethernet device structure.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">uint16_t</span> <span class="pre">qid</span></code></dt>
+<dd>Rx queue index.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>This API invalidates Hardware, Software, Prefetch and completion contexts of C2H queue.
+It also free the rte_mbuf pointers assigned to descriptors prepared for packet reception.</p>
+<p><strong>Return</strong></p>
+<p>0 on success, &lt; 0 on failure.</p>
 <dl class="function">
 <dt id="c.qdma_dev_tx_queue_stop">
 int <code class="descname">qdma_dev_tx_queue_stop</code><span class="sig-paren">(</span>struct rte_eth_dev *<em>&nbsp;dev</em>, uint16_t<em>&nbsp;qid</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qdma_dev_tx_queue_stop" title="Permalink to this definition">¶</a></dt>
@@ -554,6 +703,80 @@ int <code class="descname">eth_qdma_dev_uninit</code><span class="sig-paren">(</
 </dl>
 <p><strong>Return</strong></p>
 <p>0 on success, &lt; 0 on failure.</p>
+<dl class="function">
+<dt id="c.qep_flow_validate">
+int <code class="descname">qep_flow_validate</code><span class="sig-paren">(</span>struct rte_eth_dev *<em>&nbsp;dev</em>, const struct rte_flow_attr *<em>&nbsp;attr</em>, const struct rte_flow_item<em>&nbsp;pattern</em>, const struct rte_flow_action<em>&nbsp;actions</em>, struct rte_flow_error *<em>&nbsp;error</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qep_flow_validate" title="Permalink to this definition">¶</a></dt>
+<dd><p>DPDK callback to check whether a flow rule can be created on a given dev.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_eth_dev</span> <span class="pre">*</span> <span class="pre">dev</span></code></dt>
+<dd>Pointer to Ethernet device structure.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">struct</span> <span class="pre">rte_flow_attr</span> <span class="pre">*</span> <span class="pre">attr</span></code></dt>
+<dd>Flow rule attributes.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">struct</span> <span class="pre">rte_flow_item</span> <span class="pre">pattern</span></code></dt>
+<dd>Pattern specification (list terminated by the END pattern item).</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">struct</span> <span class="pre">rte_flow_action</span> <span class="pre">actions</span></code></dt>
+<dd>Associated actions (list terminated by the END action).</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_flow_error</span> <span class="pre">*</span> <span class="pre">error</span></code></dt>
+<dd>Perform verbose error reporting if not NULL.</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success, &lt; 0 on failure.</p>
+<dl class="function">
+<dt id="c.qep_flow_create">
+struct rte_flow * <code class="descname">qep_flow_create</code><span class="sig-paren">(</span>struct rte_eth_dev *<em>&nbsp;dev</em>, const struct rte_flow_attr *<em>&nbsp;attr</em>, const struct rte_flow_item<em>&nbsp;pattern</em>, const struct rte_flow_action<em>&nbsp;actions</em>, struct rte_flow_error *<em>&nbsp;error</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qep_flow_create" title="Permalink to this definition">¶</a></dt>
+<dd><p>DPDK callback to create flow on a given dev.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_eth_dev</span> <span class="pre">*</span> <span class="pre">dev</span></code></dt>
+<dd>Pointer to Ethernet device structure.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">struct</span> <span class="pre">rte_flow_attr</span> <span class="pre">*</span> <span class="pre">attr</span></code></dt>
+<dd>Flow rule attributes.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">struct</span> <span class="pre">rte_flow_item</span> <span class="pre">pattern</span></code></dt>
+<dd>Pattern specification (list terminated by the END pattern item).</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">struct</span> <span class="pre">rte_flow_action</span> <span class="pre">actions</span></code></dt>
+<dd>Associated actions (list terminated by the END action).</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_flow_error</span> <span class="pre">*</span> <span class="pre">error</span></code></dt>
+<dd>Perform verbose error reporting if not NULL.</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success, &lt; 0 on failure.</p>
+<dl class="function">
+<dt id="c.qep_flow_destroy">
+int <code class="descname">qep_flow_destroy</code><span class="sig-paren">(</span>struct rte_eth_dev *<em>&nbsp;dev</em>, struct rte_flow *<em>&nbsp;flow</em>, struct rte_flow_error *<em>&nbsp;error</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qep_flow_destroy" title="Permalink to this definition">¶</a></dt>
+<dd><p>DPDK callback to destroy a flow rule on a given dev.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_eth_dev</span> <span class="pre">*</span> <span class="pre">dev</span></code></dt>
+<dd>Pointer to Ethernet device structure.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_flow</span> <span class="pre">*</span> <span class="pre">flow</span></code></dt>
+<dd>Device private flow rule handle to destroy.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_flow_error</span> <span class="pre">*</span> <span class="pre">error</span></code></dt>
+<dd>Perform verbose error reporting if not NULL.</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success, &lt; 0 on failure.</p>
+<dl class="function">
+<dt id="c.qep_flow_flush">
+int <code class="descname">qep_flow_flush</code><span class="sig-paren">(</span>struct rte_eth_dev *<em>&nbsp;dev</em>, __rte_unused struct rte_flow_error *<em>&nbsp;error</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qep_flow_flush" title="Permalink to this definition">¶</a></dt>
+<dd><p>DPDK callback to destroy all flow rule on a given dev.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rte_eth_dev</span> <span class="pre">*</span> <span class="pre">dev</span></code></dt>
+<dd>Pointer to Ethernet device structure.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">__rte_unused</span> <span class="pre">struct</span> <span class="pre">rte_flow_error</span> <span class="pre">*</span> <span class="pre">error</span></code></dt>
+<dd>Perform verbose error reporting if not NULL.</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success, &lt; 0 on failure.</p>
 </div>
 
 
@@ -597,7 +820,7 @@ int <code class="descname">eth_qdma_dev_uninit</code><span class="sig-paren">(</
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'1.0.0',
+            VERSION:'1.2.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true

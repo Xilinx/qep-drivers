@@ -15,27 +15,47 @@ Below ``eth_dev_ops`` callbacks are implemented by the driver interface of the D
 ::
 
 	static struct eth_dev_ops qdma_eth_dev_ops = {
-		.dev_configure      = qdma_dev_configure,
-		.dev_infos_get      = qdma_dev_infos_get,
-		.dev_start          = qdma_dev_start,
-		.dev_stop           = qdma_dev_stop,
-		.dev_close          = qdma_dev_close,
-		.link_update        = qdma_dev_link_update,
-		.rx_queue_setup     = qdma_dev_rx_queue_setup,
-		.tx_queue_setup     = qdma_dev_tx_queue_setup,
-		.rx_queue_release   = qdma_dev_rx_queue_release,
-		.tx_queue_release   = qdma_dev_tx_queue_release,
-		.rx_queue_start     = qdma_dev_rx_queue_start,
-		.rx_queue_stop      = qdma_dev_rx_queue_stop,
-		.tx_queue_start     = qdma_dev_tx_queue_start,
-		.tx_queue_stop      = qdma_dev_tx_queue_stop,
-		.stats_get          = qdma_dev_stats_get,
-		.xstats_get_names   = qdma_xstats_get_names,
-		.xstats_get         = qdma_xstats_get,
-		.mtu_set            = qdma_dev_mtu_set,
+		.dev_configure        = qdma_dev_configure,
+		.dev_infos_get        = qdma_dev_infos_get,
+		.dev_start            = qdma_dev_start,
+		.dev_stop             = qdma_dev_stop,
+		.dev_close            = qdma_dev_close,
+		.link_update          = qdma_dev_link_update,
+		.dev_set_link_up      = qep_dev_set_link_up,
+		.dev_set_link_down    = qep_dev_set_link_down,
+		.rx_queue_setup       = qdma_dev_rx_queue_setup,
+		.tx_queue_setup       = qdma_dev_tx_queue_setup,
+		.rx_queue_release     = qdma_dev_rx_queue_release,
+		.tx_queue_release     = qdma_dev_tx_queue_release,
+		.rx_queue_start       = qdma_dev_rx_queue_start,
+		.rx_queue_stop        = qdma_dev_rx_queue_stop,
+		.tx_queue_start       = qdma_dev_tx_queue_start,
+		.tx_queue_stop        = qdma_dev_tx_queue_stop,
+		.stats_get            = qdma_dev_stats_get,
+		.xstats_get_names     = qdma_xstats_get_names,
+		.xstats_get           = qdma_xstats_get,
+		.mtu_set              = qdma_dev_mtu_set,
+		.rxq_info_get         = qep_dev_rxq_info_get,
+		.txq_info_get         = qep_dev_txq_info_get,
+		.reta_query	          = qep_dev_rss_reta_query,
+		.reta_update	      = qep_dev_rss_reta_update,
+		.rss_hash_conf_get    = qep_dev_rss_conf_get,
+		.filter_ctrl          = qep_filter_ctrl,
 	};
 
-Below sequence diagram depicts the application call flow to these driver callbacks and their high level operations.
+In addition, the DPDK driver also implements below ``rte_flow_ops`` for RSS configuration.
+
+::
+
+	const struct rte_flow_ops qep_flow_ops = {
+		.validate = qep_flow_validate,
+		.create   = qep_flow_create,
+		.destroy  = qep_flow_destroy,
+		.flush    = qep_flow_flush,
+	};
+
+
+Below sequence diagram depicts the application call flow to the driver callbacks and their high level operations.
 
 .. image:: images/dpdk_call_flow.png
 
