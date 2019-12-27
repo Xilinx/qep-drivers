@@ -46,7 +46,7 @@ LIB = librte_pmd_qep.a
 # versioning export map
 EXPORT_MAP := rte_pmd_qdma_version.map
 
-CFLAGS += -O3 -DDMA_BRAM_SIZE=$(BRAM_SIZE) -DMBOX_INTR
+CFLAGS += -O3 -DDMA_BRAM_SIZE=$(BRAM_SIZE)
 ifeq ($(QEP_ENABLE_CMAC_LOOPBACK),1)
    CFLAGS += -DENABLE_CMAC_LOOPBACK
 endif
@@ -65,6 +65,7 @@ ifeq ($(TEST_64B_DESC_BYPASS),1)
 endif
 
 # this lib depends upon:
+LDLIBS += -lpthread
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
 LDLIBS += -lrte_bus_pci
@@ -87,10 +88,14 @@ SRCS-$(CONFIG_RTE_LIBRTE_QEP_PMD) += qdma_devops.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEP_PMD) += qdma_common.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEP_PMD) += qdma_rxtx.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEP_PMD) += qdma_xdebug.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEP_PMD) += qdma_user.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEP_PMD) += qdma_access.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEP_PMD) += qdma_list.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEP_PMD) += qdma_resource_mgmt.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEP_PMD) += qdma_mbox_protocol.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEP_PMD) += qdma_access_common.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEP_PMD) += qdma_cpm_access.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEP_PMD) += qdma_reg_dump.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEP_PMD) += qdma_mbox.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEP_PMD) += qdma_platform.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEP_PMD) += rte_pmd_qdma.c
@@ -100,6 +105,8 @@ SRCS-$(CONFIG_RTE_LIBRTE_QEP_PMD) += stmn.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEP_PMD) += xcmac_rsfec.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEP_PMD) += qdma_xcmac.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEP_PMD) += rte_pmd_qep.c
+
+
 #
 ## Export include files
 #

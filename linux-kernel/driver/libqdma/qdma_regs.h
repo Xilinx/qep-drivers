@@ -91,7 +91,7 @@ struct qdma_mm_desc {
 struct qdma_h2c_desc {
 	__be16 cdh_flags;	/**< cdh flags */
 	__be16 pld_len;		/**< current packet length */
-	__be16 len;		/**< total packet length */
+	__be16 len;			/**< total packet length */
 	__be16 flags;		/**< descriptor flags */
 	__be64 src_addr;	/**< source address */
 };
@@ -143,12 +143,8 @@ struct qdma_desc_cmpl_status {
 #define S_C2H_CMPT_USER_DEFINED			22
 #define V_C2H_CMPT_USER_DEFINED(x)		((x) << S_C2H_CMPT_USER_DEFINED)
 
-#define S_C2H_CMPT_USER_ERR			23
-#define V_C2H_CMPT_USER_ERR(x)		((x) << S_C2H_CMPT_USER_ERR)
-
 #define M_C2H_CMPT_ENTRY_DMA_INFO		0xFFFFFF
 #define L_C2H_CMPT_ENTRY_DMA_INFO		3 /* 20 bits */
-
 /**
  * @struct - qdma_c2h_cmpt_cmpl_status
  * @brief	qdma completion data descriptor

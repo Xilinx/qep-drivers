@@ -31,25 +31,6 @@
 	((x) ? ((x + H2C_DESC_MAX_DATA_LEN - 1) >> stmn_fls) : 1)
 
 /* STMN Completion(CMPT) entry  format */
-struct stmn_cmpt_entry {
-	u64 format:1;
-	u64 color:1;
-	u64 err:1;
-	u64 desc_used:1;
-	u64 len:16;
-	u64 rsvd:3;
-	u64 usr_err:1;
-	u64 metadata:40;
-};
-
-/* H2C memory mapped descriptor format for STMN */
-struct qdma_stmn_h2c_desc {
-	__be32 metadata;
-	__be16 len;
-	__be16 flags;
-	__be64 src_addr;
-};
-
 /* Calculate number of desc required for DMA request  */
 static unsigned int calculate_stmn_gl_count(struct qdma_request *req)
 {
@@ -102,8 +83,12 @@ static int stmn_proc_h2c_request_single(void *qhndl,
 
 		req_desc_cnt = stmn_get_desc_cnt(tlen);
 		rv = qdma_q_desc_get(qhndl, req_desc_cnt, &desc_list);
-		if (rv < 0)
-			goto update_req;
+		if (rv < 0) {
+			if (desc_cnt)
+				goto update_req;
+			else
+				return 0;
+		}
 		for (j = 0; j < req_desc_cnt; j++) {
 			desc = desc_list->desc;
 			desc->flags = 0;
@@ -114,6 +99,11 @@ static int stmn_proc_h2c_request_single(void *qhndl,
 			if ((i == 0) && (j == 0))
 				desc->flags = (gl_count <<
 						H2C_STMN_GL_SHIFT);
+
+			/* Copy Checksum related data */
+			memcpy(&desc->metadata, req->udd,
+					sizeof(desc->metadata));
+
 			data_cnt += len;
 			addr += len;
 			tlen -= len;

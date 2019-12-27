@@ -20,6 +20,7 @@
 #define pr_fmt(fmt)	KBUILD_MODNAME ":%s: " fmt, __func__
 
 #include <linux/module.h>
+#include <linux/sched.h>
 #include <linux/gfp.h>
 #include "qdma_device.h"
 #include "qdma_context.h"
@@ -28,6 +29,7 @@
 #include "qdma_regs.h"
 #include "qdma_mbox.h"
 #include "qdma_access.h"
+#include "qdma_resource_mgmt.h"
 
 #ifdef __QDMA_VF__
 static int device_set_qrange(struct xlnx_dma_dev *xdev)
@@ -39,7 +41,7 @@ static int device_set_qrange(struct xlnx_dma_dev *xdev)
 	if  (!qdev) {
 		pr_err("dev %s, qdev null.\n",
 			dev_name(&xdev->conf.pdev->dev));
-		return QDMA_ERR_INVALID_QDMA_DEVICE;
+		return -EINVAL;
 	}
 
 	m = qdma_mbox_msg_alloc();
@@ -58,7 +60,10 @@ static int device_set_qrange(struct xlnx_dma_dev *xdev)
 	}
 
 	rv = qdma_mbox_vf_response_status(m->raw);
-
+	if (rv < 0) {
+		pr_err("mbox_vf_response_status failed, err = %d", rv);
+		rv = -EINVAL;
+	}
 	pr_debug("%s, func id %u/%u, Q 0x%x + 0x%x.\n",
 		xdev->conf.name, xdev->func_id, xdev->func_id_parent,
 		qdev->qbase, qdev->qmax);
@@ -90,6 +95,10 @@ int device_set_qconf(struct xlnx_dma_dev *xdev, int *qmax, int *qbase)
 	}
 
 	rv = qdma_mbox_vf_qinfo_get(m->raw, qbase, (uint16_t *)qmax);
+	if (rv < 0) {
+		pr_err("mbox_vf_qinfo_get  failed, err = %d", rv);
+		rv = -EINVAL;
+	}
 err_out:
 	qdma_mbox_msg_free(m);
 	return rv;
@@ -106,15 +115,18 @@ static int device_set_qrange(struct xlnx_dma_dev *xdev)
 	if  (!qdev) {
 		pr_err("dev %s, qdev null.\n",
 			dev_name(&xdev->conf.pdev->dev));
-		return QDMA_ERR_INVALID_QDMA_DEVICE;
+		return -EINVAL;
 	}
 
 	fmap.qmax = qdev->qmax;
 	fmap.qbase = qdev->qbase;
 
-	rv = qdma_fmap_write(xdev, xdev->func_id, &fmap);
-	if (rv < 0)
-		return rv;
+	rv = xdev->hw.qdma_fmap_conf(xdev, xdev->func_id, &fmap,
+				     QDMA_HW_ACCESS_WRITE);
+	if (rv < 0) {
+		pr_err("FMAP write failed, err %d\n", rv);
+		return xdev->hw.qdma_get_error_code(rv);
+	}
 
 	qdev->init_qrange = 1;
 
@@ -125,30 +137,6 @@ static int device_set_qrange(struct xlnx_dma_dev *xdev)
 }
 #endif /* ifndef __QDMA_VF__ */
 
-#ifndef __QDMA_VF__
-#ifdef ERR_DEBUG
-static void qdma_err_mon(struct work_struct *work)
-{
-	struct delayed_work *dwork = container_of(work,
-						struct delayed_work, work);
-	struct xlnx_dma_dev *xdev = container_of(dwork,
-					struct xlnx_dma_dev, err_mon);
-
-	if (!xdev) {
-		pr_err("Invalid xdev");
-		return;
-	}
-	spin_lock(&xdev->err_lock);
-
-	if (xdev->err_mon_cancel == 0) {
-		err_stat_handler(xdev);
-		schedule_delayed_work(dwork, msecs_to_jiffies(50)); /* 50msec */
-	}
-	spin_unlock(&xdev->err_lock);
-}
-#endif
-#endif
-
 int qdma_device_interrupt_setup(struct xlnx_dma_dev *xdev)
 {
 	int rv = 0;
@@ -156,8 +144,11 @@ int qdma_device_interrupt_setup(struct xlnx_dma_dev *xdev)
 	if ((xdev->conf.qdma_drv_mode == INDIRECT_INTR_MODE) ||
 			(xdev->conf.qdma_drv_mode == AUTO_MODE)) {
 		rv = intr_ring_setup(xdev);
-		if (rv)
+		if (rv) {
+			pr_err("Failed to setup intr ring, err %d", rv);
 			return -EINVAL;
+		}
+
 		if (xdev->intr_coal_list != NULL) {
 			rv = qdma_intr_context_setup(xdev);
 			if (rv)
@@ -178,30 +169,25 @@ int qdma_device_interrupt_setup(struct xlnx_dma_dev *xdev)
 			(xdev->conf.qdma_drv_mode != LEGACY_INTR_MODE)) &&
 			xdev->conf.master_pf) {
 		rv = qdma_err_intr_setup(xdev);
-		if (rv < 0)
+		if (rv < 0) {
+			pr_err("Failed to setup err intr, err %d", rv);
 			return -EINVAL;
+		}
 
-		rv = qdma_error_enable(xdev, QDMA_ERRS_ALL);
-		if (rv < 0)
+		rv = xdev->hw.qdma_hw_error_enable(xdev, QDMA_ERRS_ALL);
+		if (rv < 0) {
+			pr_err("Failed to enable error interrupt, err = %d",
+					rv);
 			return -EINVAL;
+		}
 
-		rv = qdma_error_interrupt_rearm(xdev);
-		if (rv < 0)
+		rv = xdev->hw.qdma_hw_error_intr_rearm(xdev);
+		if (rv < 0) {
+			pr_err("Failed to rearm error interrupt with error = %d",
+						rv);
 			return -EINVAL;
-	}
-
-#ifdef ERR_DEBUG
-	else {
-		if ((xdev->conf.master_pf) &&
-				(xdev->conf.qdma_drv_mode == POLL_MODE)) {
-			spin_lock_init(&xdev->err_lock);
-			xdev->err_mon_cancel = 0;
-			INIT_DELAYED_WORK(&xdev->err_mon, qdma_err_mon);
-			schedule_delayed_work(&xdev->err_mon,
-					      msecs_to_jiffies(50));
 		}
 	}
-#endif
 #endif
 	return rv;
 }
@@ -237,8 +223,9 @@ done:
 
 int qdma_device_init(struct xlnx_dma_dev *xdev)
 {
-	int i;
+	int i = 0;
 	struct qdma_fmap_cfg fmap;
+
 #ifndef __QDMA_VF__
 	int rv = 0;
 #endif
@@ -249,7 +236,7 @@ int qdma_device_init(struct xlnx_dma_dev *xdev)
 	memset(&fmap, 0, sizeof(struct qdma_fmap_cfg));
 
 	qdev = kzalloc(sizeof(struct qdma_dev) +
-			sizeof(struct qdma_descq) * qmax * 2, GFP_KERNEL);
+			sizeof(struct qdma_descq) * qmax * 3, GFP_KERNEL);
 	if (!qdev) {
 		pr_err("dev %s qmax %d OOM.\n",
 			dev_name(&xdev->conf.pdev->dev), qmax);
@@ -262,16 +249,19 @@ int qdma_device_init(struct xlnx_dma_dev *xdev)
 #ifdef __QDMA_VF__
 	xdev->func_id = xdev->func_id_parent = 0; /* filled later */
 #else
-	fmap.qmax = 0;
-	fmap.qbase = 0;
-	rv = qdma_fmap_write(xdev, xdev->func_id, &fmap);
-	if (rv < 0)
-		return rv;
+	if (xdev->conf.master_pf) {
+		rv = xdev->hw.qdma_init_ctxt_memory(xdev);
+		if (rv < 0) {
+			pr_err("init ctxt write failed, err %d\n", rv);
+			return xdev->hw.qdma_get_error_code(rv);
+		}
+	}
 #endif
 
 	descq = (struct qdma_descq *)(qdev + 1);
 	qdev->h2c_descq = descq;
 	qdev->c2h_descq = descq + qmax;
+	qdev->cmpt_descq = descq + (2 * qmax);
 
 	qdev->qmax = qmax;
 	qdev->init_qrange = 0;
@@ -282,22 +272,25 @@ int qdma_device_init(struct xlnx_dma_dev *xdev)
 		qdma_descq_init(descq, xdev, i, i);
 	for (i = 0, descq = qdev->c2h_descq; i < qdev->qmax; i++, descq++)
 		qdma_descq_init(descq, xdev, i, i);
+	for (i = 0, descq = qdev->cmpt_descq; i < qdev->qmax; i++, descq++)
+		qdma_descq_init(descq, xdev, i, i);
 #ifndef __QDMA_VF__
-	qdma_set_default_global_csr(xdev);
+	xdev->hw.qdma_set_default_global_csr(xdev);
 	for (i = 0; i < xdev->dev_cap.mm_channel_max; i++) {
-		qdma_mm_channel_enable(xdev, i, 1);
-		qdma_mm_channel_enable(xdev, i, 0);
+		xdev->hw.qdma_mm_channel_conf(xdev, i, 1, 1);
+		xdev->hw.qdma_mm_channel_conf(xdev, i, 0, 1);
 	}
 #endif
-
 	return 0;
 }
 
+#define QDMA_BUF_LEN 256
 void qdma_device_cleanup(struct xlnx_dma_dev *xdev)
 {
 	int i;
 	struct qdma_dev *qdev = xdev_2_qdev(xdev);
 	struct qdma_descq *descq;
+	char buf[QDMA_BUF_LEN];
 
 	if  (!qdev) {
 		pr_info("dev %s, qdev null.\n",
@@ -305,48 +298,39 @@ void qdma_device_cleanup(struct xlnx_dma_dev *xdev)
 		return;
 	}
 
-#ifndef __QDMA_VF__
-#ifdef ERR_DEBUG
-	if ((xdev->conf.master_pf) &&
-		(xdev->conf.qdma_drv_mode == POLL_MODE)) {
-		pr_info("Cancelling delayed work");
-		spin_lock(&xdev->err_lock);
-		xdev->err_mon_cancel = 1;
-		cancel_delayed_work_sync(&xdev->err_mon);
-		spin_unlock(&xdev->err_lock);
-	}
-#endif
-#endif
-
 	for (i = 0, descq = qdev->h2c_descq; i < qdev->qmax; i++, descq++) {
 		if (descq->q_state == Q_STATE_ONLINE)
-			qdma_queue_stop((unsigned long int)xdev, i, NULL, 0);
+			qdma_queue_stop((unsigned long int)xdev,
+					i, buf, QDMA_BUF_LEN);
 	}
 
 	for (i = 0, descq = qdev->c2h_descq; i < qdev->qmax; i++, descq++) {
 		if (descq->q_state == Q_STATE_ONLINE)
 			qdma_queue_stop((unsigned long int)xdev,
-					i + qdev->qmax, NULL, 0);
+					i + qdev->qmax, buf, QDMA_BUF_LEN);
 	}
 
 #ifndef __QDMA_VF__
 	if (xdev->func_id == 0) {
 		for (i = 0; i < xdev->dev_cap.mm_channel_max; i++) {
-			qdma_mm_channel_disable(xdev, i, DMA_TO_DEVICE);
-			qdma_mm_channel_disable(xdev, i, DMA_FROM_DEVICE);
+			xdev->hw.qdma_mm_channel_conf(xdev, i,
+						      DMA_TO_DEVICE, 0);
+			xdev->hw.qdma_mm_channel_conf(xdev, i,
+						      DMA_FROM_DEVICE, 0);
 		}
 	}
 #endif
 
 	for (i = 0, descq = qdev->h2c_descq; i < qdev->qmax; i++, descq++) {
 		if (descq->q_state == Q_STATE_ENABLED)
-			qdma_queue_remove((unsigned long int)xdev, i, NULL, 0);
+			qdma_queue_remove((unsigned long int)xdev,
+					i, buf, QDMA_BUF_LEN);
 	}
 
 	for (i = 0, descq = qdev->c2h_descq; i < qdev->qmax; i++, descq++) {
 		if (descq->q_state == Q_STATE_ENABLED)
 			qdma_queue_remove((unsigned long int)xdev,
-					  i + qdev->qmax, NULL, 0);
+					  i + qdev->qmax, buf, QDMA_BUF_LEN);
 	}
 	xdev->dev_priv = NULL;
 	kfree(qdev);
@@ -372,11 +356,19 @@ long qdma_device_get_id_from_descq(struct xlnx_dma_dev *xdev,
 			dev_name(&xdev->conf.pdev->dev));
 		return -EINVAL;
 	}
-	_descq = descq->conf.c2h ? qdev->c2h_descq : qdev->h2c_descq;
-	idx = descq->conf.c2h ? qdev->qmax : 0;
+	if (descq->conf.q_type == Q_H2C) {
+		_descq = qdev->h2c_descq;
+		idx = 0;
+	} else if (descq->conf.q_type == Q_C2H) {
+		_descq = qdev->c2h_descq;
+		idx = qdev->qmax;
+	} else {
+		_descq = qdev->cmpt_descq;
+		idx = 2 * qdev->qmax;
+	}
 
-	idx_max = (idx + qdev->qmax);
-	for ( ; idx < idx_max; idx++, _descq++)
+	idx_max = (idx + (2 * qdev->qmax));
+	for (; idx < idx_max; idx++, _descq++)
 		if (_descq == descq)
 			return idx;
 
@@ -406,18 +398,20 @@ struct qdma_descq *qdma_device_get_descq_by_id(struct xlnx_dma_dev *xdev,
 	if (idx >= qdev->qmax) {
 		idx -= qdev->qmax;
 		if (idx >= qdev->qmax) {
-			pr_info("%s, q idx too big 0x%lx > 0x%x.\n",
-				xdev->conf.name, idx, qdev->qmax);
-			if (buf && buflen)  {
-				int len = snprintf(buf, buflen,
+			idx -= qdev->qmax;
+			if (idx >= qdev->qmax) {
+				pr_info("%s, q idx too big 0x%lx > 0x%x.\n",
+					xdev->conf.name, idx, qdev->qmax);
+				if (buf && buflen)
+					snprintf(buf, buflen,
 					"%s, q idx too big 0x%lx > 0x%x.\n",
 					xdev->conf.name, idx, qdev->qmax);
-				buf[len] = '\0';
-				buflen -= (len + 1);
+				return NULL;
 			}
-			return NULL;
+			descq = qdev->cmpt_descq + idx;
+		} else {
+			descq = qdev->c2h_descq + idx;
 		}
-		descq = qdev->c2h_descq + idx;
 	} else {
 		descq = qdev->h2c_descq + idx;
 	}
@@ -427,13 +421,10 @@ struct qdma_descq *qdma_device_get_descq_by_id(struct xlnx_dma_dev *xdev,
 		if (descq->q_state == Q_STATE_DISABLED) {
 			pr_info("%s, idx 0x%lx, q 0x%p state invalid.\n",
 				xdev->conf.name, idx, descq);
-			if (buf && buflen) {
-				int len = snprintf(buf, buflen,
+			if (buf && buflen)
+				snprintf(buf, buflen,
 				"%s, idx 0x%lx, q 0x%p state invalid.\n",
 					xdev->conf.name, idx, descq);
-				buf[len] = '\0';
-				buflen -= (len + 1);
-			}
 			unlock_descq(descq);
 			return NULL;
 		}
@@ -468,13 +459,10 @@ struct qdma_descq *qdma_device_get_pair_descq_by_id(struct xlnx_dma_dev *xdev,
 		if (idx >= qdev->qmax) {
 			pr_debug("%s, q idx too big 0x%lx > 0x%x.\n",
 				xdev->conf.name, idx, qdev->qmax);
-			if (buf && buflen)  {
-				int len = snprintf(buf, buflen,
+			if (buf && buflen)
+				snprintf(buf, buflen,
 					"%s, q idx too big 0x%lx > 0x%x.\n",
 					xdev->conf.name, idx, qdev->qmax);
-				buf[len] = '\0';
-				buflen -= len + 1;
-			}
 			return NULL;
 		}
 		pair_descq = qdev->h2c_descq + idx;
@@ -487,13 +475,10 @@ struct qdma_descq *qdma_device_get_pair_descq_by_id(struct xlnx_dma_dev *xdev,
 		if (pair_descq->q_state == Q_STATE_DISABLED) {
 			pr_debug("%s, idx 0x%lx, q 0x%p state invalid.\n",
 				xdev->conf.name, idx, pair_descq);
-			if (buf && buflen) {
-				int len = snprintf(buf, buflen,
+			if (buf && buflen)
+				snprintf(buf, buflen,
 				"%s, idx 0x%lx, q 0x%p state invalid.\n",
 					xdev->conf.name, idx, pair_descq);
-				buf[len] = '\0';
-				buflen -= len + 1;
-			}
 			unlock_descq(pair_descq);
 			return NULL;
 		}
@@ -531,4 +516,132 @@ struct qdma_descq *qdma_device_get_descq_by_hw_qid(struct xlnx_dma_dev *xdev,
 		descq = &qdev->h2c_descq[qidx_sw];
 
 	return descq;
+}
+
+
+void qdma_pf_trigger_vf_reset(unsigned long dev_hndl)
+{
+	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
+	unsigned int sleep_timeout = 0;
+	struct mbox_msg *m = NULL;
+	struct qdma_vf_info *vf = NULL;
+	int i = 0, rv = 0;
+	u8 vf_count_online = 0, no_bye_count = 0;
+	uint32_t active_queue_count = 0;
+
+	if (!xdev) {
+		pr_err("xdev NULL\n");
+		return;
+	}
+
+	if (!xdev->vf_count) {
+		pr_debug("VF count is zero\n");
+		return;
+	}
+
+	vf_count_online = xdev->vf_count_online;
+	vf = (struct qdma_vf_info *)xdev->vf_info;
+
+	xdev->reset_state = RESET_STATE_PF_WAIT_FOR_BYES;
+	for (i = 0; i < vf_count_online; i++) {
+		active_queue_count = qdma_get_device_active_queue_count(
+					xdev->conf.pdev->bus->number,
+					vf[i].func_id, QDMA_DEV_Q_TYPE_H2C);
+		active_queue_count += qdma_get_device_active_queue_count(
+					xdev->conf.pdev->bus->number,
+					vf[i].func_id, QDMA_DEV_Q_TYPE_C2H);
+		sleep_timeout = QDMA_MBOX_MSG_TIMEOUT_MS +
+				(200 * active_queue_count);
+
+		pr_info("VF reset in progress. Wait for 0x%x ms\n",
+				sleep_timeout);
+
+		m = qdma_mbox_msg_alloc();
+		if (!m) {
+			pr_err("Memory allocation for mbox message failed\n");
+			return;
+		}
+
+		pr_debug("xdev->func_id=%d, vf[i].func_id=%d, i = %d",
+				 xdev->func_id, vf[i].func_id, i);
+		qdma_mbox_compose_vf_reset_message(m->raw, xdev->func_id,
+							vf[i].func_id);
+		rv = qdma_mbox_msg_send(xdev, m, 1, QDMA_MBOX_MSG_TIMEOUT_MS);
+		if (rv == 0) {
+			qdma_waitq_wait_event_timeout(xdev->wq,
+					(xdev->vf_count_online ==
+					(vf_count_online - i - 1)),
+					msecs_to_jiffies(sleep_timeout));
+		}
+		if (xdev->vf_count_online !=
+						(vf_count_online - i - 1)) {
+			xdev->vf_count_online--;
+			no_bye_count++;
+			pr_warn("BYE not recv from func=%d, online_count=%d\n",
+					vf[i].func_id, xdev->vf_count_online);
+		}
+	}
+
+	xdev->reset_state = RESET_STATE_IDLE;
+	pr_debug("no_bye_count=%d\n", no_bye_count);
+
+}
+
+void qdma_pf_trigger_vf_offline(unsigned long dev_hndl)
+{
+	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
+	struct mbox_msg *m = NULL;
+	struct qdma_vf_info *vf = NULL;
+	int i = 0, rv = 0;
+	unsigned int sleep_timeout = 0;
+	u8 vf_count_online = 0;
+	uint32_t active_queue_count = 0;
+
+	if (!xdev) {
+		pr_err("xdev NULL\n");
+		return;
+	}
+
+	if (!xdev->vf_count) {
+		pr_debug("VF count is zero\n");
+		return;
+	}
+
+	vf_count_online = xdev->vf_count_online;
+	vf = (struct qdma_vf_info *)xdev->vf_info;
+
+	for (i = 0; i < vf_count_online; i++) {
+		active_queue_count = qdma_get_device_active_queue_count(
+					xdev->conf.pdev->bus->number,
+					vf[i].func_id, QDMA_DEV_Q_TYPE_H2C);
+		active_queue_count += qdma_get_device_active_queue_count(
+					xdev->conf.pdev->bus->number,
+					vf[i].func_id, QDMA_DEV_Q_TYPE_C2H);
+		sleep_timeout = QDMA_MBOX_MSG_TIMEOUT_MS +
+				(200 * active_queue_count);
+
+		pr_info("VF offline in progress. Wait for 0x%x ms\n",
+				sleep_timeout);
+		m = qdma_mbox_msg_alloc();
+		if (!m) {
+			pr_err("Memory allocation for mbox message failed\n");
+			return;
+		}
+		pr_info("xdev->func_id=%d, vf[i].func_id=%d, i = %d",
+				 xdev->func_id, vf[i].func_id, i);
+		qdma_mbox_compose_pf_offline(m->raw, xdev->func_id,
+							vf[i].func_id);
+		rv = qdma_mbox_msg_send(xdev, m, 1, QDMA_MBOX_MSG_TIMEOUT_MS);
+
+		if (!rv) {
+			qdma_waitq_wait_event_timeout(xdev->wq,
+					vf[i].func_id == QDMA_FUNC_ID_INVALID,
+					msecs_to_jiffies(sleep_timeout));
+		}
+
+		if (vf[i].func_id != QDMA_FUNC_ID_INVALID)
+			pr_warn("BYE not recv from func=%d, online_count=%d\n",
+					vf[i].func_id, xdev->vf_count_online);
+	}
+	pr_debug("xdev->vf_count_online=%d\n", xdev->vf_count_online);
 }

@@ -21,10 +21,138 @@
 #include "stmn.h"
 
 #define QDMA_DEV_NAME_SZ (32)
-#define CMAC_MSG_BUF_LEN_MAX (4096)
+#define CMAC_MSG_BUF_LEN_MAX (8192)
 
 struct dentry *qep_debugfs_root;
 
+static int qep_cmac_get_hw_status(struct xcmac *mac, char *buf, u16 len)
+{
+	int status, i = 0;
+	struct xcmac_rx_lane_am_status lane;
+	struct xcmac_rx_fault_status fault;
+	struct xcmac_rx_packet_status packet_status;
+	struct xcmac_rx_vldemux_status vldemux_status;
+	struct xcmac_tx_status tx_status;
+	struct xcmac_bip7_config bip7_config;
+
+	if (!mac || !buf)
+		return -EINVAL;
+
+	memset(&lane, 0, sizeof(lane));
+	memset(&fault, 0, sizeof(fault));
+	memset(&packet_status, 0, sizeof(packet_status));
+	memset(&vldemux_status, 0, sizeof(vldemux_status));
+	memset(&tx_status, 0, sizeof(tx_status));
+	memset(&bip7_config, 0, sizeof(bip7_config));
+
+	/* Get PCS lane status */
+	status = xcmac_get_rx_lane_status(mac, &lane);
+	if (status != 0)
+		pr_err("Error in retrieving Rx lane status\n");
+
+	/* Get Ethernet Packet status */
+	status = xcmac_get_rx_packet_status(mac, &packet_status);
+	if (status != 0)
+		pr_err("Error in retrieving Rx packet status\n");
+
+	/* Get Fault status */
+	status = xcmac_get_rx_fault_status(mac, &fault);
+	if (status != 0)
+		pr_err("Error in retrieving Rx fault status\n");
+
+	/* Get Tx status */
+	status = xcmac_get_tx_status(mac, &tx_status);
+	if (status != 0)
+		pr_err("Error in retrieving Tx status\n");
+
+	/* Get Virtual lane demux status */
+	status = xcmac_get_rx_vldemux_status(mac, &vldemux_status);
+	if (status != 0)
+		pr_err("Error in retrieving Rx VlDemux status\n");
+
+	status = xcmac_get_bip7_config(mac, &bip7_config);
+	if (status != 0)
+		pr_err("Error in retrieving Rx BIP7 Value\n");
+
+	snprintf(buf + strlen(buf), len - strlen(buf),
+		 "PCS Status=0x%x Aligned=0x%x Misaligned=0x%x Aligned error=0x%x\n",
+			lane.pcs_status, lane.aligned,
+				lane.mis_aligned, lane.aligned_error);
+
+	snprintf(buf + strlen(buf), len - strlen(buf),
+		 "HiBer=0x%x Bad Preamble=0x%x Bad Sfd=0x%x Got Signal OS=0x%x\n",
+			packet_status.hi_ber,
+			packet_status.bad_preamble, packet_status.bad_sfd,
+			packet_status.got_signal_os);
+
+	snprintf(buf + strlen(buf), len - strlen(buf),
+		"Remote Fault=0x%x Local Fault=0x%x Internal Local Fault=0x%x Received Local Fault=0x%x\n",
+		fault.remote_fault,
+		fault.local_fault, fault.internal_local_fault,
+		fault.received_local_fault);
+
+	snprintf(buf + strlen(buf), len - strlen(buf),
+		"Local Fault=0x%x PTP FIFO Read Error=0x%x PTP FIFO Write Error=0x%x\n",
+		tx_status.local_fault, tx_status.ptp_fifo_read_error,
+		tx_status.ptp_fifo_write_error);
+
+	snprintf(buf + strlen(buf), len - strlen(buf),
+		"Rx BIP Override Value=0x%x Valid=0x%x\n",
+		bip7_config.bip7_value, bip7_config.bip7_valid);
+
+
+	snprintf(buf + strlen(buf), len - strlen(buf), "Lane:         ");
+	for (i = 0; i < XCMAC_PCS_LANE_COUNT; i++)
+		snprintf(buf + strlen(buf), len - strlen(buf), " %2d ", i);
+
+	snprintf(buf + strlen(buf), len - strlen(buf), "\nBlock Lock    ");
+	for (i = 0; i < XCMAC_PCS_LANE_COUNT; i++)
+		snprintf(buf + strlen(buf), len - strlen(buf), "0x%x ",
+			lane.block_lock[i]);
+
+	snprintf(buf + strlen(buf), len - strlen(buf),
+		"\nSynced Err    ");
+	for (i = 0; i < XCMAC_PCS_LANE_COUNT; i++)
+		snprintf(buf + strlen(buf), len - strlen(buf),
+			"0x%x ", lane.synced_error[i]);
+
+	snprintf(buf + strlen(buf), len - strlen(buf),
+		"\nLM Err        ");
+	for (i = 0; i < XCMAC_PCS_LANE_COUNT; i++)
+		snprintf(buf + strlen(buf), len - strlen(buf),
+			"0x%x ", lane.lane_marker_error[i]);
+
+	snprintf(buf + strlen(buf), len - strlen(buf),
+		"\nLM len Err    ");
+	for (i = 0; i < XCMAC_PCS_LANE_COUNT; i++)
+		snprintf(buf + strlen(buf), len - strlen(buf),
+			"0x%x ",
+			lane.lane_marker_len_error[i]);
+
+	snprintf(buf + strlen(buf), len - strlen(buf),
+		"\nLM Repeat Err ");
+	for (i = 0; i < XCMAC_PCS_LANE_COUNT; i++)
+		snprintf(buf + strlen(buf), len - strlen(buf),
+			"0x%x ",
+			lane.lane_marker_repeat_error[i]);
+
+
+	snprintf(buf + strlen(buf), len - strlen(buf),
+		"\nVlDemuxed     ");
+	for (i = 0; i < XCMAC_PCS_LANE_COUNT; i++)
+		snprintf(buf + strlen(buf),
+			len - strlen(buf), "0x%x ",
+			vldemux_status.vldemuxed[i]);
+
+	snprintf(buf + strlen(buf), len - strlen(buf),
+		"\nVlNumber      ");
+	for (i = 0; i < XCMAC_PCS_LANE_COUNT; i++)
+		snprintf(buf + strlen(buf), len - strlen(buf),
+			 "0x%x ", vldemux_status.vlnumber[i]);
+
+	snprintf(buf + strlen(buf), len - strlen(buf), "\n");
+		return status;
+}
 static int config_open(struct inode *inodep, struct file *filp)
 {
 	filp->private_data = inodep->i_private;
@@ -36,8 +164,33 @@ static ssize_t config_read(struct file *filp, char __user *buffer, size_t count,
 {
 	int ret = 0;
 	char temp[512] = { 0 };
-	struct qep_priv *xpriv = (struct qep_priv *)(filp->private_data);
+	struct qep_priv *xpriv;
 	struct global_csr_conf l_global_csr_conf;
+
+	if (!filp) {
+		pr_err("invalid debugfs file ptr");
+		return -EINVAL;
+	}
+
+	xpriv = (struct qep_priv *)(filp->private_data);
+	if (!xpriv) {
+		pr_err("invalid debugfs dev ptr");
+		return -EINVAL;
+	}
+
+	if (!xpriv->netdev) {
+		pr_err("invalid debugfs netdev ptr");
+		return -EINVAL;
+	}
+
+	if (!buffer) {
+		pr_err("invalid debugfs buffer ptr");
+		return -EINVAL;
+	}
+
+	if (*ppos != 0)
+		return 0;
+
 
 	ret = qdma_global_csr_get(xpriv->dev_handle, 0,
 				  QDMA_GLOBAL_CSR_ARRAY_SZ, &l_global_csr_conf);
@@ -94,15 +247,41 @@ static ssize_t stmn_read(struct file *filp, char __user *buffer, size_t count,
 {
 	int ret;
 	char *msg;
-	u32 len = STMN_MSG_BUF_LEN_MAX;
-	struct qep_priv *dev_hndl = (struct qep_priv *)(filp->private_data);
+	u32 len;
+	struct qep_priv *dev_hndl;
+
+	if (!filp) {
+		pr_err("invalid debugfs file ptr");
+		return -EINVAL;
+	}
+
+	dev_hndl = (struct qep_priv *)(filp->private_data);
+	if (!dev_hndl) {
+		pr_err("invalid debugfs dev ptr");
+		return -EINVAL;
+	}
+
+	if (!dev_hndl->netdev) {
+		pr_err("invalid debugfs netdev ptr");
+		return -EINVAL;
+	}
+
+	if (!buffer) {
+		pr_err("invalid debugfs buffer ptr");
+		return -EINVAL;
+	}
 
 	if (*ppos != 0)
 		return 0;
-
+	len = STMN_MSG_BUF_LEN_MAX +  (STMN_MSG_RAM_BUF_LEN *
+			dev_hndl->netdev->real_num_tx_queues) +
+			(STMN_MSG_RAM_BUF_LEN *
+			dev_hndl->netdev->real_num_rx_queues);
 	msg = kcalloc(len, sizeof(unsigned char), GFP_KERNEL);
-	if (!msg)
+	if (!msg) {
+		pr_err("debugfs OOM");
 		return 0;
+	}
 
 	ret = stmn_print_msg(dev_hndl, msg, len);
 	if (ret < STMN_SUCCESS)
@@ -132,17 +311,51 @@ static ssize_t cmac_read(struct file *filp, char __user *buffer, size_t count,
 {
 	char *msg;
 	u32 len = CMAC_MSG_BUF_LEN_MAX;
-	struct qep_priv *dev_hndl = (struct qep_priv *)(filp->private_data);
+	u32 i;
+	struct qep_priv *dev_hndl;
+
+	if (!filp) {
+		pr_err("invalid debugfs file ptr");
+		return -EINVAL;
+	}
+
+	dev_hndl = (struct qep_priv *)(filp->private_data);
+	if (!dev_hndl) {
+		pr_err("invalid debugfs dev ptr");
+		return -EINVAL;
+	}
+
+	if (!dev_hndl->netdev) {
+		pr_err("invalid debugfs netdev ptr");
+		return -EINVAL;
+	}
 
 	if (*ppos != 0)
 		return 0;
 
 	msg = kcalloc(len, sizeof(unsigned char), GFP_KERNEL);
 	if (!msg)
-		return 0;
+		return -EINVAL;
 
 
-	qep_get_cmac_stats(dev_hndl->netdev, len, msg);
+	if (dev_hndl->dev_state == QEP_DEV_STATE_UP) {
+		qep_get_cmac_stats(dev_hndl->netdev, len - strlen(msg),
+			   msg + strlen(msg));
+
+		for (i = 0; i < dev_hndl->netdev->real_num_tx_queues; i++)
+			snprintf(msg + strlen(msg), len - strlen(msg),
+				"txq %d %llu\n", i,
+				dev_hndl->tx_q[i].stats.tx_packets);
+
+		for (i = 0; i < dev_hndl->netdev->real_num_rx_queues; i++)
+			snprintf(msg + strlen(msg), len - strlen(msg),
+				"rxq_%d %llu\n", i,
+				dev_hndl->rx_q[i].stats.rx_packets);
+
+		qep_cmac_get_hw_status(&dev_hndl->cmac_instance,
+				msg + strlen(msg),
+				len - strlen(msg));
+	}
 
 	if (*ppos >= strlen(msg))
 		return 0;
@@ -241,6 +454,7 @@ void qep_debugfs_exit(void)
 	qep_debugfs_root = NULL;
 }
 
+
 #if (QEP_DBG_DUMP_EN)
 void dump_skb(struct qep_priv *xpriv, struct sk_buff *skb)
 {
@@ -329,7 +543,7 @@ void dump_qdma_sw_sgl(unsigned int sgcnt, struct qdma_sw_sg *sgl)
 
 	temp = sgl;
 	while (temp && i < sgcnt) {
-		pr_info("SG:temp->len=%d, temp->pg=%p , temp->dma_addr=%llx ",
+		pr_info("SG:temp->len=%d, temp->pg=%p, temp->dma_addr=%llx ",
 			temp->len, temp->pg, temp->dma_addr);
 		temp = temp->next;
 		i++;

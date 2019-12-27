@@ -41,9 +41,10 @@ enum rte_pmd_qep_desc_type {
 	RTE_PMD_QEP_DESC_MAX,
 };
 
+/*Functions*/
 /******************************************************************************/
 /**
- * Function Name:	rte_pmd_qdma_get_bar_details
+ * Function Name:	rte_pmd_qep_get_bar_details
  * Description:		Returns the BAR indices of the QDMA BARs
  *
  * @param	portid : Port ID
@@ -60,7 +61,7 @@ int rte_pmd_qep_get_bar_details(int portid, int32_t *config_bar_idx,
 
 /******************************************************************************/
 /**
- * Function Name:	rte_pmd_qdma_get_queue_base
+ * Function Name:	rte_pmd_qep_get_queue_base
  * Description:		Returns queue base for given port
  *
  * @param	portid : Port ID.
@@ -73,11 +74,65 @@ int rte_pmd_qep_get_bar_details(int portid, int32_t *config_bar_idx,
  ******************************************************************************/
 int rte_pmd_qep_get_queue_base(int portid, uint32_t *queue_base);
 
-int rte_pmd_qep_dbg_regdump(uint8_t port_id);
-int rte_pmd_qep_dbg_qinfo(uint8_t port_id, uint16_t queue);
-int rte_pmd_qep_dbg_qdesc(uint8_t port_id, uint16_t queue, int start, int end,
+/******************************************************************************/
+/**
+ * Function Name:	rte_pmd_qep_dbg_regdump
+ * Description:		Dumps the QDMA configuration registers
+ *			for the given port.
+ *
+ * @param	portid : Port ID
+ *
+ * @return	'0' on success and "< 0" on failure.
+ *
+ * @note	None.
+ ******************************************************************************/
+int rte_pmd_qep_dbg_regdump(uint8_t portid);
+
+/******************************************************************************/
+/**
+ * Function Name:	rte_pmd_qep_dbg_qinfo
+ * Description:		Dumps the queue contexts and queue specific SW
+ *			structures for the given queue ID.
+ *
+ * @param	portid : Port ID
+ * @param	queue  : Queue ID relative to the Port
+ *
+ * @return	'0' on success and "< 0" on failure.
+ *
+ * @note	None.
+ ******************************************************************************/
+int rte_pmd_qep_dbg_qinfo(uint8_t portid, uint16_t queue);
+
+/******************************************************************************/
+/**
+ * Function Name:	rte_pmd_qep_dbg_qdesc
+ * Description:		Dumps the Queue descriptors.
+ *
+ * @param	portid : Port ID
+ * @param	queue  : Queue ID relative to the Port
+ * @param	start  : start index of the descriptor to dump
+ * @param	end    : end index of the descriptor to dump
+ * @param	type   : Descriptor type
+ *
+ * @return	'0' on success and "< 0" on failure.
+ *
+ * @note	None.
+ ******************************************************************************/
+int rte_pmd_qep_dbg_qdesc(uint8_t portid, uint16_t queue, int start, int end,
 			  enum rte_pmd_qep_desc_type type);
-int rte_pmd_qep_dbg_stmninfo(uint8_t port_id);
+
+/******************************************************************************/
+/**
+ * Function Name:	rte_pmd_qep_dbg_stmninfo
+ * Description:		Dumps the STM-N status and statistics
+ *
+ * @param	portid : Port ID
+ *
+ * @return	'0' on success and "< 0" on failure.
+ *
+ * @note	None.
+ ******************************************************************************/
+int rte_pmd_qep_dbg_stmninfo(uint8_t portid);
 
 /******************************************************************************/
 /**

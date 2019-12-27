@@ -84,8 +84,8 @@ static unsigned int sleep(unsigned int msec)
 #define STMN_C2H_BUF_8192 8192
 #define STMN_C2H_BUF_16384 16384
 
-static const unsigned short stmn_enabled_device_id[] = { 0x903f, 0x6aa0,
-							 0x7002, 0x5016 };
+static const unsigned short stmn_enabled_device_id[] = { 0x903f, 0x6aa0, 0x5016,
+							 0x7002 };
 
 const struct stmn_reg_offset stmn_regs = { 0x00000100, 0x00000140, 0x00000180,
 					   0x00000200, 0x00000280, 0x00000310,
@@ -336,10 +336,12 @@ int stmn_deinitialize(void *dev_hndl, struct stmn_dev *stmn)
 /******************************************************************************/
 int stmn_snap_stats(void *dev_hndl)
 {
-	uint32_t reg, counter = 0;
 #ifdef STMN_TEST_US
+	(void) dev_hndl;
 	return STMN_SUCCESS;
-#endif
+#else
+	uint32_t reg, counter = 0;
+
 	reg = stmn_reg_read(dev_hndl, STMN_REG_SNAP);
 	reg |= 0x1;
 	stmn_reg_write(dev_hndl, STMN_REG_SNAP, reg);
@@ -357,6 +359,7 @@ int stmn_snap_stats(void *dev_hndl)
 		return -STMN_FAILURE;
 
 	return STMN_SUCCESS;
+#endif
 }
 
 int stmn_get_stats(void *dev_hndl, struct stmn_stats *stats)
@@ -501,7 +504,7 @@ int stmn_print_fifo_level_msg(void *dev_hndl, char *buf, int len)
 	reg_val = (uint32_t *)&fifo;
 	num_entry = sizeof(struct stmn_fifo_fill_level) / sizeof(uint32_t);
 	snprintf(buf + strlen(buf), len - strlen(buf), "%s",
-		 "STMN_FIFO_FILL_LEVEL\n");
+		 "FIFO_MAX_FILL_LEVEL\n");
 	for (i = 0; i < num_entry; i++)
 		snprintf(buf + strlen(buf), len - strlen(buf), "  %-30s %d\n",
 			 stmn_reg_name_fifo_fill[i], *(reg_val + i));
@@ -521,7 +524,7 @@ int stmn_print_dsc_minmax_msg(void *dev_hndl, char *buf, int len)
 	reg_val = (uint32_t *)&desc_minmax;
 	num_entry = sizeof(struct stmn_dsc_sts_min_max) / sizeof(uint32_t);
 	snprintf(buf + strlen(buf), len - strlen(buf), "%s",
-		 "STMN_DSC_MIN_MAX\n");
+		 "TM_DSC_MIN_MAX\n");
 	for (i = 0; i < num_entry; i++)
 		snprintf(buf + strlen(buf), len - strlen(buf), "  %-30s %d\n",
 			 stmn_reg_name_dscsts_minmax[i], *(reg_val + i));
@@ -615,10 +618,14 @@ int stmn_print_error_msg(void *dev_hndl, char *buf, int len)
 static int stmn_trigger_ram_read(void *dev_hndl, uint16_t qid,
 				 uint32_t reg_offst)
 {
-	uint32_t reg, counter = 0;
 #ifdef STMN_TEST_US
+	(void) dev_hndl;
+	(void) qid;
+	(void) reg_offst;
 	return STMN_SUCCESS;
-#endif
+#else
+	uint32_t reg, counter = 0;
+
 	/* write Queue id for status*/
 	reg = stmn_reg_read(dev_hndl, reg_offst);
 	reg = (reg & ~(STMN_RAM_READ_QID_MASK)) | qid;
@@ -646,6 +653,7 @@ static int stmn_trigger_ram_read(void *dev_hndl, uint16_t qid,
 	}
 
 	return STMN_SUCCESS;
+#endif
 }
 
 int stmn_get_ctrl_ram_status(void *dev_hndl, uint16_t qid,
@@ -671,20 +679,20 @@ int stmn_get_ctrl_ram_status(void *dev_hndl, uint16_t qid,
 }
 
 static void stmn_prn_sts_ram(struct stmn_sts_ram_val *ram, char *buf, int len,
-			     const char *msg, uint16_t qid)
+			     uint16_t qid)
 {
 	snprintf(buf + strlen(buf), len - strlen(buf),
-		 "%-16s: qid:%d qen:%d byp:%d init:%d irq_arm:%d rst:%d err:%d mm:%d dsc_avl:0x%x\n",
-		 msg, qid, ram->qen, ram->byp, ram->init, ram->irq_arm,
-		 ram->rst, ram->err, ram->mm, ram->dsc_avl);
+		 "%d %d %d %d %d %d %d %d 0x%x 0x%x\n",
+		 qid, ram->qen, ram->byp, ram->init, ram->irq_arm,
+		 ram->rst, ram->err, ram->mm, ram->sts_avl, ram->dsc_avl);
 }
 
 static void stmn_prn_str_ram(struct stmn_store_ram_val *ram, char *buf, int len,
-			const char *msg, uint16_t qid)
+			uint16_t qid)
 {
 	snprintf(buf + strlen(buf), len - strlen(buf),
-		 "%-16s: qid:%d en:%d err:%d rst:%d in_arb:%d ptr1:%d ptr2:%d\n",
-		 msg, qid, ram->en, ram->err, ram->rst, ram->in_arb,
+		 "%d %d %d %d %d %d %d\n",
+		 qid, ram->en, ram->err, ram->rst, ram->in_arb,
 		 ram->rd_ptr, ram->wr_ptr);
 }
 int stmn_print_ram_status_msg(void *dev_hndl, char *buf, int len, int tx_numq,
@@ -707,22 +715,39 @@ int stmn_print_ram_status_msg(void *dev_hndl, char *buf, int len, int tx_numq,
 		snprintf(buf + strlen(buf), len - strlen(buf), "%-30s 0x%x\n",
 			 stmn_reg_name_idle_status[i], *(reg_val + i));
 
-	for (i = qbase; i < rx_numq + qbase; i++) {
-		ret = stmn_get_ctrl_ram_status(dev_hndl, i, &ram);
-		stmn_fail_check(ret, "stmn_get_ctrl_ram_status");
-		stmn_prn_sts_ram(&ram.c2h_dsc, buf, len, "C2H Desc RAM", i);
-		stmn_prn_str_ram(&ram.c2h_wr, buf, len, "C2H Desc Wr RAM", i);
-		stmn_prn_str_ram(&ram.c2h_rd, buf, len, "C2H Desc Rd RAM", i);
-		memset(&ram, 0, sizeof(struct stmn_ctrl_ram_status));
-	}
-	for (i = qbase; i < tx_numq + qbase; i++) {
-		ret = stmn_get_ctrl_ram_status(dev_hndl, i, &ram);
-		stmn_fail_check(ret, "stmn_get_ctrl_ram_status");
-		stmn_prn_sts_ram(&ram.h2c_dsc, buf, len, "H2C Desc RAM", i);
-		stmn_prn_str_ram(&ram.h2c_wr, buf, len, "H2C Desc Wr RAM", i);
-		stmn_prn_str_ram(&ram.h2c_rd, buf, len, "H2C Desc Rd RAM", i);
-		memset(&ram, 0, sizeof(struct stmn_ctrl_ram_status));
-	}
+	memset(&ram, 0, sizeof(struct stmn_ctrl_ram_status));
+	ret = stmn_get_ctrl_ram_status(dev_hndl, i, &ram);
+	stmn_fail_check(ret, "stmn_get_ctrl_ram_status");
+
+	snprintf(buf + strlen(buf), len - strlen(buf),
+			 "qid qen byp init irq_arm rst err mm sts_avl dsc_avl\n");
+
+	snprintf(buf + strlen(buf), len - strlen(buf), "C2H TM STS RAM\n");
+	for (i = qbase; i < rx_numq + qbase; i++)
+		stmn_prn_sts_ram(&ram.c2h_dsc, buf, len, i);
+
+	snprintf(buf + strlen(buf), len - strlen(buf), "H2C TM STS RAM\n");
+	for (i = qbase; i < tx_numq + qbase; i++)
+		stmn_prn_sts_ram(&ram.h2c_dsc, buf, len, i);
+
+	snprintf(buf + strlen(buf), len - strlen(buf),
+			 "qid qen err rst in_arb ptr1 ptr2\n");
+
+	snprintf(buf + strlen(buf), len - strlen(buf), "C2H Desc Wr RAM\n");
+	for (i = qbase; i < rx_numq + qbase; i++)
+		stmn_prn_str_ram(&ram.c2h_wr, buf, len, i);
+
+	snprintf(buf + strlen(buf), len - strlen(buf), "C2H Desc Rd RAM\n");
+	for (i = qbase; i < rx_numq + qbase; i++)
+		stmn_prn_str_ram(&ram.c2h_rd, buf, len, i);
+
+	snprintf(buf + strlen(buf), len - strlen(buf), "H2C Desc Wr RAM\n");
+	for (i = qbase; i < tx_numq + qbase; i++)
+		stmn_prn_str_ram(&ram.h2c_wr, buf, len, i);
+
+	snprintf(buf + strlen(buf), len - strlen(buf), "H2C Desc Rd RAM\n");
+	for (i = qbase; i < tx_numq + qbase; i++)
+		stmn_prn_str_ram(&ram.h2c_rd, buf, len, i);
 
 	return STMN_SUCCESS;
 }

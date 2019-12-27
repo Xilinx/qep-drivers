@@ -35,6 +35,7 @@
 
 #define QEP_USER_H2C_CONV_RST		0x00000028
 #define QEP_USER_C2H_CONV_RST		0x0000002C
+#define QEP_USER_RSS_OFFSET		0x00300000
 
 #endif /* ifndef __QEP_USER_REGS___ */
 

@@ -33,8 +33,8 @@ static unsigned int thread_cnt;
 /** completion status threads */
 static struct qdma_kthread *cs_threads;
 
-spinlock_t	qcnt_lock;
-unsigned int cpu_count;
+static spinlock_t	qcnt_lock;
+static unsigned int cpu_count;
 static unsigned int *per_cpu_qcnt;
 
 /* ********************* static function declarations *********************** */

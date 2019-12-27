@@ -49,7 +49,7 @@ struct qdma_q_desc_list {
  *
  *****************************************************************************/
 int qdma_sgl_find_offset(struct qdma_request *req, struct qdma_sw_sg **sg_p,
-				unsigned int *sg_offset);
+		unsigned int *sg_offset);
 
 /*****************************************************************************/
 /**
@@ -64,10 +64,10 @@ int qdma_sgl_find_offset(struct qdma_request *req, struct qdma_sw_sg **sg_p,
  *
  *****************************************************************************/
 void qdma_update_request(void *q_hndl, struct qdma_request *req,
-			unsigned int num_desc,
-			unsigned int data_cnt,
-			unsigned int sg_offset,
-			void *sg);
+		unsigned int num_desc,
+		unsigned int data_cnt,
+		unsigned int sg_offset,
+		void *sg);
 
 /*****************************************************************************/
 /**
@@ -82,12 +82,12 @@ void qdma_update_request(void *q_hndl, struct qdma_request *req,
  *
  *****************************************************************************/
 int qdma_q_desc_get(void *q_hndl, const unsigned int desc_cnt,
-		    struct qdma_q_desc_list **desc_list);
+		struct qdma_q_desc_list **desc_list);
 
 /*****************************************************************************/
 /**
- * qdma_q_init_pointers() - update the pidx/cidx pointers of the q specified by
- * 			    @q_hndl
+ * qdma_q_init_pointers() - update the pidx/cidx pointers of the q specified
+ *				by @q_hndl
  *
  * @q_hndl: handle to the q with which bypass module can request descriptors
  *

@@ -33,6 +33,14 @@
 #include "xcmac.h"
 #include "xcmac_rsfec.h"
 
+/** Function macro to check if the argument is NULL */
+#define is_null(arg)                                                           \
+	do { if (!(arg))                                                       \
+		return -EINVAL; } while (0)
+
+/**< Number of bits in a WORD */
+#define NUM_WORD_BITS 32
+
 static uint64_t xcmac_read_64bit_value(struct xcmac *instance, uint32_t offset);
 
 /*****************************************************************************/

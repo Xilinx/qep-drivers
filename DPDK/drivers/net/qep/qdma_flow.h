@@ -33,6 +33,8 @@
 #ifndef __QDMA_FLOW_H__
 #define __QDMA_FLOW_H__
 
+extern const struct rte_flow_ops qep_flow_ops;
+
 #define DMA_C2H_BASE_ADDR                0x00050000
 #define DMA_CLCR_BASE_OFFSET             0x00000010
 #define DMA_CLCR2_OFFSET		(0x00000014)
@@ -42,6 +44,29 @@
 #define QEP_RX_MODE_RR 1
 #define QEP_RX_MODE_TCAM 2
 #define RX_START_QUEUE_RR 0
+
+#define QEP_RSS_FLOW_TYPE ( \
+		ETH_RSS_IPV4 | \
+		ETH_RSS_NONFRAG_IPV4_TCP | \
+		ETH_RSS_NONFRAG_IPV4_UDP | \
+		ETH_RSS_IPV6 | \
+		ETH_RSS_NONFRAG_IPV6_TCP | \
+		ETH_RSS_NONFRAG_IPV6_UDP)
+#define QEP_RSS_TBL_SIZE (256)
+#define QEP_RSS_HKEY_SIZE (40)
+#define QEP_RSS_TBL_ENT_MASK 0x7ff
+struct qep_rss_info {
+	uint32_t rss_tbl[QEP_RSS_TBL_SIZE];
+};
+
+struct rte_flow {
+	uint32_t rss;
+	struct qep_rss_info rssinfo;
+	TAILQ_ENTRY(rte_flow) entries;	/* flow list entries */
+};
+TAILQ_HEAD(qep_flow_list, rte_flow);
+
 void qep_set_rx_mode(struct rte_eth_dev *dev, uint32_t mode);
+
 
 #endif /* ifndef __QDMA_FLOW_H__ */

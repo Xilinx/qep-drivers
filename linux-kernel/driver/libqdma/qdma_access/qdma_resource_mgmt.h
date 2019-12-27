@@ -30,18 +30,6 @@ extern "C" {
 #include "qdma_platform_env.h"
 
 /**
- * Error codes
- */
-#define QDMA_RESOURCE_MGMT_SUCCESS             (0)
-#define QDMA_RESOURCE_MGMT_MEMALLOC_FAIL       (1)
-#define QDMA_MASTER_RESOURCE_ALREADY_EXISTS    (2)
-#define QDMA_MASTER_RESOURCE_DOES_NOT_EXIST    (3)
-#define QDMA_DEV_ALREADY_EXISTS                (4)
-#define QDMA_DEV_DOES_NOT_EXIST                (5)
-#define QDMA_RESOURCE_NOT_ENOUGH_QUEUE         (6)
-#define QDMA_QMAX_PROG_FREEZE                  (7)
-
-/**
  * enum qdma_dev_q_range: Q ranage check
  */
 enum qdma_dev_q_range {
@@ -61,6 +49,8 @@ enum qdma_dev_q_type {
 	QDMA_DEV_Q_TYPE_H2C,
 	/** @QDMA_DEV_Q_TYPE_C2H: C2H Q */
 	QDMA_DEV_Q_TYPE_C2H,
+	/** @QDMA_DEV_Q_TYPE_CMPT: CMPT Q */
+	QDMA_DEV_Q_TYPE_CMPT,
 	/** @QDMA_DEV_Q_TYPE_MAX: Total Q types */
 	QDMA_DEV_Q_TYPE_MAX
 };
@@ -179,7 +169,7 @@ enum qdma_dev_q_range qdma_dev_is_queue_in_range(uint32_t pci_bus_num,
  * Return:	0  : success and < 0: failure
  *****************************************************************************/
 int qdma_dev_increment_active_queue(uint32_t pci_bus_num, uint32_t func_id,
-				    enum qdma_dev_q_type q_type);
+				    enum qdma_dev_q_type q_typ);
 
 /*****************************************************************************/
 /**
@@ -187,7 +177,7 @@ int qdma_dev_increment_active_queue(uint32_t pci_bus_num, uint32_t func_id,
  *
  * @pci_bus_num:  pci bus number
  * @func_id:     device identification id
- * @q_type: direction of q
+ * @q_type: direction of queue
  *
  * This API is used to increment the active queue count of this function
  *
@@ -214,15 +204,15 @@ uint32_t qdma_get_active_queue_count(uint32_t pci_bus_numd);
  *
  * @pci_bus_num:  pci bus number
  * @func_id:     device identification id
- * @q_type: direction of q
+ * @q_type: direction of queue
  *
  * This API is used to get the active queue count of this function
  *
  * Return:	0  : success and < 0: failure
  *****************************************************************************/
-uint32_t qdma_get_device_active_queue_count(uint32_t pci_bus_num,
-						uint32_t func_id,
-						enum qdma_dev_q_type q_type);
+int qdma_get_device_active_queue_count(uint32_t pci_bus_num,
+					uint32_t func_id,
+					enum qdma_dev_q_type q_type);
 
 #ifdef __cplusplus
 }

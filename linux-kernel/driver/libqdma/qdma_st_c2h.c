@@ -73,7 +73,7 @@ static inline int flq_fill_one(struct qdma_sw_sg *sdesc,
 
 	pg = alloc_pages_node(node, __GFP_COMP | gfp, pg_order);
 	if (unlikely(!pg)) {
-		pr_info("OOM, order %d.\n", pg_order);
+		pr_info("failed to allocate the pages, order %d.\n", pg_order);
 		return -ENOMEM;
 	}
 
@@ -154,8 +154,7 @@ int descq_flq_alloc_resource(struct qdma_descq *descq)
 	sprev->next = flq->sdesc_info;
 
 	for (sdesc = flq->sdesc, i = 0; i < flq->size; i++, sdesc++, desc++) {
-		rv = flq_fill_one(sdesc, desc, dev, node,
-				  descq->conf.c2h_bufsz,
+		rv = flq_fill_one(sdesc, desc, dev, node, descq->conf.c2h_bufsz,
 				  flq->pg_order, GFP_KERNEL);
 		if (rv < 0) {
 			descq_flq_free_resource(descq);
@@ -241,7 +240,7 @@ int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 		return 0;
 
 	if (cb->sg_idx) {
-		for ( ; tsg && j < cb->sg_idx; j++)
+		for (; tsg && j < cb->sg_idx; j++)
 			tsg = tsg->next;
 
 		if (!tsg) {
@@ -302,8 +301,8 @@ int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 		i = ring_idx_decr(flq->pidx_pend, 1, flq->size);
 		descq->pidx_info.pidx = i;
 		rv = queue_pidx_update(descq->xdev, descq->conf.qidx,
-				descq->conf.c2h, &descq->pidx_info);
-		if (rv < 0) {
+				descq->conf.q_type, &descq->pidx_info);
+		if (unlikely(rv < 0)) {
 			pr_err("%s: Failed to update pidx\n",
 					descq->conf.name);
 			return -EINVAL;
@@ -429,7 +428,7 @@ static int rcv_pkt(struct qdma_descq *descq, struct qdma_ul_cmpt_info *cmpl,
 		int rv = descq->conf.fp_descq_c2h_packet(descq->q_hndl,
 				descq->conf.quld, len, fl_nr, flq->sdesc + pidx,
 				descq->conf.cmpl_udd_en ?
-					(unsigned char *)cmpl->entry : NULL);
+				(unsigned char *)cmpl->entry : NULL);
 
 		if (rv < 0)
 			return rv;
@@ -504,8 +503,8 @@ static void descq_adjust_c2h_cntr_avgs(struct qdma_descq *descq)
 	uint8_t latecy_optimized = descq->conf.latency_optimize;
 
 	descq->c2h_pend_pkt_moving_avg =
-			csr_info->c2h_timer_cnt[descq->
-					    cmpt_cidx_info.counter_idx];
+		csr_info->c2h_cnt_th[descq->cmpt_cidx_info.counter_idx];
+
 	if (descq->sorted_c2h_cntr_idx == (QDMA_GLOBAL_CSR_ARRAY_SZ - 1))
 		i = xdev->sorted_c2h_cntr_idx[descq->sorted_c2h_cntr_idx];
 	else
@@ -519,7 +518,7 @@ static void descq_adjust_c2h_cntr_avgs(struct qdma_descq *descq)
 				(descq->c2h_pend_pkt_moving_avg +
 						csr_info->c2h_cnt_th[i]);
 
-	if (descq->sorted_c2h_cntr_idx > 0) /* this is the least possible value */
+	if (descq->sorted_c2h_cntr_idx > 0)
 		i = xdev->sorted_c2h_cntr_idx[descq->sorted_c2h_cntr_idx - 1];
 	else
 		i = xdev->sorted_c2h_cntr_idx[descq->sorted_c2h_cntr_idx];
@@ -534,7 +533,9 @@ static void descq_adjust_c2h_cntr_avgs(struct qdma_descq *descq)
 	descq->c2h_pend_pkt_avg_thr_hi >>= 1;
 	descq->c2h_pend_pkt_avg_thr_lo >>= 1;
 	pr_debug("q%u: c2h_cntr_idx =  %u %u %u", descq->conf.qidx,
-		descq->cmpt_cidx_info.counter_idx, descq->c2h_pend_pkt_avg_thr_lo, descq->c2h_pend_pkt_avg_thr_hi);
+		descq->cmpt_cidx_info.counter_idx,
+		descq->c2h_pend_pkt_avg_thr_lo,
+		descq->c2h_pend_pkt_avg_thr_hi);
 }
 
 void descq_incr_c2h_cntr_th(struct qdma_descq *descq)
@@ -553,10 +554,11 @@ void descq_incr_c2h_cntr_th(struct qdma_descq *descq)
 	i++;
 	c2h_cntr_idx = descq->xdev->sorted_c2h_cntr_idx[i];
 	c2h_cntr_val_new = descq->xdev->csr_info.c2h_cnt_th[c2h_cntr_idx];
+
 	if ((c2h_cntr_val_new >= descq->c2h_pend_pkt_moving_avg) &&
-			(c2h_cntr_val_new - descq->c2h_pend_pkt_moving_avg) >=
-			(descq->c2h_pend_pkt_moving_avg - c2h_cntr_val_curr))
-			return; /* choosing the closest */
+		(c2h_cntr_val_new - descq->c2h_pend_pkt_moving_avg) >=
+		(descq->c2h_pend_pkt_moving_avg - c2h_cntr_val_curr))
+		return; /* choosing the closest */
 	/* do not allow c2h c2ntr value go beyond half of cmpt rng sz*/
 	if (c2h_cntr_val_new < (descq->conf.rngsz >> 1)) {
 		descq->cmpt_cidx_info.counter_idx = c2h_cntr_idx;
@@ -579,17 +581,24 @@ void descq_decr_c2h_cntr_th(struct qdma_descq *descq, unsigned int budget)
 	c2h_cntr_val_curr = descq->xdev->csr_info.c2h_cnt_th[c2h_cntr_idx];
 	i--;
 	c2h_cntr_idx = descq->xdev->sorted_c2h_cntr_idx[i];
-	c2h_cntr_val_new = descq->xdev->csr_info.c2h_cnt_th[c2h_cntr_idx];
-	if ((c2h_cntr_val_new <= descq->c2h_pend_pkt_moving_avg) &&
-			(descq->c2h_pend_pkt_moving_avg - c2h_cntr_val_new) >=
-			(c2h_cntr_val_curr - descq->c2h_pend_pkt_moving_avg))
-			return; /* choosing the closest */
 
+	c2h_cntr_val_new = descq->xdev->csr_info.c2h_cnt_th[c2h_cntr_idx];
+
+	if ((c2h_cntr_val_new <= descq->c2h_pend_pkt_moving_avg) &&
+		(descq->c2h_pend_pkt_moving_avg - c2h_cntr_val_new) >=
+		(c2h_cntr_val_curr - descq->c2h_pend_pkt_moving_avg))
+		return; /* choosing the closest */
+
+	/* for better performance we do not allow c2h_cnt
+	 * val below budget unless latency optimized
+	 * '-2' is SW work around for HW bug
+	 */
 	if (!descq->conf.latency_optimize &&
-			(c2h_cntr_val_new < (budget - 2))) /* '-2' is SW work around for HW bug */
-		return;	/* for better performance we do not allow c2h_cnt
-				val below budget unless latency optimized  */
+			(c2h_cntr_val_new < (budget - 2)))
+		return;
+
 	descq->cmpt_cidx_info.counter_idx = c2h_cntr_idx;
+
 	descq->sorted_c2h_cntr_idx = i;
 	descq_adjust_c2h_cntr_avgs(descq);
 }
@@ -598,12 +607,13 @@ void descq_decr_c2h_cntr_th(struct qdma_descq *descq, unsigned int budget)
 #define MAX_C2H_CNTR_STAGNANT_CNT 16
 
 static void descq_adjust_c2h_cntr_th(struct qdma_descq *descq,
-				     unsigned int pend, unsigned int budget)
+					 unsigned int pend, unsigned int budget)
 {
 	descq->c2h_pend_pkt_moving_avg += pend;
 	descq->c2h_pend_pkt_moving_avg >>= 1; /* average */
 	/* if avg > hi_th, increase the counter
-	 * if avg < lo_th, decrease the counter */
+	 * if avg < lo_th, decrease the counter
+	 */
 	if (descq->c2h_pend_pkt_avg_thr_hi <= descq->c2h_pend_pkt_moving_avg)
 		descq_incr_c2h_cntr_th(descq);
 	else if (descq->c2h_pend_pkt_avg_thr_lo >=
@@ -612,11 +622,10 @@ static void descq_adjust_c2h_cntr_th(struct qdma_descq *descq,
 	else {
 		descq->c2h_cntr_monitor_cnt++;
 		if (descq->c2h_cntr_monitor_cnt == MAX_C2H_CNTR_STAGNANT_CNT) {
-			pr_debug("correcting course at cntr %u", descq->xdev->csr_info.c2h_cnt_th[descq->
-							    cmpt_cidx_info.counter_idx]);
 			/* go down on counter value to see if we actually are
-			 * increasing latency by setting higher counter
-			 * threshold */
+			 * increasing latency by setting
+			 * higher counter threshold
+			 */
 			descq_decr_c2h_cntr_th(descq, budget);
 			descq->c2h_cntr_monitor_cnt = 0;
 		} else
@@ -684,11 +693,10 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 	/* once an error happens, stop processing of the Q */
 	if (descq->err) {
 		pr_info("%s: err.\n", descq->conf.name);
-		return -EIO;
+		return 0;
 	}
 
 	dma_rmb();
-
 	pend = ring_idx_delta(pidx_cmpt, cidx_cmpt, rngsz_cmpt);
 	if (!pend) {
 		/* SW work around where next interrupt could be missed when
@@ -698,13 +706,13 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 			rv = queue_cmpt_cidx_update(descq->xdev,
 					descq->conf.qidx,
 					&descq->cmpt_cidx_info);
-			if (rv < 0) {
+			if (unlikely(rv < 0))  {
 				pr_err("%s: Failed to update cmpt cidx\n",
 						descq->conf.name);
-				return rv;
+				return -EINVAL;
 			}
 		}
-		return -EAGAIN;
+		return 0;
 	}
 
 #if 0
@@ -716,7 +724,7 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 		(cs->color_isr_status >> 1) & 0x3);
 #endif
 
-	flq->pkt_cnt = 0;
+	flq->pkt_cnt = pend;
 
 	if (!budget || budget > pend)
 		budget = pend;
@@ -760,37 +768,44 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 	}
 	if (rv < 0)
 		return rv;
+
+	flq->pkt_cnt -= proc_cnt;
+
 	if ((xdev->conf.intr_moderation) &&
 			(descq->cmpt_cidx_info.trig_mode ==
 					TRIG_MODE_COMBO)) {
 		pend = ring_idx_delta(cs->pidx, descq->cidx_cmpt, rngsz_cmpt);
 		flq->pkt_cnt = pend;
+
 		/* we dont need interrupt if packets available for next read */
-		if (read_weight && (flq->pkt_cnt > read_weight)) /* pkt_cnt >= proc_cnt will kill the logic*/
+		if (read_weight && (flq->pkt_cnt > read_weight))
 			descq->cmpt_cidx_info.irq_en = 0;
 		else
 			descq->cmpt_cidx_info.irq_en = 1;
+
+		/* if we use just then at right value of c2h_cntr
+		 * the average goes down as there
+		 * will not be many pend packet.
+		 */
 		if (descq->conf.adaptive_rx)
 			descq_adjust_c2h_cntr_th(descq, pend + proc_cnt,
-						 read_weight); /*if we use just
-						 then at right value of c2h_cntr
-						 the average goes down as there
-						 will not be many pend packet.
-						 */
+						 read_weight);
 	}
+
 	if (proc_cnt) {
 		descq->pidx_cmpt = pidx_cmpt;
 		descq->pidx = pidx;
 		descq->cmpt_cidx_info.wrb_cidx = descq->cidx_cmpt;
-		rv = queue_cmpt_cidx_update(descq->xdev,
+		if (!descq->conf.fp_descq_c2h_packet) {
+			rv = queue_cmpt_cidx_update(descq->xdev,
 				descq->conf.qidx, &descq->cmpt_cidx_info);
-		if (rv < 0) {
-			pr_err("%s: Failed to update cmpt cidx\n",
-					descq->conf.name);
-			return -EINVAL;
-		}
-		if (!descq->conf.fp_descq_c2h_packet)
+			if (unlikely(rv < 0)) {
+				pr_err("%s: Failed to update cmpt cidx\n",
+						descq->conf.name);
+				return -EINVAL;
+			}
 			qdma_c2h_packets_proc_dflt(descq);
+		}
 
 		flq->pkt_cnt = ring_idx_delta(cs->pidx, descq->cidx_cmpt,
 					      rngsz_cmpt);
@@ -806,14 +821,16 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 				pend = ring_idx_decr(flq->pidx_pend, 1,
 						     flq->size);
 				descq->pidx_info.pidx = pend;
-				ret = queue_pidx_update(descq->xdev,
-						descq->conf.qidx,
-						descq->conf.c2h,
-						&descq->pidx_info);
-				if (ret < 0) {
-					pr_err("%s: Failed to update pidx\n",
+				if (!descq->conf.fp_descq_c2h_packet) {
+					ret = queue_pidx_update(descq->xdev,
+							descq->conf.qidx,
+							descq->conf.q_type,
+							&descq->pidx_info);
+					if (unlikely(ret < 0))  {
+						pr_err("%s: Failed to update pidx\n",
 							descq->conf.name);
-					return -EINVAL;
+						return -EINVAL;
+					}
 				}
 			}
 		}
@@ -826,13 +843,26 @@ int qdma_queue_c2h_peek(unsigned long dev_hndl, unsigned long id,
 			unsigned int *udd_cnt, unsigned int *pkt_cnt,
 			unsigned int *data_len)
 {
-	struct qdma_descq *descq = qdma_device_get_descq_by_id(
-					(struct xlnx_dma_dev *)dev_hndl,
-					id, NULL, 0, 0);
+	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
+	struct qdma_descq *descq;
 	struct qdma_flq *flq;
 
-	if (!descq)
-		return QDMA_ERR_INVALID_QIDX;
+	/** make sure that the dev_hndl passed is Valid */
+	if (!xdev) {
+		pr_err("dev_hndl is NULL");
+		return -EINVAL;
+	}
+
+	if (xdev_check_hndl(__func__, xdev->conf.pdev, dev_hndl) < 0) {
+		pr_err("Invalid dev_hndl passed");
+		return -EINVAL;
+	}
+
+	descq = qdma_device_get_descq_by_id(xdev, id, NULL, 0, 0);
+	if (!descq) {
+		pr_err("Invalid qid(%ld)", id);
+		return -EINVAL;
+	}
 
 	flq = (struct qdma_flq *)descq->flq;
 	*udd_cnt = flq->udd_cnt;
@@ -845,18 +875,65 @@ int qdma_queue_c2h_peek(unsigned long dev_hndl, unsigned long id,
 int qdma_queue_packet_read(unsigned long dev_hndl, unsigned long id,
 			struct qdma_request *req, struct qdma_cmpl_ctrl *cctrl)
 {
-	struct qdma_descq *descq = qdma_device_get_descq_by_id(
-					(struct xlnx_dma_dev *)dev_hndl,
-					id, NULL, 0, 1);
+	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
+	struct qdma_descq *descq;
 	struct qdma_sgt_req_cb *cb = qdma_req_cb_get(req);
+	int rv = 0;
 
-	if (!descq)
-		return QDMA_ERR_INVALID_QIDX;
-
-	if (!descq->conf.st || !descq->conf.c2h) {
-		pr_info("%s: st %d, c2h %d.\n",
-			descq->conf.name, descq->conf.st, descq->conf.c2h);
+	/** make sure that the dev_hndl passed is Valid */
+	if (!xdev) {
+		pr_err("dev_hndl is NULL");
 		return -EINVAL;
+	}
+
+	if (xdev_check_hndl(__func__, xdev->conf.pdev, dev_hndl) < 0) {
+		pr_err("Invalid dev_hndl passed");
+		return -EINVAL;
+	}
+
+	if (!req) {
+		pr_err("req is NULL");
+		return -EINVAL;
+	}
+
+	descq = qdma_device_get_descq_by_id(xdev, id, NULL, 0, 1);
+	if (!descq) {
+		pr_err("Invalid qid(%ld)", id);
+		return -EINVAL;
+	}
+
+	if (!descq->conf.st || (descq->conf.q_type != Q_C2H)) {
+		pr_info("%s: st %d, type %d.\n",
+			descq->conf.name, descq->conf.st, descq->conf.q_type);
+		return -EINVAL;
+	}
+
+	if (cctrl) {
+		lock_descq(descq);
+
+		descq->cmpt_cidx_info.trig_mode =
+			descq->conf.cmpl_trig_mode = cctrl->trigger_mode;
+		descq->cmpt_cidx_info.timer_idx =
+			descq->conf.cmpl_timer_idx = cctrl->timer_idx;
+		descq->cmpt_cidx_info.counter_idx =
+			descq->conf.cmpl_cnt_th_idx = cctrl->cnt_th_idx;
+		descq->cmpt_cidx_info.irq_en =
+			descq->conf.cmpl_en_intr = cctrl->cmpl_en_intr;
+		descq->cmpt_cidx_info.wrb_en =
+			descq->conf.cmpl_stat_en = cctrl->en_stat_desc;
+
+		descq->cmpt_cidx_info.wrb_cidx = descq->cidx_cmpt;
+
+		rv = queue_cmpt_cidx_update(descq->xdev,
+				descq->conf.qidx, &descq->cmpt_cidx_info);
+		if (unlikely(rv < 0)) {
+			pr_err("%s: Failed to update cmpt cidx\n",
+					descq->conf.name);
+			unlock_descq(descq);
+			return -EINVAL;
+		}
+
+		unlock_descq(descq);
 	}
 
 	memset(cb, 0, QDMA_REQ_OPAQUE_SIZE);

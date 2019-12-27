@@ -179,6 +179,46 @@ static const struct rte_qdma_xstats_name rte_qdma_stmn_stats_str64[] = {
 #define QDMA_NB_STMN_XSTATS64 (sizeof(rte_qdma_stmn_stats_str64) / \
 		sizeof(rte_qdma_stmn_stats_str64[0]))
 
+void qep_init_reta(struct rte_eth_dev *dev, uint32_t offset)
+{
+	struct qdma_pci_dev *dma_priv;
+	uint32_t qval;
+	uint32_t i, addr;
+	uint32_t nrxq;
+
+	dma_priv = (struct qdma_pci_dev *)dev->data->dev_private;
+	nrxq = dev->data->nb_rx_queues;
+	for (i = 0; i < QEP_RSS_TBL_SIZE; i++) {
+		qval = offset + (i % nrxq);
+		addr = (QEP_BASE_OFFSET + QEP_USER_RSS_OFFSET + (i * 4));
+		qdma_write_reg((uint64_t)
+			       (dma_priv->bar_addr[dma_priv->user_bar_idx]) +
+			       addr, qval);
+	}
+
+	qep_set_rx_mode(dev, QEP_RX_MODE_TCAM);
+}
+
+void  qep_set_reta(struct rte_eth_dev *dev, uint32_t *rss_tbl)
+{
+	struct qdma_pci_dev *dma_priv;
+	uint32_t qval;
+	uint32_t i, addr;
+	uint32_t offset = 0;
+
+	dma_priv = (struct qdma_pci_dev *)dev->data->dev_private;
+
+	for (i = 0; i < QEP_RSS_TBL_SIZE; i++) {
+		qval = rss_tbl[i] + offset;
+		addr = (QEP_BASE_OFFSET + QEP_USER_RSS_OFFSET + (i * 4));
+		qdma_write_reg((uint64_t)
+			       (dma_priv->bar_addr[dma_priv->user_bar_idx]) +
+			       addr, qval);
+	}
+	qep_set_rx_mode(dev, QEP_RX_MODE_TCAM);
+
+}
+
 int qdma_vf_csr_read(struct rte_eth_dev *dev)
 {
 	struct qdma_pci_dev *qdma_dev = dev->data->dev_private;
@@ -189,7 +229,7 @@ int qdma_vf_csr_read(struct rte_eth_dev *dev)
 	if (!m)
 		return -ENOMEM;
 
-	qdma_mbox_compose_csr_read(qdma_dev->pf, m->raw_data);
+	qdma_mbox_compose_csr_read(qdma_dev->func_id, m->raw_data);
 	rv = qdma_mbox_msg_send(dev, m, MBOX_OP_RSP_TIMEOUT);
 	if (rv < 0)
 		goto free_msg;
@@ -214,36 +254,43 @@ int qdma_pf_csr_read(struct rte_eth_dev *dev)
 {
 	int ret = 0;
 	struct qdma_pci_dev *qdma_dev = dev->data->dev_private;
+	struct qdma_hw_access *hw_access = qdma_dev->hw_access;
 
-	ret = qdma_get_global_ring_sizes(dev, 0,
-		QDMA_NUM_RING_SIZES, qdma_dev->g_ring_sz);
+	ret = hw_access->qdma_global_csr_conf(dev, 0,
+				QDMA_NUM_RING_SIZES, qdma_dev->g_ring_sz,
+		QDMA_CSR_RING_SZ, QDMA_HW_ACCESS_READ);
 	if (ret != QDMA_SUCCESS)
-		PMD_DRV_LOG(ERR, "qdma_get_global_ring_sizes "
+		PMD_DRV_LOG(ERR, "qdma_global_csr_conf for ring size "
 				  "returned %d", ret);
 	if (qdma_dev->dev_cap.st_en || qdma_dev->dev_cap.mm_cmpt_en) {
-		ret = qdma_get_global_timer_count(dev, 0,
-			QDMA_NUM_C2H_TIMERS, qdma_dev->g_c2h_timer_cnt);
+		ret = hw_access->qdma_global_csr_conf(dev, 0,
+				QDMA_NUM_C2H_TIMERS, qdma_dev->g_c2h_timer_cnt,
+		QDMA_CSR_TIMER_CNT, QDMA_HW_ACCESS_READ);
 		if (ret != QDMA_SUCCESS)
-			PMD_DRV_LOG(ERR, "qdma_get_global_timer_count "
+			PMD_DRV_LOG(ERR, "qdma_global_csr_conf for timer count "
 					  "returned %d", ret);
 
-		ret = qdma_get_global_counter_threshold(dev, 0,
-			QDMA_NUM_C2H_COUNTERS, qdma_dev->g_c2h_cnt_th);
+		ret = hw_access->qdma_global_csr_conf(dev, 0,
+				QDMA_NUM_C2H_COUNTERS, qdma_dev->g_c2h_cnt_th,
+		QDMA_CSR_CNT_TH, QDMA_HW_ACCESS_READ);
 		if (ret != QDMA_SUCCESS)
-			PMD_DRV_LOG(ERR, "qdma_get_global_counter_threshold "
+			PMD_DRV_LOG(ERR, "qdma_global_csr_conf for counter threshold "
 					  "returned %d", ret);
+
 	}
 
 	if (qdma_dev->dev_cap.st_en) {
-		ret = qdma_get_global_buffer_sizes(dev, 0,
-						    QDMA_NUM_C2H_BUFFER_SIZES,
-						    qdma_dev->g_c2h_buf_sz);
+		ret = hw_access->qdma_global_csr_conf(dev, 0,
+				QDMA_NUM_C2H_BUFFER_SIZES,
+				qdma_dev->g_c2h_buf_sz,
+				QDMA_CSR_BUF_SZ,
+				QDMA_HW_ACCESS_READ);
 		if (ret != QDMA_SUCCESS)
-			PMD_DRV_LOG(ERR, "qdma_get_global_buffer_sizes "
-					"returned %d", ret);
+			PMD_DRV_LOG(ERR, "qdma_global_csr_conf for buffer sizes "
+					  "returned %d", ret);
 	}
 
-	return ret;
+	return qdma_dev->hw_access->qdma_get_error_code(ret);
 }
 
 static int qdma_pf_fmap_prog(struct rte_eth_dev *dev)
@@ -257,9 +304,10 @@ static int qdma_pf_fmap_prog(struct rte_eth_dev *dev)
 	/** FMAP configuration **/
 	fmap_cfg.qbase = qdma_dev->queue_base;
 	fmap_cfg.qmax = qdma_dev->qsets_en;
-	ret = qdma_fmap_write(dev, qdma_dev->pf, &fmap_cfg);
+	ret = qdma_dev->hw_access->qdma_fmap_conf(dev,
+			qdma_dev->func_id, &fmap_cfg, QDMA_HW_ACCESS_WRITE);
 	if (ret != QDMA_SUCCESS)
-		return -1;
+		return qdma_dev->hw_access->qdma_get_error_code(ret);
 
 	return ret;
 }
@@ -275,8 +323,8 @@ int qdma_dev_notify_qadd(struct rte_eth_dev *dev, uint32_t qidx_hw,
 	if (!m)
 		return -ENOMEM;
 
-	qdma_mbox_compose_vf_notify_qadd(qdma_dev->pf, qidx_hw, q_type,
-					 m->raw_data);
+	qdma_mbox_compose_vf_notify_qadd(qdma_dev->func_id, qidx_hw,
+					q_type, m->raw_data);
 	rv = qdma_mbox_msg_send(dev, m, MBOX_OP_RSP_TIMEOUT);
 
 	qdma_mbox_msg_free(m);
@@ -294,8 +342,8 @@ int qdma_dev_notify_qdel(struct rte_eth_dev *dev, uint32_t qidx_hw,
 	if (!m)
 		return -ENOMEM;
 
-	qdma_mbox_compose_vf_notify_qdel(qdma_dev->pf, qidx_hw, q_type,
-					 m->raw_data);
+	qdma_mbox_compose_vf_notify_qdel(qdma_dev->func_id, qidx_hw,
+					q_type, m->raw_data);
 	rv = qdma_mbox_msg_send(dev, m, MBOX_OP_RSP_TIMEOUT);
 
 	qdma_mbox_msg_free(m);
@@ -351,11 +399,10 @@ int qdma_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 {
 	struct qdma_pci_dev *qdma_dev = dev->data->dev_private;
 	struct qdma_rx_queue *rxq = NULL;
-	struct qdma_mm_desc *rx_ring_mm;
+	struct qdma_ul_mm_desc *rx_ring_mm;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	uint32_t sz;
 	uint8_t  *rx_ring_bypass;
-	int bypass_desc_sz_idx;
 	int err = 0;
 
 	PMD_DRV_LOG(INFO, "Configuring Rx queue id:%d\n", rx_queue_id);
@@ -365,18 +412,54 @@ int qdma_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 				nb_rx_desc);
 		return -EINVAL;
 	}
+
+	if (!qdma_dev->dev_configured) {
+		PMD_DRV_LOG(ERR,
+			"Device for Rx queue id %d is not configured yet\n",
+			rx_queue_id);
+		return -EINVAL;
+	}
+
 	if (!qdma_dev->is_vf) {
 		err = qdma_dev_increment_active_queue(pci_dev->addr.bus,
-						qdma_dev->pf,
+						qdma_dev->func_id,
 						QDMA_DEV_Q_TYPE_C2H);
-		if (err != QDMA_RESOURCE_MGMT_SUCCESS)
+		if (err != QDMA_SUCCESS)
 			return -EINVAL;
+
+		if (qdma_dev->q_info[rx_queue_id].queue_mode ==
+				RTE_PMD_QDMA_STREAMING_MODE) {
+			err = qdma_dev_increment_active_queue(
+							pci_dev->addr.bus,
+							qdma_dev->func_id,
+							QDMA_DEV_Q_TYPE_CMPT);
+			if (err != QDMA_SUCCESS) {
+				qdma_dev_decrement_active_queue(
+							pci_dev->addr.bus,
+							qdma_dev->func_id,
+							QDMA_DEV_Q_TYPE_C2H);
+				return -EINVAL;
+			}
+		}
 	} else {
 		err = qdma_dev_notify_qadd(dev, rx_queue_id +
-					   qdma_dev->queue_base,
-					   QDMA_DEV_Q_TYPE_C2H);
+						qdma_dev->queue_base,
+						QDMA_DEV_Q_TYPE_C2H);
 		if (err < 0)
 			return -EINVAL;
+
+		if (qdma_dev->q_info[rx_queue_id].queue_mode ==
+				RTE_PMD_QDMA_STREAMING_MODE) {
+			err = qdma_dev_notify_qadd(dev, rx_queue_id +
+							qdma_dev->queue_base,
+							QDMA_DEV_Q_TYPE_CMPT);
+			if (err < 0) {
+				qdma_dev_notify_qdel(dev, rx_queue_id +
+							qdma_dev->queue_base,
+							QDMA_DEV_Q_TYPE_C2H);
+				return -EINVAL;
+			}
+		}
 	}
 	if (!qdma_dev->init_q_range) {
 		if (qdma_dev->is_vf) {
@@ -390,6 +473,7 @@ int qdma_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		}
 		qdma_dev->init_q_range = 1;
 	}
+
 	/* allocate rx queue data structure */
 	rxq = rte_zmalloc("QDMA_RxQ", sizeof(struct qdma_rx_queue),
 						RTE_CACHE_LINE_SIZE);
@@ -403,7 +487,7 @@ int qdma_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 
 	rxq->queue_id = rx_queue_id;
 	rxq->port_id = dev->data->port_id;
-	rxq->func_id = qdma_dev->pf;
+	rxq->func_id = qdma_dev->func_id;
 	rxq->mb_pool = mb_pool;
 	rxq->dev = dev;
 	rxq->st_mode = qdma_dev->q_info[rx_queue_id].queue_mode;
@@ -413,13 +497,21 @@ int qdma_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	 * desc. ring still have free entries
 	 */
 	rxq->nb_rx_cmpt_desc = ((nb_rx_desc * 2) + 1);
-	rxq->en_prefetch = qdma_dev->en_desc_prefetch;
+	rxq->en_prefetch = qdma_dev->q_info[rx_queue_id].en_prefetch;
 	rxq->cmpt_desc_len = qdma_dev->q_info[rx_queue_id].cmpt_desc_sz;
-	rxq->triggermode = qdma_dev->trigger_mode;
+	if ((rxq->cmpt_desc_len == RTE_PMD_QDMA_CMPT_DESC_LEN_64B) &&
+		!qdma_dev->dev_cap.cmpt_desc_64b) {
+		PMD_DRV_LOG(ERR, "PF-%d(DEVFN) 64B completion entry size is "
+			"not supported in this design\n", qdma_dev->func_id);
+		return -ENOTSUP;
+	}
+	rxq->triggermode = qdma_dev->q_info[rx_queue_id].trigger_mode;
 	rxq->rx_deferred_start = rx_conf->rx_deferred_start;
-
-	rxq->bypass_desc_sz = qdma_dev->q_info[rx_queue_id].rx_bypass_desc_sz;
-	bypass_desc_sz_idx = qmda_get_desc_sz_idx(rxq->bypass_desc_sz);
+	rxq->dump_immediate_data =
+			qdma_dev->q_info[rx_queue_id].immediate_data_state;
+	rxq->dis_overflow_check =
+			qdma_dev->q_info[rx_queue_id].dis_cmpt_ovf_chk;
+	rxq->offloads = rx_conf->offloads | dev->data->dev_conf.rxmode.offloads;
 
 	if (qdma_dev->q_info[rx_queue_id].rx_bypass_mode ==
 				RTE_PMD_QDMA_RX_BYPASS_CACHE ||
@@ -430,12 +522,17 @@ int qdma_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 			RTE_PMD_QDMA_RX_BYPASS_SIMPLE)
 		rxq->en_bypass_prefetch = 1;
 
-	/* Disable the cmpt over flow check by default
-	 * Applcation can test enable/disable via update param before
-	 * queue_start is issued
-	 */
-	rxq->dis_overflow_check = 0;
-
+	if (rxq->en_bypass) {
+		rxq->bypass_desc_sz =
+				qdma_dev->q_info[rx_queue_id].rx_bypass_desc_sz;
+		if ((rxq->bypass_desc_sz == RTE_PMD_QDMA_BYPASS_DESC_LEN_64B)
+			&&	!qdma_dev->dev_cap.sw_desc_64b) {
+			PMD_DRV_LOG(ERR, "PF-%d(DEVFN) C2H bypass descriptor "
+				"size of 64B is not supported in this design:\n",
+				qdma_dev->func_id);
+			return -ENOTSUP;
+		}
+	}
 	/* Calculate the ring index, completion queue ring size,
 	 * buffer index and threshold index.
 	 * If index is not found , by default use the index as 0
@@ -476,12 +573,12 @@ int qdma_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 
 	/* Find Timer index */
 	rxq->timeridx = index_of_array(qdma_dev->g_c2h_timer_cnt,
-					QDMA_NUM_C2H_TIMERS,
-					qdma_dev->timer_count);
+				QDMA_NUM_C2H_TIMERS,
+				qdma_dev->q_info[rx_queue_id].timer_count);
 	if (rxq->timeridx < 0) {
 		PMD_DRV_LOG(WARNING, "Expected timer %d not found, "
 				"using the value %d at index 1\n",
-				qdma_dev->timer_count,
+				qdma_dev->q_info[rx_queue_id].timer_count,
 				qdma_dev->g_c2h_timer_cnt[1]);
 		rxq->timeridx = 1;
 	}
@@ -522,11 +619,13 @@ int qdma_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 				    rxq->rx_buff_size,
 				    qdma_dev->stmn_c2h_buf_size);
 		}
+
 		if (rxq->en_bypass &&
-		     bypass_desc_sz_idx == SW_DESC_CNTXT_64B_BYPASS_DMA)
+		     (rxq->bypass_desc_sz != 0))
 			sz = (rxq->nb_rx_desc) * (rxq->bypass_desc_sz);
 		else
-			sz = (rxq->nb_rx_desc) * sizeof(struct qdma_c2h_desc);
+			sz = (rxq->nb_rx_desc) *
+					sizeof(struct qdma_ul_st_c2h_desc);
 
 		rxq->rx_mz = qdma_zone_reserve(dev, "RxHwRn", rx_queue_id,
 						sz, socket_id);
@@ -549,7 +648,8 @@ int qdma_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 			err = -ENOMEM;
 			goto rx_setup_err;
 		}
-		rxq->cmpt_ring = (struct c2h_cmpt_ring *)rxq->rx_cmpt_mz->addr;
+		rxq->cmpt_ring =
+			(struct qdma_ul_st_cmpt_ring *)rxq->rx_cmpt_mz->addr;
 
 		/* Write-back status structure */
 		rxq->wb_status = (struct wb_status *)((uint64_t)rxq->cmpt_ring +
@@ -563,11 +663,12 @@ int qdma_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 			err = -EINVAL;
 			goto rx_setup_err;
 		}
+
 		if (rxq->en_bypass &&
-			bypass_desc_sz_idx == SW_DESC_CNTXT_64B_BYPASS_DMA)
+			(rxq->bypass_desc_sz != 0))
 			sz = (rxq->nb_rx_desc) * (rxq->bypass_desc_sz);
 		else
-			sz = (rxq->nb_rx_desc) * sizeof(struct qdma_mm_desc);
+			sz = (rxq->nb_rx_desc) * sizeof(struct qdma_ul_mm_desc);
 		rxq->rx_mz = qdma_zone_reserve(dev, "RxHwRn",
 						rx_queue_id, sz, socket_id);
 		if (!rxq->rx_mz) {
@@ -577,12 +678,12 @@ int qdma_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 			goto rx_setup_err;
 		}
 		rxq->rx_ring = rxq->rx_mz->addr;
-		rx_ring_mm = (struct qdma_mm_desc *)rxq->rx_mz->addr;
-		rx_ring_bypass = (uint8_t *)rxq->rx_mz->addr;
+		rx_ring_mm = (struct qdma_ul_mm_desc *)rxq->rx_mz->addr;
 		memset(rxq->rx_ring, 0, sz);
 
+		rx_ring_bypass = (uint8_t *)rxq->rx_mz->addr;
 		if (rxq->en_bypass &&
-			bypass_desc_sz_idx == SW_DESC_CNTXT_64B_BYPASS_DMA)
+			(rxq->bypass_desc_sz != 0))
 			rxq->wb_status = (struct wb_status *)&
 					(rx_ring_bypass[(rxq->nb_rx_desc - 1) *
 							(rxq->bypass_desc_sz)]);
@@ -608,13 +709,26 @@ int qdma_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	return 0;
 
 rx_setup_err:
-	if (!qdma_dev->is_vf)
+	if (!qdma_dev->is_vf) {
 		qdma_dev_decrement_active_queue(pci_dev->addr.bus,
-						qdma_dev->pf,
+						qdma_dev->func_id,
 						QDMA_DEV_Q_TYPE_C2H);
-	else
+
+		if (qdma_dev->q_info[rx_queue_id].queue_mode ==
+				RTE_PMD_QDMA_STREAMING_MODE)
+			qdma_dev_decrement_active_queue(pci_dev->addr.bus,
+						qdma_dev->func_id,
+						QDMA_DEV_Q_TYPE_CMPT);
+	} else {
 		qdma_dev_notify_qdel(dev, rx_queue_id +
 				qdma_dev->queue_base, QDMA_DEV_Q_TYPE_C2H);
+
+		if (qdma_dev->q_info[rx_queue_id].queue_mode ==
+				RTE_PMD_QDMA_STREAMING_MODE)
+			qdma_dev_notify_qdel(dev, rx_queue_id +
+				qdma_dev->queue_base, QDMA_DEV_Q_TYPE_CMPT);
+	}
+
 	if (rxq) {
 		if (rxq->rx_mz)
 			rte_memzone_free(rxq->rx_mz);
@@ -648,27 +762,33 @@ int qdma_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 {
 	struct qdma_pci_dev *qdma_dev = dev->data->dev_private;
 	struct qdma_tx_queue *txq = NULL;
-	struct qdma_mm_desc *tx_ring_mm;
-	struct qdma_h2c_desc *tx_ring_st;
+	struct qdma_ul_mm_desc *tx_ring_mm;
+	struct qdma_ul_st_h2c_desc *tx_ring_st;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	uint8_t  *tx_ring_bypass;
 	uint32_t sz;
-	int	bypass_desc_sz_idx;
+	uint8_t  *tx_ring_bypass;
 	int err = 0;
 
 	PMD_DRV_LOG(INFO, "Configuring Tx queue id:%d with %d desc\n",
 		    tx_queue_id, nb_tx_desc);
 
+	if (!qdma_dev->dev_configured) {
+		PMD_DRV_LOG(ERR,
+			"Device for Tx queue id %d is not configured yet\n",
+			tx_queue_id);
+		return -EINVAL;
+	}
+
 	if (!qdma_dev->is_vf) {
 		err = qdma_dev_increment_active_queue(pci_dev->addr.bus,
-						qdma_dev->pf,
+						qdma_dev->func_id,
 						QDMA_DEV_Q_TYPE_H2C);
-		if (err != QDMA_RESOURCE_MGMT_SUCCESS)
+		if (err != QDMA_SUCCESS)
 			return -EINVAL;
 	} else {
-		err = qdma_dev_notify_qadd(dev,
-					   tx_queue_id + qdma_dev->queue_base,
-					   QDMA_DEV_Q_TYPE_H2C);
+		err = qdma_dev_notify_qadd(dev, tx_queue_id +
+						qdma_dev->queue_base,
+						QDMA_DEV_Q_TYPE_H2C);
 		if (err < 0)
 			return -EINVAL;
 	}
@@ -701,15 +821,15 @@ int qdma_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 	txq->st_mode = qdma_dev->q_info[tx_queue_id].queue_mode;
 	txq->en_bypass = (qdma_dev->q_info[tx_queue_id].tx_bypass_mode) ? 1 : 0;
 	txq->bypass_desc_sz = qdma_dev->q_info[tx_queue_id].tx_bypass_desc_sz;
-	bypass_desc_sz_idx = qmda_get_desc_sz_idx(txq->bypass_desc_sz);
 
 	txq->nb_tx_desc = (nb_tx_desc + 1);
 	txq->queue_id = tx_queue_id;
 	txq->dev = dev;
 	txq->port_id = dev->data->port_id;
-	txq->func_id = qdma_dev->pf;
+	txq->func_id = qdma_dev->func_id;
 	txq->num_queues = dev->data->nb_tx_queues;
 	txq->tx_deferred_start = tx_conf->tx_deferred_start;
+	txq->offloads = tx_conf->offloads | dev->data->dev_conf.txmode.offloads;
 
 	txq->ringszidx = index_of_array(qdma_dev->g_ring_sz,
 					QDMA_NUM_RING_SIZES, txq->nb_tx_desc);
@@ -728,11 +848,13 @@ int qdma_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 			err = -EINVAL;
 			goto tx_setup_err;
 		}
+
 		if (txq->en_bypass &&
-			bypass_desc_sz_idx == SW_DESC_CNTXT_64B_BYPASS_DMA)
+			(txq->bypass_desc_sz != 0))
 			sz = (txq->nb_tx_desc) * (txq->bypass_desc_sz);
 		else
-			sz = (txq->nb_tx_desc) * sizeof(struct qdma_h2c_desc);
+			sz = (txq->nb_tx_desc) *
+					sizeof(struct qdma_ul_st_h2c_desc);
 		txq->tx_mz = qdma_zone_reserve(dev, "TxHwRn", tx_queue_id, sz,
 						socket_id);
 		if (!txq->tx_mz) {
@@ -743,11 +865,12 @@ int qdma_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 		}
 
 		txq->tx_ring = txq->tx_mz->addr;
-		tx_ring_st = (struct qdma_h2c_desc *)txq->tx_ring;
+		tx_ring_st = (struct qdma_ul_st_h2c_desc *)txq->tx_ring;
+
 		tx_ring_bypass = (uint8_t *)txq->tx_ring;
 		/* Write-back status structure */
 		if (txq->en_bypass &&
-			bypass_desc_sz_idx == SW_DESC_CNTXT_64B_BYPASS_DMA)
+			(txq->bypass_desc_sz != 0))
 			txq->wb_status = (struct wb_status *)&
 					tx_ring_bypass[(txq->nb_tx_desc - 1) *
 					(txq->bypass_desc_sz)];
@@ -763,10 +886,10 @@ int qdma_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 		}
 
 		if (txq->en_bypass &&
-			bypass_desc_sz_idx == SW_DESC_CNTXT_64B_BYPASS_DMA)
+			(txq->bypass_desc_sz != 0))
 			sz = (txq->nb_tx_desc) * (txq->bypass_desc_sz);
 		else
-			sz = (txq->nb_tx_desc) * sizeof(struct qdma_mm_desc);
+			sz = (txq->nb_tx_desc) * sizeof(struct qdma_ul_mm_desc);
 		txq->tx_mz = qdma_zone_reserve(dev, "TxHwRn", tx_queue_id,
 						sz, socket_id);
 		if (!txq->tx_mz) {
@@ -777,12 +900,13 @@ int qdma_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 		}
 
 		txq->tx_ring = txq->tx_mz->addr;
-		tx_ring_mm = (struct qdma_mm_desc *)txq->tx_ring;
-		tx_ring_bypass = (uint8_t *)txq->tx_ring;
+		tx_ring_mm = (struct qdma_ul_mm_desc *)txq->tx_ring;
 
 		/* Write-back status structure */
+
+		tx_ring_bypass = (uint8_t *)txq->tx_ring;
 		if (txq->en_bypass &&
-			bypass_desc_sz_idx == SW_DESC_CNTXT_64B_BYPASS_DMA)
+			(txq->bypass_desc_sz != 0))
 			txq->wb_status = (struct wb_status *)&
 				tx_ring_bypass[(txq->nb_tx_desc - 1) *
 				(txq->bypass_desc_sz)];
@@ -815,11 +939,11 @@ tx_setup_err:
 	PMD_DRV_LOG(ERR, " Tx queue setup failed");
 	if (!qdma_dev->is_vf)
 		qdma_dev_decrement_active_queue(pci_dev->addr.bus,
-						qdma_dev->pf,
+						qdma_dev->func_id,
 						QDMA_DEV_Q_TYPE_H2C);
 	else
 		qdma_dev_notify_qdel(dev, tx_queue_id +
-				     qdma_dev->queue_base, QDMA_DEV_Q_TYPE_H2C);
+				qdma_dev->queue_base, QDMA_DEV_Q_TYPE_H2C);
 	if (txq) {
 		if (txq->tx_mz)
 			rte_memzone_free(txq->tx_mz);
@@ -843,7 +967,8 @@ void qdma_txq_pidx_update(void *arg)
 		if (txq->tx_desc_pend) {
 			rte_spinlock_lock(&txq->pidx_update_lock);
 			if (txq->tx_desc_pend) {
-				qdma_queue_pidx_update(dev, qdma_dev->is_vf,
+				qdma_dev->hw_access->qdma_queue_pidx_update(dev,
+					qdma_dev->is_vf,
 					qid, 0, &txq->q_pidx_info);
 
 				txq->tx_desc_pend = 0;
@@ -855,7 +980,6 @@ void qdma_txq_pidx_update(void *arg)
 			qdma_txq_pidx_update, (void *)arg);
 }
 #endif
-
 
 
 void qdma_dev_tx_queue_release(void *tqueue)
@@ -871,12 +995,12 @@ void qdma_dev_tx_queue_release(void *tqueue)
 
 		if (!qdma_dev->is_vf)
 			qdma_dev_decrement_active_queue(pci_dev->addr.bus,
-							qdma_dev->pf,
+							qdma_dev->func_id,
 							QDMA_DEV_Q_TYPE_H2C);
 		else
 			qdma_dev_notify_qdel(txq->dev, txq->queue_id +
-					     qdma_dev->queue_base,
-					     QDMA_DEV_Q_TYPE_H2C);
+						qdma_dev->queue_base,
+						QDMA_DEV_Q_TYPE_H2C);
 		if (txq->sw_ring)
 			rte_free(txq->sw_ring);
 		if (txq->tx_mz)
@@ -897,12 +1021,26 @@ void qdma_dev_rx_queue_release(void *rqueue)
 		qdma_dev = rxq->dev->data->dev_private;
 		pci_dev = RTE_ETH_DEV_TO_PCI(rxq->dev);
 
-		if (!qdma_dev->is_vf)
+		if (!qdma_dev->is_vf) {
 			qdma_dev_decrement_active_queue(pci_dev->addr.bus,
-					qdma_dev->pf, QDMA_DEV_Q_TYPE_C2H);
-		else
+					qdma_dev->func_id, QDMA_DEV_Q_TYPE_C2H);
+
+			if (rxq->st_mode)
+				qdma_dev_decrement_active_queue(
+					pci_dev->addr.bus,
+					qdma_dev->func_id,
+					QDMA_DEV_Q_TYPE_CMPT);
+		} else {
 			qdma_dev_notify_qdel(rxq->dev, rxq->queue_id +
-				qdma_dev->queue_base, QDMA_DEV_Q_TYPE_C2H);
+					qdma_dev->queue_base,
+					QDMA_DEV_Q_TYPE_C2H);
+
+			if (rxq->st_mode)
+				qdma_dev_notify_qdel(rxq->dev, rxq->queue_id +
+						qdma_dev->queue_base,
+						QDMA_DEV_Q_TYPE_CMPT);
+		}
+
 		if (rxq->sw_ring)
 			rte_free(rxq->sw_ring);
 		if (rxq->st_mode) { /** if ST-mode **/
@@ -951,22 +1089,11 @@ static int qdma_dev_start(struct rte_eth_dev *dev)
 	struct qdma_rx_queue *rxq;
 	struct rte_eth_conf *eth_conf = &dev->data->dev_conf;
 	uint64_t rx_offloads = eth_conf->rxmode.offloads;
+	uint64_t rsstype;
 	uint32_t qid;
 	int err;
 
 	PMD_DRV_LOG(INFO, "qdma-dev-start: Starting\n");
-	qdma_user_h2c_c2h_reset(dev);
-	/* prepare descriptor rings for operation */
-	for (qid = 0; qid < dev->data->nb_tx_queues; qid++) {
-		txq = (struct qdma_tx_queue *)dev->data->tx_queues[qid];
-
-		/*Deferred Queues should not start with dev_start*/
-		if (!txq->tx_deferred_start) {
-			err = qdma_dev_tx_queue_start(dev, qid);
-			if (err != 0)
-				return err;
-		}
-	}
 
 	if (rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
 		if (eth_conf->rxmode.max_rx_pkt_len <= QDMA_MAX_RX_PKTLEN &&
@@ -981,6 +1108,32 @@ static int qdma_dev_start(struct rte_eth_dev *dev)
 		}
 	}
 
+	qdma_user_h2c_c2h_reset(dev);
+	rsstype = eth_conf->rx_adv_conf.rss_conf.rss_hf;
+	if (!rsstype) {
+		qep_set_rx_mode(dev, QEP_RX_MODE_RR);
+	} else {
+		if ((rsstype &  QEP_RSS_FLOW_TYPE) == rsstype) {
+			qep_init_reta(dev, 0);
+		} else {
+			PMD_DRV_LOG(INFO, "%s expected rss type should be subset of %llx, "
+			"received %lx\n", __func__, QEP_RSS_FLOW_TYPE, rsstype);
+			return -EINVAL;
+		}
+	}
+
+	/* prepare descriptor rings for operation */
+	for (qid = 0; qid < dev->data->nb_tx_queues; qid++) {
+		txq = (struct qdma_tx_queue *)dev->data->tx_queues[qid];
+
+		/*Deferred Queues should not start with dev_start*/
+		if (!txq->tx_deferred_start) {
+			err = qdma_dev_tx_queue_start(dev, qid);
+			if (err != 0)
+				return err;
+		}
+	}
+
 	for (qid = 0; qid < dev->data->nb_rx_queues; qid++) {
 		rxq = (struct qdma_rx_queue *)dev->data->rx_queues[qid];
 
@@ -992,11 +1145,6 @@ static int qdma_dev_start(struct rte_eth_dev *dev)
 		}
 	}
 
-	/* Enable MM C2H Channel */
-	qdma_mm_channel_enable(dev, 0, 1);
-	/* Enable MM H2C Channel */
-	qdma_mm_channel_enable(dev, 0, 0);
-
 	err = xcmac_start(dev);
 	if (err != 0) {
 		PMD_DRV_LOG(ERR, "%s: xcmac_start failed with status %d\n",
@@ -1005,7 +1153,6 @@ static int qdma_dev_start(struct rte_eth_dev *dev)
 	}
 
 	/* Start thread to monitor link status */
-	xcmac_link_check_thread_start(dev);
 
 #if (MIN_TX_PIDX_UPDATE_THRESHOLD > 1)
 	rte_eal_alarm_set(QDMA_TXQ_PIDX_UPDATE_INTERVAL,
@@ -1029,8 +1176,10 @@ static int qdma_dev_link_update(struct rte_eth_dev *dev,
 	int ret = 0, retry;
 	struct qdma_pci_dev *qdma_dev = dev->data->dev_private;
 	struct xcmac_rx_lane_am_status lane_status;
+	struct rte_eth_link link;
 
 	retry = (wait_to_complete) ? QEP_LINK_STATUS_TIMEOUT : 0;
+	memset(&link, 0, sizeof(link));
 
 	do {
 		ret = xcmac_get_rx_lane_status(&qdma_dev->cmac_instance,
@@ -1039,20 +1188,28 @@ static int qdma_dev_link_update(struct rte_eth_dev *dev,
 			RTE_LOG(INFO, PMD,
 				"%s: Error in retrieving Rx lane status\n",
 				__func__);
-			dev->data->dev_link.link_status = ETH_LINK_DOWN;
+			link.link_status = ETH_LINK_DOWN;
 		} else {
-			if (lane_status.aligned == true)
-				dev->data->dev_link.link_status = ETH_LINK_UP;
-			else
-				dev->data->dev_link.link_status = ETH_LINK_DOWN;
+			if (lane_status.aligned == true) {
+				link.link_status = ETH_LINK_UP;
+				break;
+			}
 		}
-		usleep(100);
+		rte_delay_ms(QEP_LINK_STATUS_MS);
+
 	} while (retry-- != 0);
 
-	dev->data->dev_link.link_duplex = ETH_LINK_FULL_DUPLEX;
-	dev->data->dev_link.link_speed = ETH_SPEED_NUM_100G;
+	if (lane_status.aligned == true)
+		link.link_status = ETH_LINK_UP;
+	else
+		link.link_status = ETH_LINK_DOWN;
+
+	link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	link.link_speed = ETH_SPEED_NUM_100G;
+
 	PMD_DRV_LOG(INFO, "Link update done\n");
-	return 0;
+
+	return rte_eth_linkstatus_set(dev, &link);
 }
 
 /**
@@ -1068,12 +1225,14 @@ static void qdma_dev_infos_get(__rte_unused struct rte_eth_dev *dev,
 {
 	dev_info->max_rx_queues = QEP_MAX_STMN_QUEUES;
 	dev_info->max_tx_queues = QEP_MAX_STMN_QUEUES;
-	dev_info->min_rx_bufsize = QDMA_MIN_RXBUFF_SIZE;
 	dev_info->max_rx_pktlen = QDMA_MAX_RX_PKTLEN;
 	dev_info->min_rx_bufsize = ETHER_MIN_MTU;
 	dev_info->rx_offload_capa = QEP_RX_CAPA;
 	dev_info->tx_offload_capa = QEP_TX_CAPA;
 	dev_info->max_mac_addrs = 1;
+	dev_info->hash_key_size = QEP_RSS_HKEY_SIZE;
+	dev_info->reta_size = QEP_RSS_TBL_SIZE;
+	dev_info->flow_type_rss_offloads = QEP_RSS_FLOW_TYPE;
 }
 
 /**
@@ -1093,9 +1252,6 @@ static void qdma_dev_stop(struct rte_eth_dev *dev)
 	uint32_t qid;
 	int ret = 0;
 
-	/* Stop link thread */
-	xcmac_link_check_thread_stop(dev);
-
 	/* Stop CMAC */
 	ret = xcmac_stop(dev);
 	if (ret != 0) {
@@ -1104,11 +1260,17 @@ static void qdma_dev_stop(struct rte_eth_dev *dev)
 	}
 
 	/* reset driver's internal queue structures to default values */
-	PMD_DRV_LOG(INFO, "PF-%d(DEVFN) Stop H2C & C2H queues", qdma_dev->pf);
+	PMD_DRV_LOG(INFO, "PF-%d(DEVFN) Stop H2C & C2H queues",
+			qdma_dev->func_id);
 	for (qid = 0; qid < dev->data->nb_tx_queues; qid++)
 		qdma_dev_tx_queue_stop(dev, qid);
 	for (qid = 0; qid < dev->data->nb_rx_queues; qid++)
 		qdma_dev_rx_queue_stop(dev, qid);
+
+#if (MIN_TX_PIDX_UPDATE_THRESHOLD > 1)
+	/* Cancel pending PIDX updates */
+	rte_eal_alarm_cancel(qdma_txq_pidx_update, (void *)dev);
+#endif
 }
 
 /**
@@ -1119,7 +1281,7 @@ static void qdma_dev_stop(struct rte_eth_dev *dev)
  * @param dev
  *   Pointer to Ethernet device structure.
  */
-static void qdma_dev_close(struct rte_eth_dev *dev)
+void qdma_dev_close(struct rte_eth_dev *dev)
 {
 	struct qdma_pci_dev *qdma_dev = dev->data->dev_private;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
@@ -1127,15 +1289,16 @@ static void qdma_dev_close(struct rte_eth_dev *dev)
 	struct qdma_rx_queue *rxq;
 	struct qdma_cmpt_queue *cmptq;
 	uint32_t qid;
+	struct qdma_fmap_cfg fmap_cfg;
 
-	PMD_DRV_LOG(INFO, "PF-%d(DEVFN) DEV Close\n", qdma_dev->pf);
+	PMD_DRV_LOG(INFO, "PF-%d(DEVFN) DEV Close\n", qdma_dev->func_id);
 
-#if (MIN_TX_PIDX_UPDATE_THRESHOLD > 1)
-	/* Cancel pending PIDX updates */
-	rte_eal_alarm_cancel(qdma_txq_pidx_update, (void *)dev);
-#endif
+	if (dev->data->dev_started)
+		qdma_dev_stop(dev);
 
-	qdma_fmap_clear(dev, qdma_dev->pf);
+	memset(&fmap_cfg, 0, sizeof(struct qdma_fmap_cfg));
+	qdma_dev->hw_access->qdma_fmap_conf(dev,
+		qdma_dev->func_id, &fmap_cfg, QDMA_HW_ACCESS_CLEAR);
 
 	/* iterate over rx queues */
 	for (qid = 0; qid < dev->data->nb_rx_queues; ++qid) {
@@ -1149,13 +1312,20 @@ static void qdma_dev_close(struct rte_eth_dev *dev)
 				if (rxq->rx_cmpt_mz)
 					rte_memzone_free(rxq->rx_cmpt_mz);
 			}
+
+			qdma_dev_decrement_active_queue(pci_dev->addr.bus,
+					qdma_dev->func_id, QDMA_DEV_Q_TYPE_C2H);
+
+			if (rxq->st_mode)
+				qdma_dev_decrement_active_queue(
+					pci_dev->addr.bus,
+					qdma_dev->func_id,
+					QDMA_DEV_Q_TYPE_CMPT);
+
 			if (rxq->rx_mz)
 				rte_memzone_free(rxq->rx_mz);
 			rte_free(rxq);
 			PMD_DRV_LOG(INFO, "C2H queue %d removed", qid);
-
-			qdma_dev_decrement_active_queue(pci_dev->addr.bus,
-					qdma_dev->pf, QDMA_DEV_Q_TYPE_C2H);
 		}
 	}
 
@@ -1173,36 +1343,40 @@ static void qdma_dev_close(struct rte_eth_dev *dev)
 			PMD_DRV_LOG(INFO, "H2C queue %d removed", qid);
 
 			qdma_dev_decrement_active_queue(pci_dev->addr.bus,
-					qdma_dev->pf, QDMA_DEV_Q_TYPE_H2C);
+					qdma_dev->func_id, QDMA_DEV_Q_TYPE_H2C);
 		}
 	}
-
-	/* iterate over cmpt queues */
-	for (qid = 0; qid < qdma_dev->qsets_en; ++qid) {
-		cmptq = qdma_dev->cmpt_queues[qid];
-		if (cmptq != NULL) {
-			PMD_DRV_LOG(INFO, "PF-%d(DEVFN) Remove CMPT queue: %d",
-					qdma_dev->pf, qid);
-			if (cmptq->cmpt_mz)
-				rte_memzone_free(cmptq->cmpt_mz);
-			rte_free(cmptq);
-			PMD_DRV_LOG(INFO, "PF-%d(DEVFN) CMPT queue %d removed",
-					qdma_dev->pf, qid);
-			qdma_dev_decrement_active_queue(pci_dev->addr.bus,
-					qdma_dev->pf, QDMA_DEV_Q_TYPE_C2H);
+	if (qdma_dev->dev_cap.mm_cmpt_en) {
+		/* iterate over cmpt queues */
+		for (qid = 0; qid < qdma_dev->qsets_en; ++qid) {
+			cmptq = qdma_dev->cmpt_queues[qid];
+			if (cmptq != NULL) {
+				PMD_DRV_LOG(INFO, "PF-%d(DEVFN) Remove CMPT queue: %d",
+						qdma_dev->func_id, qid);
+				if (cmptq->cmpt_mz)
+					rte_memzone_free(cmptq->cmpt_mz);
+				rte_free(cmptq);
+				PMD_DRV_LOG(INFO, "PF-%d(DEVFN) CMPT queue %d removed",
+						qdma_dev->func_id, qid);
+				qdma_dev_decrement_active_queue(
+					pci_dev->addr.bus,
+					qdma_dev->func_id,
+					QDMA_DEV_Q_TYPE_CMPT);
+			}
 		}
-	}
 
-	if (qdma_dev->cmpt_queues != NULL) {
-		rte_free(qdma_dev->cmpt_queues);
-		qdma_dev->cmpt_queues = NULL;
+		if (qdma_dev->cmpt_queues != NULL) {
+			rte_free(qdma_dev->cmpt_queues);
+			qdma_dev->cmpt_queues = NULL;
+		}
 	}
 	qdma_dev->qsets_en = 0;
-	qdma_dev_update(pci_dev->addr.bus, qdma_dev->pf, qdma_dev->qsets_en,
-			(int *)&qdma_dev->queue_base);
+	qdma_dev_update(pci_dev->addr.bus, qdma_dev->func_id,
+			qdma_dev->qsets_en, (int *)&qdma_dev->queue_base);
 	qdma_dev->init_q_range = 0;
 	rte_free(qdma_dev->q_info);
 	qdma_dev->q_info = NULL;
+	qdma_dev->dev_configured = 0;
 }
 
 /**
@@ -1242,6 +1416,23 @@ int qdma_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	return 0;
 }
 
+static int validate_offload_support(struct rte_eth_dev *dev)
+{
+	if (dev->data->dev_conf.rxmode.offloads & ~QEP_RX_CAPA) {
+		PMD_DRV_LOG(ERR, "Requested Rx offloads (0x%lx) not supported",
+				dev->data->dev_conf.rxmode.offloads);
+		return -EINVAL;
+	}
+
+	if (dev->data->dev_conf.txmode.offloads & ~QEP_TX_CAPA) {
+		PMD_DRV_LOG(ERR, "Requested Tx offloads (0x%lx) not supported",
+				dev->data->dev_conf.txmode.offloads);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /**
  * DPDK callback for Ethernet device configuration.
  *
@@ -1255,89 +1446,139 @@ static int qdma_dev_configure(struct rte_eth_dev *dev)
 {
 	struct qdma_pci_dev *qdma_dev = dev->data->dev_private;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_eth_conf *eth_conf = &dev->data->dev_conf;
+	uint64_t rsstype;
 	uint16_t qid = 0;
 	int ret = 0, queue_base = -1;
 
-	PMD_DRV_LOG(INFO, "Configure the qdma engines\n");
+	rsstype = eth_conf->rx_adv_conf.rss_conf.rss_hf;
+	if (qdma_dev->dev_configured == 0) {
+		PMD_DRV_LOG(INFO, "Configure the qdma engines\n");
 
-	qdma_dev->qsets_en = RTE_MAX(dev->data->nb_rx_queues,
-					dev->data->nb_tx_queues);
-	if (qdma_dev->qsets_en > qdma_dev->dev_cap.num_qs) {
-		PMD_DRV_LOG(ERR, "PF-%d(DEVFN) Error: Number of Queues to be"
-				" configured are greater than the queues"
-				" supported by the hardware\n", qdma_dev->pf);
-		qdma_dev->qsets_en = 0;
-		return -1;
-	}
+		qdma_dev->qsets_en = RTE_MAX(dev->data->nb_rx_queues,
+						dev->data->nb_tx_queues);
+		if (qdma_dev->qsets_en > qdma_dev->dev_cap.num_qs) {
+			PMD_DRV_LOG(ERR, "PF-%d(DEVFN) Error: Number of Queues to be"
+					" configured are greater than the queues"
+					" supported by the hardware\n",
+					qdma_dev->func_id);
+			qdma_dev->qsets_en = 0;
+			return -1;
+		}
+		qdma_dev->nb_rx_queues = dev->data->nb_rx_queues;
+		qdma_dev->nb_tx_queues = dev->data->nb_tx_queues;
+		if ((rsstype & QEP_RSS_FLOW_TYPE) != rsstype) {
+			PMD_DRV_LOG(INFO, "%s expected rss type should be "
+			"subset of %llx, received %lx\n",
+			__func__, QEP_RSS_FLOW_TYPE, rsstype);
+			return -EINVAL;
+		}
+		ret = validate_offload_support(dev);
+		if (ret != 0)
+			return ret;
 
-	/* Request queue base from the resource manager */
-	ret = qdma_dev_update(pci_dev->addr.bus, qdma_dev->pf,
-			qdma_dev->qsets_en, &queue_base);
-	if (ret != QDMA_RESOURCE_MGMT_SUCCESS) {
-		PMD_DRV_LOG(ERR, "PF-%d(DEVFN) queue allocation failed: %d\n",
-			qdma_dev->pf, ret);
-		return -1;
-	}
+		/* Request queue base from the resource manager */
+		ret = qdma_dev_update(pci_dev->addr.bus, qdma_dev->func_id,
+				qdma_dev->qsets_en, &queue_base);
+		if (ret != QDMA_SUCCESS) {
+			PMD_DRV_LOG(ERR, "PF-%d(DEVFN) queue allocation failed: %d\n",
+				qdma_dev->func_id, ret);
+			return -1;
+		}
 
-	ret = qdma_dev_qinfo_get(pci_dev->addr.bus, qdma_dev->pf,
-				(int *)&qdma_dev->queue_base,
-				&qdma_dev->qsets_en);
-	if (ret != QDMA_RESOURCE_MGMT_SUCCESS) {
-		PMD_DRV_LOG(ERR, "%s: Error %d querying qbase\n",
-				__func__, ret);
-		return -1;
-	}
-	PMD_DRV_LOG(INFO, "Bus: 0x%x, PF-%d(DEVFN) queue_base: %d\n",
-		pci_dev->addr.bus, qdma_dev->pf, qdma_dev->queue_base);
+		ret = qdma_dev_qinfo_get(pci_dev->addr.bus, qdma_dev->func_id,
+					(int *)&qdma_dev->queue_base,
+					&qdma_dev->qsets_en);
+		if (ret != QDMA_SUCCESS) {
+			PMD_DRV_LOG(ERR, "%s: Error %d querying qbase\n",
+					__func__, ret);
+			return -1;
+		}
+		PMD_DRV_LOG(INFO, "Bus: 0x%x, PF-%d(DEVFN) queue_base: %d\n",
+			pci_dev->addr.bus, qdma_dev->func_id,
+			qdma_dev->queue_base);
 
-	qdma_dev->q_info = rte_zmalloc("qinfo", sizeof(struct queue_info) *
-					(qdma_dev->qsets_en), 0);
-	if (!qdma_dev->q_info) {
-		PMD_DRV_LOG(ERR, "PF-%d(DEVFN) Cannot allocate "
-				"memory for queue info\n", qdma_dev->pf);
-		return (-ENOMEM);
-	}
+		qdma_dev->q_info = rte_zmalloc("qinfo",
+					sizeof(struct queue_info) *
+					(qdma_dev->qsets_en),
+					0);
+		if (!qdma_dev->q_info) {
+			PMD_DRV_LOG(ERR, "PF-%d(DEVFN) Cannot allocate "
+				"memory for queue info\n", qdma_dev->func_id);
+			return (-ENOMEM);
+		}
 
-	/* Reserve memory for cmptq ring pointers
-	 * Max completion queues can be maximum of rx and tx queues.
-	 */
-	qdma_dev->cmpt_queues = rte_zmalloc("cmpt_queues",
-					    sizeof(qdma_dev->cmpt_queues[0]) *
-						qdma_dev->qsets_en,
-						RTE_CACHE_LINE_SIZE);
-	if (qdma_dev->cmpt_queues == NULL) {
-		PMD_DRV_LOG(ERR, "PF-%d(DEVFN) cmpt ring pointers memory "
-				"allocation failed:\n", qdma_dev->pf);
-		rte_free(qdma_dev->q_info);
-		qdma_dev->q_info = NULL;
-		return -(ENOMEM);
-	}
+		/* Reserve memory for cmptq ring pointers
+		 * Max completion queues can be maximum of rx and tx queues.
+		 */
+		qdma_dev->cmpt_queues = rte_zmalloc("cmpt_queues",
+					sizeof(qdma_dev->cmpt_queues[0]) *
+					qdma_dev->qsets_en,
+					RTE_CACHE_LINE_SIZE);
+		if (qdma_dev->cmpt_queues == NULL) {
+			PMD_DRV_LOG(ERR, "PF-%d(DEVFN) cmpt ring pointers memory "
+				"allocation failed:\n", qdma_dev->func_id);
+			rte_free(qdma_dev->q_info);
+			qdma_dev->q_info = NULL;
+			return -(ENOMEM);
+		}
 
-	/* Initialize queue_modes to all 1's ( i.e. Streaming) */
-	for (qid = 0 ; qid < qdma_dev->qsets_en; qid++)
-		qdma_dev->q_info[qid].queue_mode = RTE_PMD_QDMA_STREAMING_MODE;
+		for (qid = 0 ; qid < qdma_dev->qsets_en; qid++) {
+			/* Initialize queue_modes Streaming */
+			qdma_dev->q_info[qid].queue_mode =
+					RTE_PMD_QDMA_STREAMING_MODE;
 
-	for (qid = 0 ; qid < dev->data->nb_rx_queues; qid++) {
-		qdma_dev->q_info[qid].cmpt_desc_sz = qdma_dev->cmpt_desc_len;
-		qdma_dev->q_info[qid].rx_bypass_mode =
+			/* Disable the cmpt over flow check by default */
+			qdma_dev->q_info[qid].dis_cmpt_ovf_chk = 0;
+
+			qdma_dev->q_info[qid].trigger_mode =
+						qdma_dev->trigger_mode;
+			qdma_dev->q_info[qid].timer_count =
+						qdma_dev->timer_count;
+		}
+
+		for (qid = 0 ; qid < dev->data->nb_rx_queues; qid++) {
+			qdma_dev->q_info[qid].cmpt_desc_sz =
+						qdma_dev->cmpt_desc_len;
+			qdma_dev->q_info[qid].rx_bypass_mode =
 						qdma_dev->c2h_bypass_mode;
-	}
+			qdma_dev->q_info[qid].en_prefetch =
+						qdma_dev->en_desc_prefetch;
+			qdma_dev->q_info[qid].immediate_data_state = 0;
+		}
 
-	for (qid = 0 ; qid < dev->data->nb_tx_queues; qid++)
-		qdma_dev->q_info[qid].tx_bypass_mode =
+		for (qid = 0 ; qid < dev->data->nb_tx_queues; qid++)
+			qdma_dev->q_info[qid].tx_bypass_mode =
 						qdma_dev->h2c_bypass_mode;
 
-	ret = qdma_pf_fmap_prog(dev);
-	if (ret < 0) {
-		PMD_DRV_LOG(ERR, "FMAP programming failed\n");
-		rte_free(qdma_dev->q_info);
-		qdma_dev->q_info = NULL;
-		rte_free(qdma_dev->cmpt_queues);
-		qdma_dev->cmpt_queues = NULL;
-		return ret;
-	}
+		ret = qdma_pf_fmap_prog(dev);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "FMAP programming failed\n");
+			rte_free(qdma_dev->q_info);
+			qdma_dev->q_info = NULL;
+			rte_free(qdma_dev->cmpt_queues);
+			qdma_dev->cmpt_queues = NULL;
+			return ret;
+		}
 
-	qep_set_rx_mode(dev, QEP_RX_MODE_RR);
+		qep_set_rx_mode(dev, QEP_RX_MODE_RR);
+
+		qdma_dev->dev_configured = 1;
+	} else if ((qdma_dev->dev_configured == 1) &&
+			   (qdma_dev->nb_rx_queues ==
+					dev->data->nb_rx_queues) &&
+			   (qdma_dev->nb_tx_queues ==
+					dev->data->nb_tx_queues)) {
+		PMD_DRV_LOG(INFO, "Device reconfigured with same number of queues\n");
+		ret = validate_offload_support(dev);
+		if (ret != 0)
+			return ret;
+	} else {
+		PMD_DRV_LOG(INFO, "Currently driver doesn't support "
+					" device reconfiguration with number of"
+					" queues changed\n");
+		return -EINVAL;
+	}
 
 	return 0;
 }
@@ -1349,10 +1590,12 @@ int qdma_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t qid)
 	uint32_t queue_base =  qdma_dev->queue_base;
 	int err, bypass_desc_sz_idx;
 	struct qdma_descq_sw_ctxt q_sw_ctxt;
+	struct qdma_hw_access *hw_access = qdma_dev->hw_access;
 
 	txq = (struct qdma_tx_queue *)dev->data->tx_queues[qid];
 
 	memset(&q_sw_ctxt, 0, sizeof(struct qdma_descq_sw_ctxt));
+
 	bypass_desc_sz_idx = qmda_get_desc_sz_idx(txq->bypass_desc_sz);
 
 	qdma_reset_tx_queue(txq);
@@ -1375,16 +1618,19 @@ int qdma_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t qid)
 	q_sw_ctxt.ring_bs_addr = (uint64_t)txq->tx_mz->phys_addr;
 
 	if (txq->en_bypass &&
-		(bypass_desc_sz_idx == SW_DESC_CNTXT_64B_BYPASS_DMA))
+		(txq->bypass_desc_sz != 0))
 		q_sw_ctxt.desc_sz = bypass_desc_sz_idx;
 
 	/* Set SW Context */
-	err = qdma_sw_context_write(dev, 0, (qid + queue_base), &q_sw_ctxt);
+	err = hw_access->qdma_sw_ctx_conf(dev, 0,
+			(qid + queue_base), &q_sw_ctxt,
+			QDMA_HW_ACCESS_WRITE);
 	if (err != QDMA_SUCCESS)
-		return -1;
+		return qdma_dev->hw_access->qdma_get_error_code(err);
 
 	txq->q_pidx_info.pidx = 0;
-	qdma_queue_pidx_update(dev, qdma_dev->is_vf, qid, 0, &txq->q_pidx_info);
+	hw_access->qdma_queue_pidx_update(dev, qdma_dev->is_vf,
+		qid, 0, &txq->q_pidx_info);
 
 	dev->data->tx_queue_state[qid] = RTE_ETH_QUEUE_STATE_STARTED;
 	txq->status = RTE_ETH_QUEUE_STATE_STARTED;
@@ -1402,6 +1648,7 @@ int qdma_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t qid)
 	struct qdma_descq_sw_ctxt q_sw_ctxt;
 	struct qdma_descq_cmpt_ctxt q_cmpt_ctxt;
 	struct qdma_descq_prefetch_ctxt q_prefetch_ctxt;
+	struct qdma_hw_access *hw_access = qdma_dev->hw_access;
 
 	rxq = (struct qdma_rx_queue *)dev->data->rx_queues[qid];
 
@@ -1409,6 +1656,7 @@ int qdma_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t qid)
 
 	qdma_reset_rx_queue(rxq);
 	qdma_clr_rx_queue_ctxts(dev, (qid + queue_base), rxq->st_mode);
+
 	bypass_desc_sz_idx = qmda_get_desc_sz_idx(rxq->bypass_desc_sz);
 
 	switch (rxq->cmpt_desc_len) {
@@ -1453,7 +1701,9 @@ int qdma_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t qid)
 		q_cmpt_ctxt.bs_addr = (uint64_t)rxq->rx_cmpt_mz->phys_addr;
 		q_cmpt_ctxt.desc_sz = cmpt_desc_fmt;
 		q_cmpt_ctxt.valid = 1;
-		q_cmpt_ctxt.ovf_chk_dis = rxq->dis_overflow_check;
+		if (qdma_dev->dev_cap.cmpt_ovf_chk_dis)
+			q_cmpt_ctxt.ovf_chk_dis = rxq->dis_overflow_check;
+
 
 		q_sw_ctxt.desc_sz = SW_DESC_CNTXT_C2H_STREAM_DMA;
 		q_sw_ctxt.frcd_en = 1;
@@ -1472,26 +1722,27 @@ int qdma_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t qid)
 	q_sw_ctxt.ring_bs_addr = (uint64_t)rxq->rx_mz->phys_addr;
 
 	if (rxq->en_bypass &&
-		(bypass_desc_sz_idx == SW_DESC_CNTXT_64B_BYPASS_DMA))
+		(rxq->bypass_desc_sz != 0))
 		q_sw_ctxt.desc_sz = bypass_desc_sz_idx;
 
 	/* Set SW Context */
-	err = qdma_sw_context_write(dev, 1, (qid + queue_base), &q_sw_ctxt);
+	err = hw_access->qdma_sw_ctx_conf(dev, 1, (qid + queue_base),
+			&q_sw_ctxt, QDMA_HW_ACCESS_WRITE);
 	if (err != QDMA_SUCCESS)
-		return -1;
+		return qdma_dev->hw_access->qdma_get_error_code(err);
 
 	if (rxq->st_mode) {
 		/* Set Prefetch Context */
-		err = qdma_pfetch_context_write(dev, (qid + queue_base),
-				&q_prefetch_ctxt);
+		err = hw_access->qdma_pfetch_ctx_conf(dev, (qid + queue_base),
+				&q_prefetch_ctxt, QDMA_HW_ACCESS_WRITE);
 		if (err != QDMA_SUCCESS)
-			return -1;
+			return qdma_dev->hw_access->qdma_get_error_code(err);
 
 		/* Set Completion Context */
-		err = qdma_cmpt_context_write(dev, (qid + queue_base),
-						&q_cmpt_ctxt);
+		err = hw_access->qdma_cmpt_ctx_conf(dev, (qid + queue_base),
+				&q_cmpt_ctxt, QDMA_HW_ACCESS_WRITE);
 		if (err != QDMA_SUCCESS)
-			return -1;
+			return qdma_dev->hw_access->qdma_get_error_code(err);
 
 		rte_wmb();
 		/* enable status desc , loading the triggermode,
@@ -1503,11 +1754,11 @@ int qdma_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t qid)
 		rxq->cmpt_cidx_info.trig_mode = rxq->triggermode;
 		rxq->cmpt_cidx_info.wrb_en = 1;
 		rxq->cmpt_cidx_info.wrb_cidx = 0;
-		qdma_queue_cmpt_cidx_update(dev, qdma_dev->is_vf,
+		hw_access->qdma_queue_cmpt_cidx_update(dev, qdma_dev->is_vf,
 			qid, &rxq->cmpt_cidx_info);
 
 		rxq->q_pidx_info.pidx = (rxq->nb_rx_desc - 2);
-		qdma_queue_pidx_update(dev, qdma_dev->is_vf, qid,
+		hw_access->qdma_queue_pidx_update(dev, qdma_dev->is_vf, qid,
 				1, &rxq->q_pidx_info);
 	}
 
@@ -1570,7 +1821,6 @@ int qdma_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t qid)
 
 	dev->data->rx_queue_state[qid] = RTE_ETH_QUEUE_STATE_STOPPED;
 
-
 	return 0;
 }
 
@@ -1606,15 +1856,21 @@ int qdma_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t qid)
 	return 0;
 }
 
-static int qdma_dev_stats_get(struct rte_eth_dev *dev,
+/**
+ * DPDK callback for retrieving Port statistics.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param eth_stats
+ *   Pointer to structure containing statistics.
+ *
+ * @return
+ *   0 on success, < 0 on failure.
+ */
+int qdma_dev_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *eth_stats)
 {
 	unsigned int i;
-
-	eth_stats->opackets = 0;
-	eth_stats->obytes = 0;
-	eth_stats->ipackets = 0;
-	eth_stats->ibytes = 0;
 
 	memset(eth_stats, 0, sizeof(struct rte_eth_stats));
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
@@ -1641,6 +1897,26 @@ static int qdma_dev_stats_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/**
+ * DPDK callback to get names of extended stats of the device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param xstats_names
+ *   Array of name values to be filled in
+ * @param size
+ *   Number of elements in the xstats_names array
+ *
+ * @return
+ *   When size >= the number of stats,
+ *   return the number of stat values filled into the array.
+ *
+ *   When size < the number of available stats,
+ *   return the number of stats values,
+ *   and do not fill in any data into xstats_names.
+ *
+ *   A negative value on error
+ */
 static int
 qdma_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 		      struct rte_eth_xstat_name *xstats_names,
@@ -1664,6 +1940,20 @@ qdma_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 	return QDMA_NB_STMN_XSTATS32 + QDMA_NB_STMN_XSTATS64;
 }
 
+/**
+ * DPDK callback to retrieve extended statistics of an Ethernet device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param xstats
+ *   Pointer to the array of structure to be filled with
+ *   device statistics ids and values
+ * @param n
+ *   Number of elements in the xstats array
+ *
+ * @return
+ *   The number of entries successfully filled into the xstats array
+ */
 static int
 qdma_xstats_get(__rte_unused struct rte_eth_dev *dev,
 		struct rte_eth_xstat *xstats,
@@ -1701,25 +1991,343 @@ qdma_xstats_get(__rte_unused struct rte_eth_dev *dev,
 	return count;
 }
 
+/**
+ * DPDK callback to get Rx Queue info of an Ethernet device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param rx_queue_id
+ *   The RX queue on the Ethernet device for which information will be
+ *   retrieved
+ * @param qinfo
+ *   A pointer to a structure of type rte_eth_rxq_info_info to be filled with
+ *   the information of given Rx queue.
+ *
+ * @return
+ *  0 on success, negative errno value on failure.
+ */
+
+
+static void
+qep_dev_rxq_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
+		     struct rte_eth_rxq_info *qinfo)
+{
+	struct qdma_pci_dev *dma_priv;
+	struct qdma_rx_queue *rxq = NULL;
+
+	if (!qinfo)
+		return;
+
+	dma_priv = (struct qdma_pci_dev *)dev->data->dev_private;
+
+	rxq = dev->data->rx_queues[rx_queue_id];
+	memset(qinfo, 0, sizeof(struct rte_eth_rxq_info));
+	qinfo->mp = rxq->mb_pool;
+	qinfo->conf.offloads = rxq->offloads;
+	qinfo->conf.rx_deferred_start = rxq->rx_deferred_start;
+	qinfo->conf.rx_drop_en = 1;
+	qinfo->conf.rx_thresh.wthresh = dma_priv->g_c2h_cnt_th[rxq->threshidx];
+	qinfo->scattered_rx = 1;
+	qinfo->nb_desc = rxq->nb_rx_desc - 1;
+}
+
+/**
+ * DPDK callback to get Tx Queue info of an Ethernet device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param tx_queue_id
+ *   The TX queue on the Ethernet device for which information will be
+ *   retrieved
+ * @param qinfo
+ *   A pointer to a structure of type rte_eth_txq_info_info to be filled with
+ *   the information of given Tx queue.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+
+
+static void
+qep_dev_txq_info_get(struct rte_eth_dev *dev, uint16_t tx_queue_id,
+		      struct rte_eth_txq_info *qinfo)
+{
+	struct qdma_tx_queue *txq = NULL;
+
+	if (!qinfo)
+		return;
+
+	txq = dev->data->tx_queues[tx_queue_id];
+	qinfo->conf.offloads = txq->offloads;
+	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
+	qinfo->conf.tx_rs_thresh = 0;
+	qinfo->nb_desc = txq->nb_tx_desc - 1;
+
+}
+
+/**
+ * DPDK callback to Link up an Ethernet device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *    0 on success, negative errno value on failure.
+ */
+
+
+static int qep_dev_set_link_up(struct rte_eth_dev *dev)
+{
+	int ret;
+
+	ret = xcmac_start(dev);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "%s: xcmac_start failed with status %d\n",
+			    __func__, ret);
+		return ret;
+	}
+	qdma_dev_link_update(dev, 1);
+
+	return 0;
+
+}
+
+/**
+ * DPDK callback to Link down an Ethernet device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *       0 on success, negative errno value on failure.
+ */
+
+
+static int qep_dev_set_link_down(struct rte_eth_dev *dev)
+{
+	int ret;
+	struct qdma_pci_dev *dma_priv;
+
+	dma_priv = (struct qdma_pci_dev *)dev->data->dev_private;
+	ret = xcmac_stop(dev);
+
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "%s: xcmac_stop failed with status %d\n",
+			    __func__, ret);
+		return ret;
+	}
+	/* TODO: Do we really need gt and core reset here. With IXIA, cmac_stop
+	 * is not clearing lane status bit.
+	 */
+	xcmac_reset_gt(&dma_priv->cmac_instance);
+	xcmac_reset_core(&dma_priv->cmac_instance, XCMAC_CORE_BOTH);
+	qdma_dev_link_update(dev, 0);
+
+	return 0;
+}
+
+/**
+ * DPDK callback to retrieve RSS Indirection table.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param reta_conf
+ *   An Array of structure used to retrieve entries of Redirection Table of
+ *   the Receive Side Scaling (RSS).Each element of array can have 64
+ *   entries.
+ * @param reta_size
+ *   Size of the RETA table
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+
+static int
+qep_dev_rss_reta_query(struct rte_eth_dev *dev,
+		       struct rte_eth_rss_reta_entry64 *reta_conf,
+		       uint16_t reta_size)
+{
+	struct qdma_pci_dev *dma_priv;
+	uint32_t idx;
+	uint32_t i;
+	uint32_t val, addr;
+
+	dma_priv = (struct qdma_pci_dev *)dev->data->dev_private;
+	if (!reta_size || reta_size > QEP_RSS_TBL_SIZE) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	/* Fill each entry of the table even if its bit is not set. */
+	for (idx = 0, i = 0; (i != reta_size); ++i) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		addr = (QEP_BASE_OFFSET + QEP_USER_RSS_OFFSET + (i * 4));
+		val = qdma_read_reg((uint64_t)
+				(dma_priv->bar_addr[dma_priv->user_bar_idx]) +
+				addr);
+		reta_conf[idx].reta[i % RTE_RETA_GROUP_SIZE] = val;
+	}
+	return 0;
+}
+
+/**
+ * DPDK callback to update the RSS indirection table.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param reta_conf
+ *   An Array of structure used to configure entries of Redirection Table of
+ *   the Receive Side Scaling (RSS).Each element of array can have 64
+ *   entries. For each requested reta entry, corresponding bit in mask
+ *   must be set.
+ * @param reta_size
+ *   Size of the RETA table.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+
+int
+qep_dev_rss_reta_update(struct rte_eth_dev *dev,
+			 struct rte_eth_rss_reta_entry64 *reta_conf,
+			 uint16_t reta_size)
+{
+	struct qdma_pci_dev *dma_priv;
+	int idx, i, pos;
+	uint32_t qval, nrxq;
+	uint32_t addr;
+
+	nrxq = dev->data->nb_rx_queues;
+	dma_priv = (struct qdma_pci_dev *)dev->data->dev_private;
+
+	/* Validate queue id received from user*/
+	for (idx = 0, i = 0; (i != reta_size); ++i) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		pos = i % RTE_RETA_GROUP_SIZE;
+		if (((reta_conf[idx].mask >> pos) & 0x1) == 0)
+			continue;
+		if (reta_conf[idx].reta[pos] >= nrxq)
+			return -EINVAL;
+	}
+
+	/* Program queue id received into Redirection table */
+	for (idx = 0, i = 0; (i != reta_size); ++i) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		pos = i % RTE_RETA_GROUP_SIZE;
+		if (((reta_conf[idx].mask >> pos) & 0x1) == 0)
+			continue;
+		addr = (QEP_BASE_OFFSET + QEP_USER_RSS_OFFSET + (i * 4));
+		qval = reta_conf[idx].reta[pos];
+		qdma_write_reg((uint64_t)
+		       (dma_priv->bar_addr[dma_priv->user_bar_idx]) + addr,
+		       qval);
+	}
+	return 0;
+}
+
+/**
+ * DPDK callback to get the RSS hash configuration.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param rss_conf
+ *   RSS configuration data to be stored.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+
+int
+qep_dev_rss_conf_get(struct rte_eth_dev *dev,
+		     struct rte_eth_rss_conf *rss_conf)
+{
+	struct qdma_pci_dev *dma_priv;
+	uint8_t rss_key[40] = {
+		0x6D, 0x5A, 0x56, 0xDA, 0x25, 0x5B, 0x0E, 0xC2,
+		0x41, 0x67, 0x25, 0x3D, 0x43, 0xA3, 0x8F, 0xB0,
+		0xD0, 0xCA, 0x2B, 0xCB, 0xAE, 0x7B, 0x30, 0xB4,
+		0x77, 0xCB, 0x2D, 0xA3, 0x80, 0x30, 0xF2, 0x0C,
+		0x6A, 0x42, 0xB7, 0x3B, 0xBE, 0xAC, 0x01, 0xFA,
+	};
+
+	dma_priv = (struct qdma_pci_dev *)dev->data->dev_private;
+
+	(void)dma_priv;
+	if (!rss_conf) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	if (rss_conf->rss_key && (rss_conf->rss_key_len >= QEP_RSS_HKEY_SIZE))
+		memcpy(rss_conf->rss_key, rss_key, QEP_RSS_HKEY_SIZE);
+	rss_conf->rss_key_len = QEP_RSS_HKEY_SIZE;
+	rss_conf->rss_hf = QEP_RSS_FLOW_TYPE;
+	return 0;
+}
+
+/**
+ * DPDK callback to get rte_flow callbacks and manage filter operations.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param filter_type
+ *   Filter type.
+ * @param filter_op
+ *   Operation to perform.
+ * @param arg
+ *   Pointer to operation-specific structure.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+
+static int
+qep_filter_ctrl(struct rte_eth_dev *dev __rte_unused,
+		enum rte_filter_type filter_type,
+		enum rte_filter_op filter_op, void *arg)
+{
+	int ret = 0;
+
+	switch (filter_type) {
+	case RTE_ETH_FILTER_GENERIC:
+		if (filter_op != RTE_ETH_FILTER_GET)
+			return -EINVAL;
+		*(const void **)arg = &qep_flow_ops;
+		break;
+	default:
+		RTE_LOG(ERR, PMD,
+			"Filter type (%d) not supported", filter_type);
+		ret = -EINVAL;
+		break;
+	}
+	return ret;
+}
+
 static struct eth_dev_ops qdma_eth_dev_ops = {
-	.dev_configure      = qdma_dev_configure,
-	.dev_infos_get      = qdma_dev_infos_get,
-	.dev_start          = qdma_dev_start,
-	.dev_stop           = qdma_dev_stop,
-	.dev_close          = qdma_dev_close,
-	.link_update        = qdma_dev_link_update,
-	.rx_queue_setup     = qdma_dev_rx_queue_setup,
-	.tx_queue_setup     = qdma_dev_tx_queue_setup,
-	.rx_queue_release   = qdma_dev_rx_queue_release,
-	.tx_queue_release   = qdma_dev_tx_queue_release,
-	.rx_queue_start     = qdma_dev_rx_queue_start,
-	.rx_queue_stop      = qdma_dev_rx_queue_stop,
-	.tx_queue_start     = qdma_dev_tx_queue_start,
-	.tx_queue_stop      = qdma_dev_tx_queue_stop,
-	.stats_get          = qdma_dev_stats_get,
-	.xstats_get_names   = qdma_xstats_get_names,
-	.xstats_get         = qdma_xstats_get,
-	.mtu_set            = qdma_dev_mtu_set,
+	.dev_configure        = qdma_dev_configure,
+	.dev_infos_get        = qdma_dev_infos_get,
+	.dev_start            = qdma_dev_start,
+	.dev_stop             = qdma_dev_stop,
+	.dev_close            = qdma_dev_close,
+	.link_update          = qdma_dev_link_update,
+	.dev_set_link_up      = qep_dev_set_link_up,
+	.dev_set_link_down    = qep_dev_set_link_down,
+	.rx_queue_setup       = qdma_dev_rx_queue_setup,
+	.tx_queue_setup       = qdma_dev_tx_queue_setup,
+	.rx_queue_release     = qdma_dev_rx_queue_release,
+	.tx_queue_release     = qdma_dev_tx_queue_release,
+	.rx_queue_start       = qdma_dev_rx_queue_start,
+	.rx_queue_stop        = qdma_dev_rx_queue_stop,
+	.tx_queue_start       = qdma_dev_tx_queue_start,
+	.tx_queue_stop        = qdma_dev_tx_queue_stop,
+	.stats_get            = qdma_dev_stats_get,
+	.xstats_get_names     = qdma_xstats_get_names,
+	.xstats_get           = qdma_xstats_get,
+	.mtu_set              = qdma_dev_mtu_set,
+	.rxq_info_get         = qep_dev_rxq_info_get,
+	.txq_info_get         = qep_dev_txq_info_get,
+	.reta_query	      = qep_dev_rss_reta_query,
+	.reta_update	      = qep_dev_rss_reta_update,
+	.rss_hash_conf_get    = qep_dev_rss_conf_get,
+	.filter_ctrl          = qep_filter_ctrl,
 };
 
 void qdma_dev_ops_init(struct rte_eth_dev *dev)

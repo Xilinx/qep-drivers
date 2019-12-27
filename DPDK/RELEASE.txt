@@ -1,4 +1,4 @@
-Release: 1.0.0
+Release: 1.2.0
 ==============
 
 This release is based on DPDK v18.11.
@@ -7,7 +7,7 @@ This release is validated on QEP HW design with standard DPDK example
 applications like test-pmd, dpdk-pktgen, proc-info.
 
 This release is validated to confirm the functionality of security block for
-MAC & VLAN filtering.
+MAC & VLAN filtering, Checksum offload, RSS.
 
 
 SUPPORTED FEATURES:
@@ -17,12 +17,22 @@ SUPPORTED FEATURES:
 - Streaming Traffic Manager for Networking
 - QDMA for data transfer
 - 256 streaming queues for Network PF
+- TCP and UDP checksum offload for IPv4 packets
+- Receive side scaling (RSS) support for below packet types
+	- IPv4
+	- IPv4 TCP
+	- IPv6
+	- IPv6 TCP
 - Additional driver APIs for debug and statistics
+- Support rte_flow_ops for RSS configuration
 
 
 KNOWN BUGS:
 ===========
-- Traffic stops on abrupty killing testpmd and restarting it.
+- Traffic stops on abruptly killing testpmd and restarting it.
+- IPv4 fragmented packets are directed to different RSS redirection table entries.
+- DMAR error observed with IOMMU enabled when testpmd is run after Linux driver is run and removed.
+- Testpmd fails when PF from multiple cards are assigned to a single VM and binded to DPDK.
 
 
 LIMITATIONS:

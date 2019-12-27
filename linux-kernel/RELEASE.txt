@@ -1,13 +1,13 @@
-Release: 1.0.0
+Release: 1.2.0
 ==============
 
-This release is verified on Ubuntu 18.04.1 LTS, Linux kernel 4.15.0-64-generic.
+This release is based on 4.15.0-64-generic Linux kernel and verified on Ubuntu 18.04.1 LTS.
 
 This release is validated on QEP HW design with standard Linux tools such as
 hping3 and standard interface is configured through ifconfig and IP utility.
 
 This release is validated to confirm the functionality of security block for
-MAC & VLAN filtering.
+MAC & VLAN filtering, Checksum offload and RSS.
 
 SUPPORTED FEATURES:
 ===================
@@ -17,9 +17,15 @@ SUPPORTED FEATURES:
 - QDMA for data transfer
 - 256 streaming queues for Network PF
 - Debugfs support for CMAC, STMN and QDMA
+- TCP and UDP checksum offload for IPv4 packets
+- Receive side scaling (RSS) support for below packet types
+	- IPv4
+	- IPv4 TCP
+	- IPv6
+	- IPv6 TCP
 
-
-
- 
-
-
+KNOWN BUGS:
+===========
+- IPv4 fragmented packets are directed to different RSS redirection table entries.
+- Sometimes packets processing halts when RSS is enabled and driver is configured for more than 128 queues.
+- Driver insert fails when network PF from multiple cards are assigned to a single VM and binded to the QEP Linux driver.

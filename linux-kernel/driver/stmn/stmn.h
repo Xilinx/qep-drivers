@@ -33,12 +33,10 @@
 /* Design Specific Configurable*/
 #define STMN_REG_NAME_LEN_MAX 100
 #define STMN_MSG_BUF_LEN_MAX 8192
+#define STMN_MSG_RAM_BUF_LEN 128
 
 #define STMN_POLL_COUNT_MAX 1
 #define STMN_POLL_INTERVAL 1
-
-#define STMN_CRL_RAM_QID_BASE 64
-#define STMN_CRL_RAM_NUM_QID 5
 
 #define STMN_BAR_NUM 2
 #define STMN_BAR_OFFSET 0x000D0000

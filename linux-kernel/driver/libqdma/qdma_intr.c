@@ -29,6 +29,9 @@
 #include "version.h"
 #include "qdma_mbox_protocol.h"
 #include "qdma_access.h"
+#ifdef DUMP_ON_ERROR_INTERRUPT
+#include "qdma_reg_dump.h"
+#endif
 
 #ifndef __QDMA_VF__
 static LIST_HEAD(legacy_intr_q_list);
@@ -37,7 +40,56 @@ static spinlock_t legacy_q_add_lock;
 static unsigned long legacy_intr_flags = IRQF_SHARED;
 #endif
 
-#ifndef MAILBOX_INTERRUPT_DISABLE
+
+#ifndef __QDMA_VF__
+#ifdef DUMP_ON_ERROR_INTERRUPT
+#define REG_BANNER_LEN (81 * 5)
+static int dump_qdma_regs(struct xlnx_dma_dev *xdev)
+{
+	int len = 0, dis_len = 0;
+	int rv;
+	char *buf = NULL, tbuff = NULL;
+	int buflen = qdma_reg_dump_buf_len() + REG_BANNER_LEN;
+	char temp_buf[512];
+
+	if (!xdev) {
+		pr_err("Invalid device\n");
+		return -EINVAL;
+	}
+
+	/** allocate memory */
+	tbuf = (char *) kzalloc(buflen, GFP_KERNEL);
+	if (!tbuf)
+		return -ENOMEM;
+
+	buf = tbuff;
+	rv = qdma_dump_config_regs(xdev, buf + len, buflen - len);
+	if (rv < 0) {
+		pr_warn("Failed to dump Config Bar register values\n");
+		goto free_buf;
+	}
+	len += rv;
+
+	*data = buf;
+	*data_len = buflen;
+
+	buf[++len] = '\0';
+	memset(temp_buf, '\0', 512);
+	for (dis_len = 0; dis_len < len; dis_len += 512) {
+		memcpy(temp_buf, buf, 512);
+		pr_info("\n%s", temp_buf);
+		memset(temp_buf, '\0', 512);
+		buf += 512;
+	}
+
+free_buf:
+	kfree(tbuf);
+	return 0;
+}
+#endif
+#endif
+
+#ifndef MBOX_INTERRUPT_DISABLE
 static irqreturn_t mbox_intr_handler(int irq_index, int irq, void *dev_id)
 {
 	struct xlnx_dma_dev *xdev = dev_id;
@@ -76,10 +128,12 @@ static irqreturn_t error_intr_handler(int irq_index, int irq, void *dev_id)
 	pr_info("Error IRQ fired on Funtion#%d: index=%d, vector=%d\n",
 			xdev->func_id, irq_index, irq);
 
-	qdma_error_process(xdev);
+	xdev->hw.qdma_hw_error_process(xdev);
 
-	qdma_error_interrupt_rearm(xdev);
-
+	xdev->hw.qdma_hw_error_intr_rearm(xdev);
+#ifdef DUMP_ON_ERROR_INTERRUPT
+	dump_qdma_regs(xdev);
+#endif
 	return IRQ_HANDLED;
 }
 #endif
@@ -90,8 +144,11 @@ static void data_intr_aggregate(struct xlnx_dma_dev *xdev, int vidx, int irq)
 	u32 counter = 0;
 	struct intr_coal_conf *coal_entry =
 			(xdev->intr_coal_list + vidx - xdev->dvec_start_idx);
-	struct qdma_intr_ring *ring_entry;
+	union qdma_intr_ring *ring_entry;
 	struct qdma_intr_cidx_reg_info *intr_cidx_info;
+	uint8_t color = 0;
+	uint8_t intr_type = 0;
+	uint32_t qid = 0;
 
 	if (!coal_entry) {
 		pr_err("Failed to locate the coalescing entry for vector = %d\n",
@@ -124,18 +181,36 @@ static void data_intr_aggregate(struct xlnx_dma_dev *xdev, int vidx, int irq)
 			vidx);
 		return;
 	}
-	while (ring_entry->coal_color == coal_entry->color) {
-		pr_debug("IRQ[%d]: IVE[%d], Qid = %d, e_color = %d, c_color = %d, intr_type = %d\n",
-				irq, vidx, ring_entry->qid, coal_entry->color,
-				ring_entry->coal_color, ring_entry->intr_type);
 
-		descq = qdma_device_get_descq_by_hw_qid(xdev, ring_entry->qid,
-				ring_entry->intr_type);
+
+
+	do {
+		if ((xdev->version_info.device_type == QDMA_DEVICE_VERSAL) &&
+				(xdev->version_info.versal_ip_type ==
+						QDMA_VERSAL_HARD_IP)) {
+			color = ring_entry->ring_cpm.coal_color;
+			intr_type = ring_entry->ring_cpm.intr_type;
+			qid = ring_entry->ring_cpm.qid;
+		} else {
+			color = ring_entry->ring_generic.coal_color;
+			intr_type = ring_entry->ring_generic.intr_type;
+			qid = ring_entry->ring_generic.qid;
+		}
+
+		if (color != coal_entry->color)
+			break;
+		pr_debug("IRQ[%d]: IVE[%d], Qid = %d, e_color = %d, c_color = %d, intr_type = %d\n",
+				irq, vidx, qid, coal_entry->color,
+				color, intr_type);
+
+		descq = qdma_device_get_descq_by_hw_qid(xdev, qid,
+				intr_type);
 		if (!descq) {
 			pr_err("IRQ[%d]: IVE[%d], Qid = %d: desc not found\n",
-					irq, vidx, ring_entry->qid);
+					irq, vidx, qid);
 			return;
 		}
+
 		if (descq->conf.fp_descq_isr_top) {
 			descq->conf.fp_descq_isr_top(descq->q_hndl,
 					descq->conf.quld);
@@ -157,7 +232,7 @@ static void data_intr_aggregate(struct xlnx_dma_dev *xdev, int vidx, int irq)
 			counter++;
 
 		ring_entry = (coal_entry->intr_ring_base + counter);
-	}
+	} while (1);
 
 	if (descq)
 		queue_intr_cidx_update(descq->xdev,
@@ -275,7 +350,7 @@ static void intr_context_invalidate(struct xlnx_dma_dev *xdev)
 		if (ring_entry) {
 			intr_ring_free(xdev,
 				ring_entry->intr_rng_num_entries,
-				sizeof(struct qdma_intr_ring),
+				sizeof(union qdma_intr_ring),
 				(u8 *)ring_entry->intr_ring_base,
 				ring_entry->intr_ring_bus);
 		}
@@ -293,14 +368,18 @@ static void intr_context_invalidate(struct xlnx_dma_dev *xdev)
 	while (i < QDMA_NUM_DATA_VEC_FOR_INTR_CXT) {
 		ring_index = get_intr_ring_index(xdev,
 				(i + xdev->dvec_start_idx));
-		rv = qdma_indirect_intr_context_invalidate(xdev, ring_index);
-		if (rv < 0)
+		rv = xdev->hw.qdma_indirect_intr_ctx_conf(xdev, ring_index,
+				NULL, QDMA_HW_ACCESS_INVALIDATE);
+		if (rv < 0) {
+			pr_err("Intr ctxt invalidate failed, err = %d",
+						rv);
 			return;
+		}
 		ring_entry = (xdev->intr_coal_list + i);
 		if (ring_entry) {
 			intr_ring_free(xdev,
 				ring_entry->intr_rng_num_entries,
-				sizeof(struct qdma_intr_ring),
+				sizeof(union qdma_intr_ring),
 				(u8 *)ring_entry->intr_ring_base,
 				ring_entry->intr_ring_bus);
 		}
@@ -439,7 +518,11 @@ int intr_setup(struct xlnx_dma_dev *xdev)
 {
 	int rv = 0;
 	int i = 0;
-	int num_vecs;
+	int num_vecs = 0;
+	int num_vecs_req = 0;
+#ifndef USER_INTERRUPT_DISABLE
+	int intr_count = 0;
+#endif
 
 	if ((xdev->conf.qdma_drv_mode == POLL_MODE) ||
 			(xdev->conf.qdma_drv_mode == LEGACY_INTR_MODE)) {
@@ -449,13 +532,53 @@ int intr_setup(struct xlnx_dma_dev *xdev)
 	pr_debug("dev %s, xdev->num_vecs = %d\n",
 			dev_name(&xdev->conf.pdev->dev), xdev->num_vecs);
 
-	if (!num_vecs) {
+	if (num_vecs == 0) {
 		pr_warn("MSI-X not supported, running in polled mode\n");
 		return 0;
 	}
-	xdev->num_vecs = min_t(int, num_vecs, xdev->conf.msix_qvec_max);
 
-	pr_debug("xdev->num_vecs = %u", xdev->num_vecs);
+	if (xdev->conf.data_msix_qvec_max == 0) {
+		pr_err("At least 1 data vector is required. input invalid: data_masix_qvec_max(%u)",
+			xdev->conf.data_msix_qvec_max);
+		return -EINVAL;
+	}
+
+	xdev->num_vecs = min_t(int, num_vecs, xdev->conf.msix_qvec_max);
+	if (xdev->num_vecs < xdev->conf.msix_qvec_max)
+		pr_info("current device supports only (%u) msix vectors per function. ignoring input for (%u) vectors",
+			xdev->num_vecs,
+			xdev->conf.msix_qvec_max);
+
+	/** Make sure the total supported vectors =
+	 *  (user vectors + data vectors + 1 error vectors
+	 *  + 1 mailbox vectors)
+	 *  find the requested vectors and check the available vectors
+	 *  can satisfy the request
+	 */
+	num_vecs_req = xdev->conf.user_msix_qvec_max +
+					xdev->conf.data_msix_qvec_max;
+
+	/** Dedicate 1 vector for error interrupts */
+	if (xdev->conf.master_pf)
+		num_vecs_req++;
+
+#ifndef MBOX_INTERRUPT_DISABLE
+	/** Dedicate 1 vector for mailbox interrupts */
+	if ((xdev->version_info.device_type == QDMA_DEVICE_SOFT) &&
+			(xdev->version_info.vivado_release >=
+					QDMA_VIVADO_2019_1))
+		num_vecs_req++;
+#endif
+
+	if (num_vecs_req > xdev->num_vecs) {
+		pr_warn("Available vectors(%u) is less than Requested vectors(%u) [u:%u|d:%u]\n",
+				xdev->num_vecs,
+				num_vecs_req,
+				xdev->conf.user_msix_qvec_max,
+				xdev->conf.data_msix_qvec_max);
+		return -EINVAL;
+	}
+
 	xdev->msix = kzalloc((sizeof(struct msix_entry) * xdev->num_vecs),
 						GFP_KERNEL);
 	if (!xdev->msix) {
@@ -497,19 +620,31 @@ int intr_setup(struct xlnx_dma_dev *xdev)
 	 * The remaining vectors are for Data interrupts
 	 */
 	i = 0; /* This is mandatory, do not delete */
-#ifndef MAILBOX_INTERRUPT_DISABLE
-	/* Mail box interrupt */
-	rv = intr_vector_setup(xdev, i, INTR_TYPE_MBOX, mbox_intr_handler);
-	if (rv)
-		goto cleanup_irq;
-	i++;
+
+#ifndef MBOX_INTERRUPT_DISABLE
+	if ((xdev->version_info.device_type == QDMA_DEVICE_SOFT) &&
+			(xdev->version_info.vivado_release >=
+					QDMA_VIVADO_2019_1)) {
+		/* Mail box interrupt */
+		rv = intr_vector_setup(xdev, i, INTR_TYPE_MBOX,
+				mbox_intr_handler);
+		if (rv)
+			goto cleanup_irq;
+		i++;
+	}
 #endif
+
 #ifndef USER_INTERRUPT_DISABLE
-	/* user interrupt */
-	rv = intr_vector_setup(xdev, i, INTR_TYPE_USER, user_intr_handler);
-	if (rv)
-		goto cleanup_irq;
-	i++;
+	for (intr_count = 0;
+		intr_count < xdev->conf.user_msix_qvec_max;
+		intr_count++) {
+		/* user interrupt */
+		rv = intr_vector_setup(xdev, i, INTR_TYPE_USER,
+				user_intr_handler);
+		if (rv)
+			goto cleanup_irq;
+		i++;
+	}
 #endif
 
 #ifndef __QDMA_VF__
@@ -522,6 +657,7 @@ int intr_setup(struct xlnx_dma_dev *xdev)
 		i++;
 	}
 #endif
+
 	/* data interrupt */
 	xdev->dvec_start_idx = i;
 	for (; i < xdev->num_vecs; i++) {
@@ -563,7 +699,7 @@ static irqreturn_t irq_legacy(int irq, void *param)
 	}
 
 	spin_lock_irqsave(&legacy_intr_lock, legacy_intr_flags);
-	if (!qdma_is_legacy_interrupt_pending(xdev)) {
+	if (!xdev->hw.qdma_is_legacy_intr_pend(xdev)) {
 
 		list_for_each_safe(entry, tmp, &legacy_intr_q_list) {
 			struct qdma_descq *descq =
@@ -573,8 +709,8 @@ static irqreturn_t irq_legacy(int irq, void *param)
 
 			qdma_descq_service_cmpl_update(descq, 0, 1);
 		}
-		qdma_clear_pending_legacy_intrrupt(xdev);
-		qdma_enable_legacy_interrupt(xdev);
+		xdev->hw.qdma_clear_pend_legacy_intr(xdev);
+		xdev->hw.qdma_legacy_intr_conf(xdev, ENABLE);
 		ret = IRQ_HANDLED;
 	}
 	spin_unlock_irqrestore(&legacy_intr_lock, legacy_intr_flags);
@@ -597,7 +733,7 @@ void intr_legacy_clear(struct qdma_descq *descq)
 		pr_info("un-registering legacy interrupt from qdma%05x\n",
 			descq->xdev->conf.bdf);
 
-		qdma_disable_legacy_interrupt(descq->xdev);
+		descq->xdev->hw.qdma_legacy_intr_conf(descq->xdev, DISABLE);
 
 		free_irq(descq->xdev->conf.pdev->irq, descq->xdev);
 	}
@@ -622,8 +758,11 @@ int intr_legacy_setup(struct qdma_descq *descq)
 		pr_debug("registering legacy interrupt for irq-%d from qdma%05x\n",
 			descq->xdev->conf.pdev->irq, descq->xdev->conf.bdf);
 
-		if (qdma_disable_legacy_interrupt(descq->xdev))
+		if (descq->xdev->hw.qdma_legacy_intr_conf(descq->xdev,
+								DISABLE)) {
+			spin_unlock(&legacy_q_add_lock);
 			return -EINVAL;
+		}
 
 		rv = request_threaded_irq(descq->xdev->conf.pdev->irq, irq_top,
 					  irq_legacy, legacy_intr_flags,
@@ -637,8 +776,11 @@ int intr_legacy_setup(struct qdma_descq *descq)
 				      &legacy_intr_q_list);
 			rv = 0;
 		}
-		if (qdma_enable_legacy_interrupt(descq->xdev))
+		if (descq->xdev->hw.qdma_legacy_intr_conf(descq->xdev,
+								ENABLE)) {
+			spin_unlock(&legacy_q_add_lock);
 			return -EINVAL;
+		}
 	} else
 		list_add_tail(&descq->legacy_intr_q_list,
 			      &legacy_intr_q_list);
@@ -706,7 +848,7 @@ int intr_ring_setup(struct xlnx_dma_dev *xdev)
 							num_entries;
 			intr_coal_list_entry->intr_ring_base = intr_ring_alloc(
 					xdev, num_entries,
-					sizeof(struct qdma_intr_ring),
+					sizeof(union qdma_intr_ring),
 					&intr_coal_list_entry->intr_ring_bus);
 			if (!intr_coal_list_entry->intr_ring_base) {
 				pr_err("dev %s, sz %u, intr_desc ring OOM.\n",
@@ -748,7 +890,7 @@ err_out:
 	while (--counter >= 0) {
 		intr_coal_list_entry = (intr_coal_list + counter);
 		intr_ring_free(xdev, intr_coal_list_entry->intr_rng_num_entries,
-				sizeof(struct qdma_intr_ring),
+				sizeof(union qdma_intr_ring),
 				(u8 *)intr_coal_list_entry->intr_ring_base,
 				intr_coal_list_entry->intr_ring_bus);
 	}
@@ -775,9 +917,20 @@ void qdma_queue_service(unsigned long dev_hndl, unsigned long id, int budget,
 			bool c2h_upd_cmpl)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
-	struct qdma_descq *descq = qdma_device_get_descq_by_id(xdev, id,
-							NULL, 0, 0);
+	struct qdma_descq *descq;
 
+	/** make sure that the dev_hndl passed is Valid */
+	if (!xdev) {
+		pr_err("dev_hndl is NULL");
+		return;
+	}
+
+	if (xdev_check_hndl(__func__, xdev->conf.pdev, dev_hndl) < 0) {
+		pr_err("Invalid dev_hndl passed");
+		return;
+	}
+
+	descq = qdma_device_get_descq_by_id(xdev, id, NULL, 0, 0);
 	if (descq)
 		qdma_descq_service_cmpl_update(descq, budget, c2h_upd_cmpl);
 }
@@ -804,9 +957,12 @@ int qdma_err_intr_setup(struct xlnx_dma_dev *xdev)
 
 	err_intr_index = get_intr_vec_index(xdev, INTR_TYPE_ERROR);
 
-	rv = qdma_error_interrupt_setup(xdev, xdev->func_id, err_intr_index);
-	if (rv < 0)
+	rv = xdev->hw.qdma_hw_error_intr_setup(xdev, xdev->func_id,
+					    err_intr_index);
+	if (rv < 0) {
+		pr_err("Failed to setup error interrupt, err = %d", rv);
 		return -EINVAL;
+	}
 
 	return 0;
 }

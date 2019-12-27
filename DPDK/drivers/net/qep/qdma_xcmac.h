@@ -58,7 +58,5 @@ void xcmac_set_mtu(struct rte_eth_dev *dev, uint16_t new_mtu);
 int xcmac_setup(struct rte_eth_dev *dev);
 int xcmac_start(struct rte_eth_dev *dev);
 int xcmac_stop(struct rte_eth_dev *dev);
-void xcmac_link_check_thread_start(struct rte_eth_dev *dev);
-void xcmac_link_check_thread_stop(struct rte_eth_dev *dev);
 
 #endif /* end of protection macro */

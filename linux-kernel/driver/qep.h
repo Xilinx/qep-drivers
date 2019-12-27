@@ -27,7 +27,7 @@
 #define DRV_DESC "Xilinx QDMA Ethernet Platform Driver"
 
 #define QEP_VERSION_MAJOR 1
-#define QEP_VERSION_MINOR 0
+#define QEP_VERSION_MINOR 2
 #define QEP_VERSION_PATCH 0
 
 #define QEP_JUMBO_DISABLE (0)
@@ -36,17 +36,19 @@
 #define QEP_DBG_DUMP_EN (0)
 
 #define QEP_NUM_MAX_QUEUES (256)
-#define QEP_NUM_IRQ_MAX (32)
-#define QEP_QUEUE_BASE (256)
 
 #define DRV_VER QEP_VERSION_STR
 #define QEP_ERROR_STR_BUF_LEN (512)
 
 #define QEP_PCI_CONFIG_BAR (0)
-#ifdef QAP_DESIGN
+#if defined(QAP_DESIGN) || defined(QAP_STMN_DESIGN)
 #define QEP_PCI_USR_BAR (1)
+#define QEP_NUM_IRQ_MAX (8)
+#define QEP_QUEUE_BASE (0)
 #else
 #define QEP_PCI_USR_BAR (2)
+#define QEP_NUM_IRQ_MAX (32)
+#define QEP_QUEUE_BASE (256)
 #endif
 
 #define QEP_MIN_MTU (64)
@@ -297,6 +299,7 @@ void qep_set_ethtool_ops(struct net_device *netdev);
 void qep_update_stats(struct net_device *netdev);
 int qep_qdma_reinit_rx_queue(struct qep_priv *xpriv, u32 queue, u8 cnt_th_idx,
 			     u8 rx_timer_idx, u32 use_adaptive_rx);
+int qep_init_reta(struct qep_priv *xpriv, u32 start, u32 q);
 void qep_debugfs_exit(void);
 int qep_debugfs_init(void);
 int qep_debugfs_dev_init(struct qep_priv *xpriv);
@@ -306,5 +309,6 @@ void qep_get_cmac_stats(struct net_device *netdev, u32 len, void *msg);
 void dump_qdma_sw_sgl(unsigned int sgcnt, struct qdma_sw_sg *sgl);
 void dump_skb(struct qep_priv *xpriv, struct sk_buff *skb);
 #endif
+
 
 #endif /* QEP_H_ */

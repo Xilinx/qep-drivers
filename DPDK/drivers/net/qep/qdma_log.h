@@ -1,7 +1,7 @@
-/*
- * Copyright(c) 2019 Xilinx, Inc. All rights reserved.
- *
+/*-
  * BSD LICENSE
+ *
+ * Copyright(c) 2019 Xilinx, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,23 +30,17 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef QDMA_VERSION_H_
-#define QDMA_VERSION_H_
+#ifndef __QDMA_LOG_H__
+#define __QDMA_LOG_H__
+
+#include <rte_log.h>
+
+#ifdef RTE_LIBRTE_QDMA_DEBUG_DRIVER
+#define PMD_DRV_LOG(level, fmt, args...) \
+	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
+#else
+#define PMD_DRV_LOG(level, fmt, args...)  do { } while (0)
+#endif
 
 
-#define QDMA_VERSION_MAJOR	2019
-#define QDMA_VERSION_MINOR	1
-#define QDMA_VERSION_PATCH	23
-
-#define QDMA_VERSION_STR	\
-	__stringify(QDMA_VERSION_MAJOR) "." \
-	__stringify(QDMA_VERSION_MINOR) "." \
-	__stringify(QDMA_VERSION_PATCH)
-
-#define QDMA_VERSION  \
-	((QDMA_VERSION_MAJOR)*1000 + \
-	 (QDMA_VERSION_MINOR)*100 + \
-	  QDMA_VERSION_PATCH)
-
-
-#endif /* COMMON_QDMA_VERSION_H_ */
+#endif /* ifndef __QDMA_LOG_H__ */

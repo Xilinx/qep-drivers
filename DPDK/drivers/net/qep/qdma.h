@@ -48,15 +48,9 @@
 #include "qdma_resource_mgmt.h"
 #include "qdma_mbox.h"
 #include "rte_pmd_qdma.h"
+#include "qdma_log.h"
 #include "stmn.h"
 #include "qep_user_regs.h"
-
-#ifdef RTE_LIBRTE_QDMA_DEBUG_DRIVER
-#define PMD_DRV_LOG(level, fmt, args...) \
-	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
-#else
-#define PMD_DRV_LOG(level, fmt, args...) do { } while (0)
-#endif
 
 #define QDMA_NUM_BARS          (6)
 #define DEFAULT_PF_CONFIG_BAR  (0)
@@ -91,6 +85,8 @@
 #define MAILBOX_PROG_POLL_COUNT		(1250)
 
 #define WB_TIMEOUT			(100000)
+#define RESET_TIMEOUT		(60000)
+#define SHUTDOWN_TIMEOUT	(60000)
 
 #ifdef spin_lock_init
 #undef spin_lock_init
@@ -117,9 +113,16 @@
 #define DEFAULT_QDMA_CMPT_DESC_LEN (RTE_PMD_QDMA_CMPT_DESC_LEN_8B)
 #define QDMA_MAX_RX_PKTLEN (9600 + ETHER_HDR_LEN + ETHER_CRC_LEN) /* max pkt */
 #define QEP_RX_CAPA		(DEV_RX_OFFLOAD_JUMBO_FRAME | \
-				DEV_RX_OFFLOAD_SCATTER)
-#define QEP_TX_CAPA		(DEV_TX_OFFLOAD_MULTI_SEGS)
-#define QEP_LINK_STATUS_TIMEOUT (100000)
+				DEV_RX_OFFLOAD_SCATTER | \
+				DEV_RX_OFFLOAD_IPV4_CKSUM | \
+				DEV_RX_OFFLOAD_UDP_CKSUM | \
+				DEV_RX_OFFLOAD_TCP_CKSUM)
+#define QEP_TX_CAPA		(DEV_TX_OFFLOAD_MULTI_SEGS | \
+				DEV_TX_OFFLOAD_IPV4_CKSUM | \
+				DEV_TX_OFFLOAD_UDP_CKSUM | \
+				DEV_TX_OFFLOAD_TCP_CKSUM)
+#define QEP_LINK_STATUS_TIMEOUT (50)
+#define QEP_LINK_STATUS_MS (200)
 
 enum dma_data_direction {
 	DMA_BIDIRECTIONAL = 0,
@@ -128,51 +131,19 @@ enum dma_data_direction {
 	DMA_NONE = 3,
 };
 
+enum reset_state_t {
+	RESET_STATE_IDLE,
+	RESET_STATE_RECV_PF_RESET_REQ,
+	RESET_STATE_RECV_PF_RESET_DONE,
+	RESET_STATE_INVALID
+};
+
 /** MM Write-back status structure **/
 struct __attribute__ ((packed)) wb_status
 {
 	volatile uint16_t	pidx; /** in C2H WB **/
 	volatile uint16_t	cidx; /** Consumer-index **/
 	uint32_t	rsvd2; /** Reserved. **/
-};
-
-/** ST C2H Descriptor **/
-struct __attribute__ ((packed)) qdma_c2h_desc
-{
-	volatile uint64_t	dst_addr;
-};
-
-#define S_H2C_DESC_F_SOP		1
-#define S_H2C_DESC_F_EOP		2
-
-/* pld_len and flags members are part of custom descriptor format needed
- * by example design for ST loopback and desc bypass
- */
-
-/** ST H2C Descriptor **/
-struct __attribute__ ((packed)) qdma_h2c_desc
-{
-	volatile uint16_t	cdh_flags;
-	volatile uint16_t	pld_len;
-	volatile uint16_t	len;
-	volatile uint16_t	flags:5;
-	volatile uint16_t	gl:5;
-	volatile uint16_t	rsvd:6;
-	volatile uint64_t	src_addr;
-};
-
-/** MM Descriptor **/
-struct __attribute__ ((packed)) qdma_mm_desc
-{
-	volatile uint64_t	src_addr;
-	volatile uint64_t	len:28;
-	volatile uint64_t	dv:1;
-	volatile uint64_t	sop:1;
-	volatile uint64_t	eop:1;
-	volatile uint64_t	rsvd:33;
-	volatile uint64_t	dst_addr;
-	volatile uint64_t	rsvd2;
-
 };
 
 struct qdma_pkt_stats {
@@ -184,7 +155,7 @@ struct qdma_pkt_stats {
  * Structure associated with each CMPT queue.
  */
 struct qdma_cmpt_queue {
-	struct mm_cmpt_ring *cmpt_ring;
+	struct qdma_ul_cmpt_ring *cmpt_ring;
 	struct wb_status    *wb_status;
 	struct qdma_q_cmpt_cidx_reg_info cmpt_cidx_info;
 	struct rte_eth_dev	*dev;
@@ -193,10 +164,11 @@ struct qdma_cmpt_queue {
 	uint16_t	nb_cmpt_desc;
 	uint32_t	queue_id; /**< CMPT queue index. */
 
+	uint8_t		status:1;
 	uint8_t		st_mode:1; /**< dma-mode: MM or ST */
 	uint8_t		dis_overflow_check:1;
+	uint8_t		func_id;
 	uint16_t	port_id; /**< Device port identifier. */
-	uint16_t	func_id;
 	int8_t		ringszidx;
 	int8_t		threshidx;
 	int8_t		timeridx;
@@ -211,7 +183,7 @@ struct qdma_cmpt_queue {
 struct qdma_rx_queue {
 	struct rte_mempool	*mb_pool; /**< mbuf pool to populate RX ring. */
 	void			*rx_ring; /**< RX ring virtual address */
-	struct c2h_cmpt_ring	*cmpt_ring;
+	struct qdma_ul_st_cmpt_ring	*cmpt_ring;
 	struct wb_status	*wb_status;
 	struct rte_mbuf		**sw_ring; /**< address of RX software ring. */
 	struct rte_eth_dev	*dev;
@@ -226,6 +198,7 @@ struct qdma_rx_queue {
 	struct qdma_q_pidx_reg_info	q_pidx_info;
 	struct qdma_q_cmpt_cidx_reg_info cmpt_cidx_info;
 	struct qdma_pkt_stats	stats;
+	uint64_t		offloads; /* Rx offloads */
 
 	uint32_t		ep_addr;
 	uint8_t			status:1;
@@ -237,10 +210,11 @@ struct qdma_rx_queue {
 	uint8_t			dump_immediate_data:1;
 	uint8_t			en_bypass_prefetch:1;
 	uint8_t			dis_overflow_check:1;
+
 	enum rte_pmd_qdma_bypass_desc_len	bypass_desc_sz:7;
 
 	uint16_t		port_id; /**< Device port identifier. */
-	uint16_t		func_id; /**< RX queue index. */
+	uint8_t			func_id;
 
 	int8_t			ringszidx;
 	int8_t			cmpt_ringszidx;
@@ -266,14 +240,15 @@ struct qdma_tx_queue {
 	uint16_t			nb_tx_desc; /* No of TX descriptors.*/
 	rte_spinlock_t			pidx_update_lock;
 	struct qdma_q_pidx_reg_info	q_pidx_info;
+	uint64_t			offloads; /* Tx offloads */
 
 	uint8_t				st_mode:1;/* dma-mode: MM or ST */
 	uint8_t				tx_deferred_start:1;
 	uint8_t				en_bypass:1;
 	uint8_t				status:1;
 	enum rte_pmd_qdma_bypass_desc_len		bypass_desc_sz:7;
-	uint16_t			func_id; /* RX queue index. */
 	uint16_t			port_id; /* Device port identifier. */
+	uint8_t				func_id;
 	int8_t				ringszidx;
 
 	struct				qdma_pkt_stats stats;
@@ -284,24 +259,22 @@ struct qdma_tx_queue {
 	const struct rte_memzone	*tx_mz;
 };
 
-struct qdma_vf_queue_info {
-	uint32_t mode;
-};
-
 struct qdma_vf_info {
-	uint32_t	qbase;
-	uint32_t	qmax;
 	uint16_t	func_id;
-	struct	qdma_vf_queue_info *vfqinfo;
 };
 
 struct queue_info {
-	uint32_t queue_mode:1;
-	uint32_t rx_bypass_mode:2;
-	uint32_t tx_bypass_mode:1;
-	uint32_t cmpt_desc_sz:7;
+	uint32_t	queue_mode:1;
+	uint32_t	rx_bypass_mode:2;
+	uint32_t	tx_bypass_mode:1;
+	uint32_t	cmpt_desc_sz:7;
+	uint8_t		immediate_data_state:1;
+	uint8_t		dis_cmpt_ovf_chk:1;
+	uint8_t		en_prefetch:1;
 	enum rte_pmd_qdma_bypass_desc_len rx_bypass_desc_sz:7;
 	enum rte_pmd_qdma_bypass_desc_len tx_bypass_desc_sz:7;
+	uint8_t		timer_count;
+	int8_t		trigger_mode;
 };
 
 struct qdma_pci_dev {
@@ -312,8 +285,10 @@ struct qdma_pci_dev {
 
 	/* Driver Attributes */
 	uint32_t qsets_en;  /* no. of queue pairs enabled */
+	uint16_t nb_rx_queues;
+	uint16_t nb_tx_queues;
 	uint32_t queue_base;
-	uint16_t pf;	/* Function id */
+	uint8_t func_id;  /* Function id */
 
 	/* Device capabilities */
 	struct qdma_dev_attributes dev_cap;
@@ -325,15 +300,20 @@ struct qdma_pci_dev {
 	uint8_t timer_count;
 	uint8_t rsfec;
 
+	uint8_t dev_configured:1;
 	uint8_t is_vf:1;
 	uint8_t is_master:1;
 	uint8_t en_desc_prefetch:1;
 	uint8_t is_cmac_on:1;
 
+	/* Reset state */
+	enum reset_state_t reset_state;
+
 	/* Hardware version info*/
-	uint32_t everest_ip:1;
 	uint32_t vivado_rel:4;
-	uint32_t rtl_version:8;
+	uint32_t rtl_version:4;
+	uint32_t device_type:4;
+	uint32_t versal_ip_type:4;
 
 	struct queue_info *q_info;
 	struct qdma_dev_mbox mbox;
@@ -345,7 +325,14 @@ struct qdma_pci_dev {
 	uint32_t g_c2h_buf_sz[QDMA_NUM_C2H_BUFFER_SIZES];
 	uint32_t g_c2h_timer_cnt[QDMA_NUM_C2H_TIMERS];
 	void	**cmpt_queues;
+	/*Pointer to QDMA access layer function pointers*/
+	struct qdma_hw_access *hw_access;
+
+	struct qdma_vf_info *vfinfo;
+	uint8_t vf_online_count;
+
 	struct xcmac  cmac_instance;
+	struct qep_flow_list flow_list;
 };
 
 void qdma_dev_ops_init(struct rte_eth_dev *dev);
@@ -355,11 +342,13 @@ void qdma_txq_pidx_update(void *arg);
 int qdma_pf_csr_read(struct rte_eth_dev *dev);
 int qdma_vf_csr_read(struct rte_eth_dev *dev);
 
+void qdma_dev_close(struct rte_eth_dev *dev);
+int qdma_dev_stats_get(struct rte_eth_dev *dev,
+			      struct rte_eth_stats *eth_stats);
 int qdma_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 				uint16_t nb_rx_desc, unsigned int socket_id,
 				const struct rte_eth_rxconf *rx_conf,
 				struct rte_mempool *mb_pool);
-
 int qdma_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 				uint16_t nb_tx_desc, unsigned int socket_id,
 				const struct rte_eth_txconf *tx_conf);
@@ -375,6 +364,7 @@ int qdma_vf_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int qdma_vf_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 int qdma_vf_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 int qdma_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
+
 int qdma_init_rx_queue(struct qdma_rx_queue *rxq);
 void qdma_reset_tx_queue(struct qdma_tx_queue *txq);
 void qdma_reset_rx_queue(struct qdma_rx_queue *rxq);
@@ -409,8 +399,15 @@ uint16_t qdma_xmit_pkts_mm(struct qdma_tx_queue *txq, struct rte_mbuf **tx_pkts,
 uint32_t qdma_pci_read_reg(struct rte_eth_dev *dev, uint32_t bar, uint32_t reg);
 void qdma_pci_write_reg(struct rte_eth_dev *dev, uint32_t bar,
 				uint32_t reg, uint32_t val);
-void qdma_desc_dump(struct rte_eth_dev *dev, uint32_t qid);
-
+void qep_init_reta(struct rte_eth_dev *dev, uint32_t offset);
+void qep_set_reta(struct rte_eth_dev *dev, uint32_t *rss_tbl);
+int qep_dev_rss_conf_get(struct rte_eth_dev *dev,
+			 struct rte_eth_rss_conf *rss_conf);
+int qep_dev_rss_reta_update(struct rte_eth_dev *dev,
+			    struct rte_eth_rss_reta_entry64 *reta_conf,
+			    uint16_t reta_size);
+void qep_flow_init(struct qdma_pci_dev *dma_priv);
+void qep_flow_uninit(struct qdma_pci_dev *dma_priv);
 int index_of_array(uint32_t *arr, uint32_t n, uint32_t element);
 
 int qdma_check_kvargs(struct rte_devargs *devargs,

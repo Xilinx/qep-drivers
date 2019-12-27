@@ -33,6 +33,7 @@
 #include <linux/kthread.h>
 #include <linux/delay.h>
 #include <linux/highmem.h>
+#include <linux/debugfs.h>
 #include <net/busy_poll.h>
 #include "qep.h"
 #include "qep_stmn.h"
@@ -48,7 +49,7 @@ module_param(loopback_en, int, 0660);
 
 /* PCI id for devices  */
 static const struct pci_device_id qep_pci_ids[] = {
-#ifdef QAP_DESIGN
+#if defined(QAP_DESIGN) || defined(QAP_STMN_DESIGN)
 	{
 		PCI_DEVICE(0x10ee, 0x903f),
 	},
@@ -68,7 +69,7 @@ MODULE_DEVICE_TABLE(pci, qep_pci_ids);
 static unsigned short int poll_mode;
 
 /* Enable Burst Mode in Classifier logic */
-static unsigned short int clcr_qburst;
+static unsigned short int clcr_qburst = 3;
 
 /* Default MAC Address */
 static u8 mac_addr[ETH_ALEN] = { 0x00, 0x5D, 0x03, 0x00, 0x00, 0x02 };
@@ -85,6 +86,23 @@ static bool c2h_byp_mode = 1;
 static bool h2c_byp_mode = 1;
 #endif
 
+#define QEP_IPV6 6
+#define QEP_L4_UDP_LEN 2
+#define QEP_CMAC_RST_MAX_TRY 0
+
+enum qep_design_support {
+	QEP,
+	QAP,
+	QAP_STMN,
+	QEP_DESIGN_MAX
+};
+
+static const char *design_name[QEP_DESIGN_MAX] = {
+	"QEP design",
+	"QAP design",
+	"QAP_STMN design"
+};
+
 /*****************************************************************************/
 static int qep_tx_done(struct qdma_request *, unsigned int bytes_done, int err);
 static int qep_rx_poll(struct napi_struct *napi, int quota);
@@ -94,14 +112,14 @@ static int qep_rx_pkt_process(unsigned long qhndl, unsigned long quld,
 static void qep_isr_tx_bottom_half(unsigned long data);
 static void qep_isr_tx_tophalf(unsigned long qhndl, unsigned long uld);
 static void qep_isr_rx_tophalf(unsigned long qhndl, unsigned long uld);
-
+static int qep_cmac_restart(struct qep_priv *xpriv);
 /*****************************************************************************/
 
 void stmn_reg_write(void *dev_hndl, uint32_t reg_offst, uint32_t val)
 {
 	void __iomem *base = ((struct qep_priv *)dev_hndl)->tm_dev.stm_regs;
 
-	writel(val, base + reg_offst);
+	writel(val, (void __iomem *)((u64)base + reg_offst));
 }
 
 uint32_t stmn_reg_read(void *dev_hndl, uint32_t reg_offst)
@@ -109,9 +127,10 @@ uint32_t stmn_reg_read(void *dev_hndl, uint32_t reg_offst)
 	u32 val;
 	void __iomem *base = ((struct qep_priv *)dev_hndl)->tm_dev.stm_regs;
 
-	val = readl(base + reg_offst);
+	val = readl((void __iomem *)((u64)base + reg_offst));
 	return val;
 }
+
 
 /* Read CMAC link status from HW */
 static enum cmac_link_state qep_cmac_link_status(struct xcmac *inst)
@@ -139,6 +158,7 @@ static int qep_thread_monitor_link(void *th_arg)
 	struct qep_priv *xpriv;
 	struct net_device *netdev = (struct net_device *)th_arg;
 	enum cmac_link_state link_state = CMAC_LINK_DOWN;
+	int rst_try = 0;
 
 	if (!netdev)
 		return -EINVAL;
@@ -153,6 +173,7 @@ static int qep_thread_monitor_link(void *th_arg)
 			((xpriv->dev_state == QEP_DEV_STATE_UP) ||
 			(xpriv->dev_state == QEP_DEV_STATE_EXIT)));
 
+		/* return if interface is down or driver is to exit*/
 		spin_lock(&xpriv->lnk_state_lock);
 		if (xpriv->dev_state != QEP_DEV_STATE_UP) {
 			spin_unlock(&xpriv->lnk_state_lock);
@@ -171,17 +192,27 @@ static int qep_thread_monitor_link(void *th_arg)
 				goto reloop;
 			usleep_range(5000, 10000);
 		}
-		if (xpriv->lnk_state == link_state)
+		/* reset the cmac to try up the HW link */
+		if (xpriv->lnk_state == link_state) {
+			if ((rst_try < QEP_CMAC_RST_MAX_TRY) &&
+				(link_state == CMAC_LINK_DOWN)) {
+				qep_err(link, "Link Down\n");
+				rst_try++;
+				qep_cmac_restart(xpriv);
+			}
 			goto reloop;
-		else if (link_state == CMAC_LINK_UP &&
+		} else if (link_state == CMAC_LINK_UP &&
 				!netif_carrier_ok(netdev)) {
 			xpriv->lnk_state = link_state;
+			/* start up the transmission queue */
+			netif_tx_start_all_queues(xpriv->netdev);
 			netif_carrier_on(netdev);
-			qep_info(link, "%s: Link Up.", netdev->name);
+			rst_try = 0;
+			qep_info(link, "Link Up\n");
 		} else {
 			netif_carrier_off(netdev);
 			xpriv->lnk_state = link_state;
-			qep_err(link, "%s: Link Down\n", netdev->name);
+			qep_err(link, "Link Down\n");
 		}
 reloop:
 		spin_unlock(&xpriv->lnk_state_lock);
@@ -199,7 +230,7 @@ reloop:
 static int qep_thread_start(struct qep_priv *xpriv)
 {
 	if (xpriv->link_thread) {
-		qep_warn(drv, "%s: Link thread is already present.\n",
+		qep_warn(probe, "%s: Link thread is already present.\n",
 			 __func__);
 		return 0;
 	}
@@ -210,13 +241,15 @@ static int qep_thread_start(struct qep_priv *xpriv)
 	qep_device_count++;
 
 	if (!xpriv->link_thread) {
-		qep_err(link, "%s: Link thread creation failed\n", __func__);
+		qep_err(probe, "%s: link monitor thread creation failed\n",
+			__func__);
 		return -EINVAL;
 	}
 	/* Increments usage counter. */
 	get_task_struct(xpriv->link_thread);
 	wake_up_process(xpriv->link_thread);
-	qep_info(link, "%s: Link thread created successfully\n", __func__);
+	qep_dev_info("%s: link monitor thread created\n", __func__);
+
 	return 0;
 }
 
@@ -224,7 +257,8 @@ static int qep_thread_start(struct qep_priv *xpriv)
 static void qep_thread_stop(struct qep_priv *xpriv)
 {
 	if (!xpriv->link_thread) {
-		qep_warn(link, "%s: Link thread is not present.\n", __func__);
+		qep_warn(link, "%s: link monitor thread is not present.\n",
+			 __func__);
 		return;
 	}
 
@@ -232,14 +266,18 @@ static void qep_thread_stop(struct qep_priv *xpriv)
 	spin_lock(&xpriv->lnk_state_lock);
 	xpriv->dev_state = QEP_DEV_STATE_EXIT;
 	spin_unlock(&xpriv->lnk_state_lock);
+
 	wake_up_interruptible(&xpriv->link_mon_needed);
 	kthread_stop(xpriv->link_thread);
 	put_task_struct(xpriv->link_thread);
+
 	xpriv->link_thread = NULL;
-	qep_info(link, "%s: Link Thread stopped\n", __func__);
+	qep_info(link, "%s: link monitor thread stopped\n", __func__);
 }
 
-enum clcr_mode { CLCR_FIXED_MODE = 0, CLCR_ROUND_ROBIN };
+enum clcr_mode { CLCR_FIXED_MODE = 0,
+				CLCR_ROUND_ROBIN,
+				CLCR_LOOKUP_MODE};
 
 struct clcr_fixed_mode {
 	u32 qnum;
@@ -255,6 +293,7 @@ struct clcr_config {
 	union {
 		struct clcr_fixed_mode fixed;
 		struct clcr_round_robin rr;
+		struct clcr_fixed_mode lookup;
 	};
 };
 
@@ -264,8 +303,10 @@ static int qep_clcr_setup(struct qep_priv *xpriv, struct clcr_config *config)
 	u32 reg_val, qbase = 0;
 	void __iomem *io_addr;
 
-	io_addr = xpriv->bar_base + QEP_DMA_USER_C2H_BASE;
-	reg_val = readl(io_addr + QEP_DMA_USER_C2H_CLCR_OFFSET);
+	io_addr = (void __iomem *)((u64)xpriv->bar_base +
+			QEP_DMA_USER_C2H_BASE);
+	reg_val = readl((void __iomem *)((u64)io_addr +
+			QEP_DMA_USER_C2H_CLCR_OFFSET));
 
 	if (config->mode == CLCR_FIXED_MODE) {
 		reg_val = reg_val & (~QEP_DMA_USER_C2H_QCTRL_MASK);
@@ -282,17 +323,32 @@ static int qep_clcr_setup(struct qep_priv *xpriv, struct clcr_config *config)
 		reg_val &= ~(QEP_DMA_USER_C2H_QBURST_MASK
 				<< QEP_DMA_USER_C2H_QBURST_BIT);
 		if (clcr_qburst)
-			reg_val |= (QEP_NAPI_WEIGHT <<
+			reg_val |= (clcr_qburst <<
 					QEP_DMA_USER_C2H_QBURST_BIT);
 		qbase = config->rr.qbase;
+	} else if (config->mode == CLCR_LOOKUP_MODE) {
+
+		reg_val = reg_val & (~QEP_DMA_USER_C2H_QCTRL_MASK);
+		reg_val = reg_val | (0x2 << QEP_DMA_USER_C2H_QCTRL_BIT);
+
+		reg_val = reg_val & (~QEP_DMA_USER_C2H_QNUM_MASK);
+		reg_val = reg_val | (config->lookup.qnum - 1);
+		qbase = 0;
 	} else
 		return -EINVAL;
 
-	writel(reg_val, io_addr + QEP_DMA_USER_C2H_CLCR_OFFSET);
+	writel(reg_val, (void __iomem *)((u64)io_addr +
+			QEP_DMA_USER_C2H_CLCR_OFFSET));
 
 	/* set the qbase */
-	writel(qbase, io_addr + QEP_DMA_USER_C2H_CLCR2_OFFSET);
+	writel(qbase, (void __iomem *)((u64)io_addr +
+			QEP_DMA_USER_C2H_CLCR2_OFFSET));
 
+	qep_dbg(xpriv->netdev, "qctl:%llx qbase:%llx",
+			readl((void __iomem *)((u64)io_addr +
+					QEP_DMA_USER_C2H_CLCR_OFFSET)),
+			readl((void __iomem *)((u64)io_addr +
+					QEP_DMA_USER_C2H_CLCR2_OFFSET)));
 	return 0;
 }
 
@@ -300,27 +356,37 @@ static int qep_clcr_setup(struct qep_priv *xpriv, struct clcr_config *config)
 static int qep_cmac_ctrl_reset(struct qep_priv *xpriv)
 {
 	int ret = 0, retry = 20;
-	void __iomem *io_addr = xpriv->bar_base + QEP_BASE_OFFSET;
+	void __iomem *io_addr =
+			(void __iomem *)((u64)xpriv->bar_base +
+					QEP_BASE_OFFSET);
 
-	/* reset release of base */
-	writel(1, io_addr + QEP_BASE_CMAC_RESET_CONTROL_OFFSET);
-	writel(0, io_addr + QEP_BASE_CMAC_RESET_CONTROL_OFFSET);
+	/* cmac base reset */
+	writel(1, (void __iomem *)((u64)io_addr +
+			QEP_BASE_CMAC_RESET_CONTROL_OFFSET));
+	msleep(20);
+	writel(0, (void __iomem *)((u64)io_addr +
+			QEP_BASE_CMAC_RESET_CONTROL_OFFSET));
 
 	msleep(100);
 
-	io_addr = xpriv->bar_base + QEP_CMAC_CTRL_BASE;
+	/* cmac ctl reset */
+	io_addr = (void __iomem *)((u64)xpriv->bar_base +
+			QEP_CMAC_CTRL_BASE);
 
 	writel(QEP_CMAC_CTRL_RST_TX_GTWIZ_SHIFT |
 	       QEP_CMAC_CTRL_RST_RX_GTWIZ_SHIFT,
-	       io_addr + QEP_CMAC_CTRL_RST_OFFSET);
+	       (void __iomem *)((u64)io_addr +
+			       QEP_CMAC_CTRL_RST_OFFSET));
 
 	msleep(100);
 
-	writel(0, io_addr + QEP_CMAC_CTRL_RST_OFFSET);
+	writel(0, (void __iomem *)((u64)io_addr +
+			QEP_CMAC_CTRL_RST_OFFSET));
 
 	while (retry--) {
 		msleep(500);
-		ret = readl(io_addr + QEP_CMAC_CTRL_ERR_OFFSET);
+		ret = readl((void __iomem *)((u64)io_addr +
+				QEP_CMAC_CTRL_ERR_OFFSET));
 		if (ret == 0) {
 			qep_dbg(xpriv->netdev, "%s: CMAC Reset done\n",
 				__func__);
@@ -344,14 +410,16 @@ static void qep_cmac_loopback_en(struct qep_priv *xpriv, bool en)
 	int val = 0x492;
 
 
-	io_addr = xpriv->bar_base + QEP_CMAC_CTRL_BASE +
-			QEP_CMAC_CTRL_LOOPBACK;
+	io_addr = (void __iomem *)((u64)xpriv->bar_base +
+			QEP_CMAC_CTRL_BASE +
+			QEP_CMAC_CTRL_LOOPBACK);
 
 	if (en)
 		writel(val, io_addr);
 	else
 		writel(0, io_addr);
 }
+
 
 /* This function resets USER logic */
 static int qep_reset_all(struct qep_priv *xpriv)
@@ -408,8 +476,9 @@ static int qep_cmac_setup(struct qep_priv *xpriv)
 
 	/* Setting MTU Size in CMAC */
 	cmac_mtu = xpriv->netdev->mtu + ETH_HLEN + ETH_FCS_LEN;
-	io_addr = xpriv->bar_base + QEP_CMAC_DRP_OFFSET +
-		  QEP_CMAC_CTL_RX_MAX_PACKET_LEN_OFFSET;
+	io_addr = (void __iomem *)((u64)xpriv->bar_base +
+			QEP_CMAC_DRP_OFFSET +
+			QEP_CMAC_CTL_RX_MAX_PACKET_LEN_OFFSET);
 	writel(cmac_mtu, io_addr);
 
 	cmac_mtu = readl(io_addr);
@@ -456,8 +525,8 @@ static int qep_cmac_start(struct qep_priv *xpriv)
 	}
 
 	/* Start TX output for peer to realize that link is up */
-	io_addr = xpriv->bar_base +
-		  (QEP_CMAC_CTRL_BASE + QEP_CMAC_CTRL_TX_CTRL_OFFSET);
+	io_addr = (void __iomem *)((u64)xpriv->bar_base +
+		  (QEP_CMAC_CTRL_BASE + QEP_CMAC_CTRL_TX_CTRL_OFFSET));
 	reg_val = readl(io_addr);
 	reg_val = reg_val & ~(1 << QEP_CMAC_CTRL_TX_CTRL_TX_INHIBIT_SHIFT);
 	writel(reg_val, io_addr);
@@ -478,8 +547,8 @@ static int qep_cmac_stop(struct qep_priv *xpriv)
 		return 0;
 
 	xpriv->is_cmac_on = 0;
-	io_addr = xpriv->bar_base +
-		  (QEP_CMAC_CTRL_BASE + QEP_CMAC_CTRL_TX_CTRL_OFFSET);
+	io_addr = (void __iomem *)((u64)xpriv->bar_base +
+		  (QEP_CMAC_CTRL_BASE + QEP_CMAC_CTRL_TX_CTRL_OFFSET));
 
 	/* Stop TX output for peer to realize link is down */
 	reg_val = readl(io_addr);
@@ -501,6 +570,45 @@ static int qep_cmac_stop(struct qep_priv *xpriv)
 	return ret;
 }
 
+static int qep_cmac_restart(struct qep_priv *xpriv)
+{
+	int ret;
+
+	if (!xpriv)
+		return -EINVAL;
+
+	if (xpriv->dev_state != QEP_DEV_STATE_UP)
+		return -EINVAL;
+
+	ret = qep_cmac_stop(xpriv);
+	if (ret != 0) {
+		qep_err(drv, "%s: qep_cmac_stop failed with status %d\n",
+			__func__, ret);
+		return ret;
+	}
+
+	ret = qep_reset_all(xpriv);
+	if (ret < 0) {
+		qep_err(probe, "%s : qep reset failed Err:%d", __func__, ret);
+		return ret;
+	}
+
+	ret = qep_cmac_setup(xpriv);
+	if ((ret != 0) && (ret != -EAGAIN)) {
+		qep_err(probe, "%s: qep_cmac_setup() failed with status %d\n",
+			__func__, ret);
+		return ret;
+	}
+
+	ret = qep_cmac_start(xpriv);
+	if (ret != 0) {
+		qep_err(drv, "%s: qep_cmac_start failed with status %d\n",
+			__func__, ret);
+		return ret;
+	}
+
+	return ret;
+}
 /* This function gets global CSR and sets the default indexes of the
  * xpriv structure. If the default value set in the driver doesn't match with
  * any of the values supported, index 0 is returned by default.
@@ -573,7 +681,7 @@ static int qep_qdma_rx_queue_add(struct qep_priv *xpriv, u32 q_no, u8 timer_idx,
 
 	memset(&qconf, 0, sizeof(struct qdma_queue_conf));
 	qconf.st = 1;
-	qconf.c2h = 1;
+	qconf.q_type = Q_C2H;
 	qconf.irq_en = 0;
 	qconf.adaptive_rx = use_adaptive_rx;
 	qconf.pfetch_en = 0;
@@ -589,6 +697,7 @@ static int qep_qdma_rx_queue_add(struct qep_priv *xpriv, u32 q_no, u8 timer_idx,
 
 	qconf.fetch_credit = 1;
 	qconf.cmpl_stat_en = 1;
+	qconf.cmpl_udd_en = 1;
 	qconf.cmpl_desc_sz = DESC_SZ_8B;
 
 	qconf.cmpl_rng_sz_idx = xpriv->cmpl_rng_sz_idx;
@@ -747,7 +856,7 @@ static int qep_qdma_tx_queue_setup(struct qep_priv *xpriv)
 	for (q_no = 0; q_no < xpriv->netdev->real_num_tx_queues; q_no++) {
 		memset(&qconf, 0, sizeof(struct qdma_queue_conf));
 		qconf.st = 1;
-		qconf.c2h = 0;
+		qconf.q_type = Q_H2C;
 		qconf.irq_en = 1;
 		qconf.wb_status_en = 1;
 		qconf.fetch_credit = 1;
@@ -792,15 +901,20 @@ static int qep_qdma_setup(struct qep_priv *xpriv)
 	int ret, status;
 	enum qdma_drv_mode qdma_drv_mode;
 #if 0
-	void __iomem *io_addr = xpriv->bar_base + QEP_BASE_OFFSET;
+	void __iomem *io_addr =
+			(void __iomem *)((u64)xpriv->bar_base +
+					QEP_BASE_OFFSET);
 
-	writel(1, io_addr + QEP_BASE_QDMA_RESET_CONTROL_OFFSET);
+	writel(1, (void __iomem *)((u64)io_addr +
+			QEP_BASE_QDMA_RESET_CONTROL_OFFSET);
 	msleep(100);
 #endif
 
 	memset(&xpriv->qdma_dev_conf, 0, sizeof(struct qdma_dev_conf));
 
-		xpriv->qdma_dev_conf.msix_qvec_max = QEP_NUM_IRQ_MAX;
+	xpriv->qdma_dev_conf.msix_qvec_max = QEP_NUM_IRQ_MAX;
+	xpriv->qdma_dev_conf.data_msix_qvec_max = QEP_NUM_IRQ_MAX;
+	xpriv->qdma_dev_conf.user_msix_qvec_max = 0;
 	xpriv->qdma_dev_conf.master_pf = 0;
 	xpriv->qdma_dev_conf.intr_moderation = 1;
 	xpriv->qdma_dev_conf.qsets_max = QEP_NUM_MAX_QUEUES;
@@ -887,7 +1001,7 @@ static int qep_qdma_start(struct qep_priv *xpriv)
 				       error_str, QEP_ERROR_STR_BUF_LEN);
 		if (ret != 0) {
 			qep_err(drv,
-				"%s: qdma_queue_start() failed for queue %d with error %d (%s)\n",
+				"%s: failed for queue %d with error %d (%s)\n",
 				__func__, q_no, ret, error_str);
 			qep_qdma_stop(xpriv, 0, q_no);
 			return ret;
@@ -900,7 +1014,7 @@ static int qep_qdma_start(struct qep_priv *xpriv)
 				       error_str, QEP_ERROR_STR_BUF_LEN);
 		if (ret != 0) {
 			qep_err(drv,
-				"%s: qdma_queue_start() failed for queue %d with error %d(%s)\n",
+				"%s: failed for queue %d with error %d(%s)\n",
 				__func__, q_no, ret, error_str);
 			qep_qdma_stop(xpriv, q_no,
 				      xpriv->netdev->real_num_rx_queues);
@@ -918,6 +1032,12 @@ static int qep_stop_data_path(struct qep_priv *xpriv)
 
 	netif_carrier_off(xpriv->netdev);
 
+	/* Stop CMAC */
+	ret = qep_cmac_stop(xpriv);
+	if (ret != 0)
+		qep_err(drv, "%s: qep_cmac_stop failed with status %d\n",
+			__func__, ret);
+
 	ret = qep_qdma_stop(xpriv, xpriv->netdev->real_num_tx_queues,
 			    xpriv->netdev->real_num_rx_queues);
 	if (ret != 0)
@@ -933,11 +1053,6 @@ static int qep_stop_data_path(struct qep_priv *xpriv)
 	if (ret != 0)
 		qep_err(drv, "%s: CLCR setup failed %d\n", __func__, ret);
 
-	/* Stop CMAC */
-	ret = qep_cmac_stop(xpriv);
-	if (ret != 0)
-		qep_err(drv, "%s: qep_cmac_stop failed with status %d\n",
-			__func__, ret);
 
 	return ret;
 }
@@ -958,15 +1073,19 @@ static int qep_start_data_path(struct qep_priv *xpriv)
 	for (q_no = 0; q_no < xpriv->netdev->real_num_rx_queues; q_no++)
 		napi_enable(&xpriv->napi[q_no]);
 
-	config.mode = CLCR_ROUND_ROBIN;
-	config.rr.num_queue = xpriv->netdev->real_num_rx_queues;
-	config.rr.qbase = 0;
+	if (xpriv->netdev->features & NETIF_F_RXHASH) {
+		config.mode = CLCR_LOOKUP_MODE;
+		config.lookup.qnum = xpriv->netdev->real_num_rx_queues;
+	} else {
+		config.mode = CLCR_ROUND_ROBIN;
+		config.rr.num_queue = xpriv->netdev->real_num_rx_queues;
+		config.rr.qbase = 0;
+	}
 	ret = qep_clcr_setup(xpriv, &config);
 	if (ret != 0) {
 		qep_err(drv, "%s: CLCR setup failed %d\n", __func__, ret);
 		goto disable_napi;
 	}
-
 	msleep(100);
 
 	if (poll_mode)
@@ -979,9 +1098,6 @@ static int qep_start_data_path(struct qep_priv *xpriv)
 			__func__, ret);
 		goto disable_napi;
 	}
-
-	/* start up the transmission queue */
-	netif_tx_start_all_queues(xpriv->netdev);
 
 	return ret;
 
@@ -1046,6 +1162,37 @@ release_queues:
 	return ret;
 }
 
+/* This function sets netdev features
+ */
+static int qep_set_netdev_features(struct net_device *netdev)
+{
+	if (!netdev)
+		return -EINVAL;
+
+	netdev->gflags |= IFF_PROMISC;
+
+	netdev->vlan_features |=
+#ifdef QEP_CSO_EN
+			NETIF_F_IP_CSUM |
+			NETIF_F_RXCSUM |
+#ifdef NETIF_F_IPV6_CSUM
+			NETIF_F_IPV6_CSUM |
+#endif /* NETIF_F_IPV6_CSUM */
+#if defined(NETIF_F_RXHASH) && defined(QEP_RSS_EN)
+			NETIF_F_RXHASH |
+#endif /* NETIF_F_RXHASH */
+#endif
+			NETIF_F_SG |
+			NETIF_F_HIGHDMA;
+
+	netdev->features &= ~NETIF_F_GRO;
+
+	netdev->hw_features |= netdev->vlan_features;
+	netdev->features |= netdev->hw_features;
+
+	return 0;
+}
+
 /* This function gets called when interface gets 'UP' request via 'ifconfig up'
  * In this function, Rx and Tx queues are setup and send/receive operations
  * are started
@@ -1062,14 +1209,28 @@ int qep_open(struct net_device *netdev)
 	xpriv = netdev_priv(netdev);
 	if (!xpriv)
 		return -EINVAL;
-	io_addr = xpriv->bar_base + QEP_BASE_OFFSET;
+
+	spin_lock(&xpriv->lnk_state_lock);
+	if (xpriv->dev_state == QEP_DEV_STATE_UP) {
+		spin_unlock(&xpriv->lnk_state_lock);
+		return 0;
+	}
+	spin_unlock(&xpriv->lnk_state_lock);
+
+	spin_lock(&xpriv->config_lock);
+	io_addr = (void __iomem *)((u64)xpriv->bar_base +
+			QEP_BASE_OFFSET);
 
 	/* reset h2c and c2h stmn cores */
-	writel(1, io_addr + QEP_BASE_DMA_USER_H2C_OFFSET);
-	writel(0, io_addr + QEP_BASE_DMA_USER_H2C_OFFSET);
-	writel(1, io_addr + QEP_BASE_DMA_USER_C2H_OFFSET);
-	writel(0, io_addr + QEP_BASE_DMA_USER_C2H_OFFSET);
-	spin_lock(&xpriv->config_lock);
+	writel(1, (void __iomem *)((u64)io_addr +
+			QEP_BASE_DMA_USER_H2C_OFFSET));
+	writel(0, (void __iomem *)((u64)io_addr +
+			QEP_BASE_DMA_USER_H2C_OFFSET));
+
+	writel(1, (void __iomem *)((u64)io_addr +
+			QEP_BASE_DMA_USER_C2H_OFFSET));
+	writel(0, (void __iomem *)((u64)io_addr +
+			QEP_BASE_DMA_USER_C2H_OFFSET));
 
 	xpriv->tx_q_idx = netdev->real_num_tx_queues - 1;
 	ret = qep_qdma_rx_queue_setup(xpriv);
@@ -1078,7 +1239,7 @@ int qep_open(struct net_device *netdev)
 			"%s: qep_qdma_rx_queue_setup failed with status %d\n",
 			__func__, ret);
 		spin_unlock(&xpriv->config_lock);
-		return -EINVAL;
+		goto err_exit;
 	}
 
 	ret = qep_qdma_tx_queue_setup(xpriv);
@@ -1098,11 +1259,18 @@ int qep_open(struct net_device *netdev)
 	spin_unlock(&xpriv->config_lock);
 
 	spin_lock(&xpriv->lnk_state_lock);
-	xpriv->dev_state = QEP_DEV_STATE_UP;
 	xpriv->lnk_state = CMAC_LINK_DOWN;
+	xpriv->dev_state = QEP_DEV_STATE_UP;
 	spin_unlock(&xpriv->lnk_state_lock);
+
 	wake_up_interruptible(&xpriv->link_mon_needed);
-	qep_dbg(xpriv->netdev, "interface(%s) is up", netdev->name);
+	qep_info(drv, "device open done");
+
+	ret = stmn_snap_stats(xpriv->tm_dev.xdev);
+	if (ret < 0)
+		pr_err("Polling failed for stats snap done\n");
+
+	memset(&xpriv->stats, 0, sizeof(struct qep_hw_stats));
 
 	return 0;
 
@@ -1110,6 +1278,10 @@ release_queues:
 	qep_qdma_tx_queue_release(xpriv, xpriv->netdev->real_num_tx_queues);
 release_rx_queues:
 	qep_qdma_rx_queue_release(xpriv, xpriv->netdev->real_num_rx_queues);
+err_exit:
+	netif_tx_stop_all_queues(xpriv->netdev);
+	netif_carrier_off(netdev);
+	xpriv->dev_state = QEP_DEV_STATE_DOWN;
 	spin_unlock(&xpriv->config_lock);
 	return ret;
 }
@@ -1129,27 +1301,29 @@ int qep_stop(struct net_device *netdev)
 	if (!xpriv)
 		return -EINVAL;
 
+
 	spin_lock(&xpriv->lnk_state_lock);
+	if (xpriv->dev_state == QEP_DEV_STATE_DOWN) {
+		spin_unlock(&xpriv->lnk_state_lock);
+		return 0;
+	}
 	xpriv->dev_state = QEP_DEV_STATE_DOWN;
 	spin_unlock(&xpriv->lnk_state_lock);
+
 	netif_tx_stop_all_queues(xpriv->netdev);
-	netif_carrier_off(netdev);
+	xpriv->lnk_state = CMAC_LINK_DOWN;
 
 	spin_lock(&xpriv->config_lock);
-
 	ret = qep_stop_data_path(xpriv);
 	if (ret != 0) {
 		qep_err(drv, "%s: Error in stopping data path, Error = %d\n",
 			__func__, ret);
 	}
-
 	qep_qdma_rx_queue_release(xpriv, xpriv->netdev->real_num_rx_queues);
 	qep_qdma_tx_queue_release(xpriv, xpriv->netdev->real_num_tx_queues);
-
 	spin_unlock(&xpriv->config_lock);
-	xpriv->lnk_state = CMAC_LINK_DOWN;
-	qep_info(link, "Link Down %s\n", netdev->name);
-	qep_dbg(xpriv->netdev, "Interface(%s) is down ", netdev->name);
+
+	qep_info(drv, "device close done");
 	return ret;
 }
 
@@ -1157,14 +1331,8 @@ int qep_stop(struct net_device *netdev)
  * must be transmitted
  */
 static u16 qep_select_queue(struct net_device *netdev, struct sk_buff *skb
-#if KERNEL_VERSION(3, 13, 0) <= LINUX_VERSION_CODE
-			    ,
-			    void *accel_priv
-#endif
-#if KERNEL_VERSION(3, 14, 0) <= LINUX_VERSION_CODE
-			    ,
+			    , void *accel_priv,
 			    select_queue_fallback_t fallback
-#endif
 )
 {
 	struct qep_priv *xpriv;
@@ -1174,16 +1342,20 @@ static u16 qep_select_queue(struct net_device *netdev, struct sk_buff *skb
 	if (!xpriv)
 		return -EINVAL;
 
+	if (xpriv->lnk_state != CMAC_LINK_UP)
+		return 0;
 	/* sarting from last queue */
+	spin_lock(&xpriv->config_lock);
 	queue_id = (netdev->real_num_tx_queues - 1 - xpriv->tx_q_idx);
-	if (queue_id == (netdev->real_num_tx_queues - 1))
+	if (!xpriv->tx_q_idx)
 		xpriv->tx_q_idx = xpriv->netdev->real_num_tx_queues - 1;
 	else
 		xpriv->tx_q_idx--;
+	spin_unlock(&xpriv->config_lock);
 
 	qep_dbg(netdev,
 		"real_num_tx_queues = %d, skb->queue_mapping = %d, queue_id (returned) = %d\n",
-		netdev->real_num_tx_queues, skb->queue_mapping, queue_id);
+		netdev->real_num_tx_queues, xpriv->tx_q_idx, queue_id);
 
 	return queue_id;
 }
@@ -1251,7 +1423,9 @@ static int qep_start_xmit(struct sk_buff *skb, struct net_device *netdev)
 	struct qdma_request *qdma_req;
 	struct qdma_sw_sg *qdma_sgl;
 	struct iphdr *ip_header;
+	union h2c_metadata *csum_data;
 	skb_frag_t *frag;
+	u8 l4_protocol = 0;
 
 	if (!netdev)
 		return -EINVAL;
@@ -1293,6 +1467,11 @@ static int qep_start_xmit(struct sk_buff *skb, struct net_device *netdev)
 		return -EINVAL;
 	}
 
+	if (skb_is_gso(skb)) {
+		pr_err("received GSO SKB");
+		return -EINVAL;
+	}
+
 	q_handle = xpriv->base_tx_q_handle + q_id;
 
 	if (skb_shinfo(skb)->nr_frags) {
@@ -1308,7 +1487,7 @@ static int qep_start_xmit(struct sk_buff *skb, struct net_device *netdev)
 	qep_cb_args = kzalloc(
 		sizeof(struct qep_tx_cb_arg) + sizeof(struct qdma_request) +
 			(sizeof(struct qdma_sw_sg) * (nb_frags + 1)),
-		GFP_KERNEL);
+		GFP_ATOMIC);
 	if (qep_cb_args == NULL) {
 		qep_err(tx_err, "%s: qep_cb_args allocation failed\n",
 			__func__);
@@ -1379,10 +1558,51 @@ static int qep_start_xmit(struct sk_buff *skb, struct net_device *netdev)
 
 	qdma_req->fp_done = qep_tx_done;
 	qdma_req->uld_data = (unsigned long)qep_cb_args;
+
+	if (skb->ip_summed == CHECKSUM_PARTIAL) {
+		csum_data = (union h2c_metadata *)qdma_req->udd;
+		csum_data->l3_hdr_off = skb_network_offset(skb);
+		csum_data->l4_hdr_off = skb_network_offset(skb) +
+						skb_network_header_len(skb);
+		csum_data->l3_cksum_gen = 1;
+		csum_data->l4_cksum_gen = 1;
+
+		switch (ip_hdr(skb)->version) {
+		case IPVERSION:
+			/* Calculate additional header length */
+			csum_data->l3_len = ip_hdr(skb)->ihl - 5;
+			l4_protocol = ip_hdr(skb)->protocol;
+			break;
+		case QEP_IPV6:
+			/* TODO: longer IPv6 packets */
+			csum_data->l3_len = 0;
+			l4_protocol = ipv6_hdr(skb)->nexthdr;
+			break;
+		default:
+			skb_checksum_help(skb);
+			goto csum_failed;
+		}
+
+		if (l4_protocol == IPPROTO_TCP) {
+			struct tcphdr *tcp = tcp_hdr(skb);
+
+			csum_data->udp = 0;
+			csum_data->l4_len = tcp->doff;
+		} else if (l4_protocol == IPPROTO_UDP) {
+			csum_data->udp = 1;
+			csum_data->l4_len = QEP_L4_UDP_LEN;
+		} else {
+			csum_data->l4_cksum_gen = 0;
+			skb_checksum_help(skb);
+		}
+	}
+
+csum_failed:
+
 	count = qdma_queue_packet_write(xpriv->dev_handle, q_handle, qdma_req);
 	if (count < 0) {
 		qep_err(tx_err,
-			"%s: qdma_queue_packet_write failed, count = %d\n",
+			"%s: qdma_queue_packet_write failed, err = %d\n",
 			__func__, count);
 		ret = count;
 		goto free_packet_data;
@@ -1494,10 +1714,57 @@ static int qep_rx_poll(struct napi_struct *napi, int quota)
 				    &pkt_cnt, &data_len);
 	napi_complete(napi);
 
+	qdma_queue_update_pointers(xpriv->dev_handle, q_handle);
+
 	if (poll_mode || (pkt_cnt > quota))
 		napi_reschedule(napi);
 
 	return 0;
+}
+
+/* This function validates Rx packet checksum */
+static void qep_rx_cksum(struct qep_priv *xpriv, struct sk_buff *skb,
+				struct stmn_cmpt_entry  *cmpt_entry)
+{
+	struct net_device *netdev = xpriv->netdev;
+	union c2h_metadata metadata;
+
+	if (!cmpt_entry) {
+		qep_dev_err("%s: cmpt_entry is NULL\n", __func__);
+		return;
+	}
+
+	metadata.user = cmpt_entry->metadata;
+	skb->ip_summed = CHECKSUM_NONE;
+
+	/* Rx csum disabled */
+	if (unlikely(!(netdev->features & NETIF_F_RXCSUM)))
+		return;
+
+	/* For fragmented packets the checksum isn't valid */
+	if (metadata.is_ipfrag)
+		return;
+
+	if ((metadata.hw_l3_chksum_valid && !metadata.hw_l3_chksum_bad)
+		&& (metadata.hw_l4_chksum_valid &&
+				!metadata.hw_l4_chksum_bad)) {
+		skb->ip_summed = CHECKSUM_UNNECESSARY;
+		skb->csum_level = 1;
+		qep_dbg(xpriv->netdev, "csum validated: L3 L4 metadata=%llx\n",
+			metadata.user);
+		return;
+	}
+
+	if (metadata.hw_l3_chksum_valid && !metadata.hw_l3_chksum_bad) {
+		skb->ip_summed = CHECKSUM_UNNECESSARY;
+		skb->csum_level = 0;
+		qep_dbg(xpriv->netdev, "csum validated: L3 metadata=%llx\n",
+			metadata.user);
+		return;
+	}
+
+	qep_dbg(xpriv->netdev, "csum not validated, metadata=%llx",
+		metadata.user);
 }
 
 /* This function creates skb and moves data from dma request to network domain*/
@@ -1507,12 +1774,16 @@ static int qep_rx_deliver(struct qep_priv *xpriv, u32 q_no, unsigned int len,
 	struct net_device *netdev = xpriv->netdev;
 	struct sk_buff *skb = NULL;
 	struct qdma_sw_sg *c2h_sgl = sgl;
+	struct stmn_cmpt_entry *cmpt_entry = NULL;
 
 	if (!sgcnt)
 		return -EINVAL;
 
 	if (!sgl)
 		return -EINVAL;
+
+	if (udd)
+		cmpt_entry = (struct stmn_cmpt_entry *)udd;
 
 #if (QEP_DBG_DUMP_EN)
 	dump_qdma_sw_sgl(sgcnt, sgl);
@@ -1549,7 +1820,6 @@ static int qep_rx_deliver(struct qep_priv *xpriv, u32 q_no, unsigned int len,
 		__skb_put(skb, QEP_RX_PULL_LEN);
 
 		c2h_sgl->offset += QEP_RX_PULL_LEN;
-		c2h_sgl->len -= QEP_RX_PULL_LEN;
 
 		while (sgcnt && c2h_sgl) {
 			frag_len = c2h_sgl->len;
@@ -1566,12 +1836,12 @@ static int qep_rx_deliver(struct qep_priv *xpriv, u32 q_no, unsigned int len,
 		skb->truesize += skb->data_len;
 	}
 
-#if (QEP_DBG_DUMP_EN)
-	dump_skb(xpriv, skb);
-#endif
-
 	skb->protocol = eth_type_trans(skb, netdev);
 	skb_record_rx_queue(skb, q_no);
+
+	/* Validate Checksum offload */
+	qep_rx_cksum(xpriv, skb, cmpt_entry);
+
 	skb_mark_napi_id(skb, &xpriv->napi[q_no]);
 
 	netif_receive_skb(skb);
@@ -1587,6 +1857,10 @@ static int qep_rx_gro(struct qep_priv *xpriv, u32 q_no, unsigned int len,
 	unsigned int nr_frags = 0;
 	unsigned int total_len = len;
 	struct sk_buff *skb = xpriv->napi[q_no].skb;
+	struct stmn_cmpt_entry *cmpt_entry = NULL;
+
+	if (udd)
+		cmpt_entry = (struct stmn_cmpt_entry *)udd;
 
 	if (!skb) {
 		skb = napi_get_frags(&xpriv->napi[q_no]);
@@ -1610,6 +1884,10 @@ static int qep_rx_gro(struct qep_priv *xpriv, u32 q_no, unsigned int len,
 	skb->len = total_len;
 	skb->data_len += len;
 	skb->truesize += skb->data_len;
+
+	/* Validate Checksum offload */
+	qep_rx_cksum(xpriv, skb, cmpt_entry);
+
 	napi_gro_frags(&xpriv->napi[q_no]);
 
 	return 0;
@@ -1684,7 +1962,6 @@ qep_get_stats64(struct net_device *netdev, struct rtnl_link_stats64 *stats)
 		xpriv->stats.tx_packets = stats->tx_packets;
 	}
 
-	/* TODO Read CMAC stats and populate other stats */
 #if KERNEL_VERSION(4, 10, 0) < LINUX_VERSION_CODE
 #else
 	return stats;
@@ -1711,12 +1988,12 @@ static void print_version(void __iomem *base)
 	u32 ver, maj, min, sub_ver;
 
 #if defined(QAP_DESIGN) || defined(QAP_STMN_DESIGN)
-	ver = readl(base + 0x14);
+	ver = readl((void __iomem *)((u64)base + 0x14));
 	min = ver & 0xffff;
 	maj = (ver & 0xffff0000) >> 16;
-	sub_ver = readl(base + 0x8);
+	sub_ver = readl((void __iomem *)((u64)base + 0x8));
 #else
-	ver = readl(base + QEP_VERSION_REG);
+	ver = readl((void __iomem *)((u64)base + QEP_VERSION_REG));
 	sub_ver = ver & 0xffff;
 	min = (ver & 0xff0000) >> 16;
 	maj = (ver & 0xff000000) >> 24;
@@ -1731,8 +2008,10 @@ static int read_mac_hw(void __iomem *base, u8 *mac_addr)
 {
 	u32 rlow, rhigh;
 
-	rlow = readl(base + QEP_USR_RX_META_LOW_R);
-	rhigh = readl(base + QEP_USR_RX_META_HIGH_R);
+	rlow = readl((void __iomem *)((u64)base +
+			QEP_USR_RX_META_LOW_R));
+	rhigh = readl((void __iomem *)((u64)base +
+			QEP_USR_RX_META_HIGH_R));
 
 	if (rlow == 0 && rhigh == 0)
 		return -1;
@@ -1769,8 +2048,15 @@ static int qep_change_mtu(struct net_device *netdev, int new_mtu)
 
 	if (netif_running(netdev)) {
 		is_dev_up = true;
+#if KERNEL_VERSION(4, 7, 0) <= LINUX_VERSION_CODE
 		netif_trans_update(netdev);
-		qep_stop(netdev);
+#endif
+		ret = qep_stop(netdev);
+		if (ret != 0) {
+			qep_err(drv, "%s qep_stop failed err=%d",
+				__func__, ret);
+			return ret;
+		}
 	}
 
 	if (new_mtu > QEP_MAX_MTU) {
@@ -1791,17 +2077,25 @@ static int qep_change_mtu(struct net_device *netdev, int new_mtu)
 		netdev->mtu, new_mtu);
 	cmac_mtu = new_mtu + ETH_HLEN + ETH_FCS_LEN;
 
-	io_addr = xpriv->bar_base + QEP_CMAC_DRP_OFFSET +
-		  QEP_CMAC_CTL_RX_MAX_PACKET_LEN_OFFSET;
+	io_addr = (void __iomem *)((u64)xpriv->bar_base +
+			QEP_CMAC_DRP_OFFSET +
+			QEP_CMAC_CTL_RX_MAX_PACKET_LEN_OFFSET);
 	writel(cmac_mtu, io_addr);
 	cmac_mtu = readl(io_addr);
 
 	netdev->mtu = new_mtu;
-	qep_info(drv, "%s: Netdev MTU:%d  CMAC MTU = %d\n", netdev->name,
+	qep_info(drv, "Netdev MTU:%d  CMAC MTU = %d\n",
 		 netdev->mtu, cmac_mtu);
 
-	if (is_dev_up)
-		qep_open(netdev);
+	if (!is_dev_up)
+		return ret;
+
+	ret = qep_open(netdev);
+	if (ret != 0) {
+		qep_err(drv, "%s qep_open failed err=%d",
+			__func__, ret);
+		return ret;
+	}
 
 	return ret;
 }
@@ -1840,23 +2134,30 @@ static void qep_setup(struct net_device *netdev)
 }
 
 /* This function Initializes STMN IP */
-static void qep_stmn_init(struct qep_priv *xpriv, unsigned short dev_id)
+static int qep_stmn_init(struct qep_priv *xpriv, unsigned short dev_id)
 {
 	int ret;
 
 	xpriv->tm_dev.xdev = xpriv;
 	xpriv->tm_dev.bar_num = QEP_PCI_USR_BAR;
-	xpriv->tm_dev.stm_regs = xpriv->bar_base + QEP_STMN_BAR_OFFSET;
+	xpriv->tm_dev.stm_regs = (void *)((u64)xpriv->bar_base +
+			QEP_STMN_BAR_OFFSET);
+
 	ret = stmn_initialize(xpriv, &(xpriv->tm_dev), dev_id);
-	if (ret < 0)
-		qep_warn(drv, "%s, Unable to init STMN on BAR %d.\n", __func__,
+	if (ret < 0) {
+		qep_err(drv, "%s, Unable to init STMN on BAR %d.\n", __func__,
 			 QEP_PCI_USR_BAR);
+		return ret;
+	}
 
 	ret = stmn_write_c2h_buf_size(xpriv, QEP_DEFAULT_C2H_BUFFER_SIZE);
-	if (ret < 0)
-		qep_warn(drv, "%s, Unable to Set STMN C2h BUF Size\n",
+	if (ret < 0) {
+		qep_err(drv, "%s, Unable to Set STMN C2h BUF Size\n",
 			 __func__);
+		return ret;
+	}
 
+	return ret;
 }
 /* This is probe function which is called when Linux kernel detects PCIe device
  * with PCI ID and device ID (Mentioned in qep_pci_ids)
@@ -1881,13 +2182,14 @@ static int qep_pci_probe(struct pci_dev *pdev,
 	nb_queues = min_t(int, cpu_count, num_msix);
 	netdev = alloc_netdev_mqs(sizeof(struct qep_priv), "xeth%d",
 #if KERNEL_VERSION(3, 17, 0) <= LINUX_VERSION_CODE
-				  NET_NAME_ENUM,
+				NET_NAME_ENUM,
 #endif
-				  qep_setup, QEP_NUM_MAX_QUEUES,
-				  QEP_NUM_MAX_QUEUES);
+				qep_setup, QEP_NUM_MAX_QUEUES,
+				QEP_NUM_MAX_QUEUES);
 
 	if (!netdev)
 		return -EINVAL;
+
 	netif_set_real_num_tx_queues(netdev, nb_queues);
 	netif_set_real_num_rx_queues(netdev, nb_queues);
 
@@ -1900,18 +2202,18 @@ static int qep_pci_probe(struct pci_dev *pdev,
 	xpriv->is_cmac_on = 0;
 	xpriv->rs_fec_en = QEP_RS_FEC_EN;
 	xpriv->msg_enable = netif_msg_init(debug, QEP_DEFAULT_MSG_ENABLE);
-
-	/* Set netdev flags */
-	netdev->features |= NETIF_F_HIGHDMA;
-	netdev->features |= NETIF_F_SG;
-	netdev->features &= ~NETIF_F_GRO;
-
-	netdev->gflags |= IFF_PROMISC;
-
 	ret = qep_debugfs_dev_init(xpriv);
 	if (ret < 0)
 		pr_warn("%s, debugfs init for device failed code:%d\n",
 			__func__, ret);
+
+	ret = qep_set_netdev_features(netdev);
+	if (ret != 0) {
+		qep_err(drv,
+			"%s: qep_set_netdev_features failed with status %d\n",
+			__func__, ret);
+		goto err_exit;
+	}
 
 	bar_start = pci_resource_start(pdev, QEP_PCI_USR_BAR);
 	bar_len = pci_resource_len(pdev, QEP_PCI_USR_BAR);
@@ -1920,7 +2222,7 @@ static int qep_pci_probe(struct pci_dev *pdev,
 		dev_err(&pdev->dev, "%s: ioremap failed for bar%d\n", __func__,
 			QEP_PCI_USR_BAR);
 		ret = -EIO;
-		goto Err;
+		goto err_exit;
 	}
 
 	print_version(xpriv->bar_base);
@@ -1930,28 +2232,42 @@ static int qep_pci_probe(struct pci_dev *pdev,
 	memcpy(mac_addr+3, rand_byte, 3);
 #else
 	ret = read_mac_hw(xpriv->bar_base, mac_addr);
-	if (ret < 0) {
+	if (ret != 0) {
 		qep_err(probe, "%s : Mac Address Not Configured Err:%d",
 			__func__, ret);
-		goto Err;
+		goto err_exit;
 	}
 #endif
 	memcpy(netdev->dev_addr, mac_addr, netdev->addr_len);
 
 	ret = qep_reset_all(xpriv);
-	if (ret < 0) {
+	if (ret != 0) {
 		qep_err(probe, "%s : qep reset failed Err:%d", __func__, ret);
-		goto Err;
+		goto err_exit;
 	}
 
-	qep_stmn_init(xpriv, pdev->device);
+	ret = qep_stmn_init(xpriv, pdev->device);
+	if (ret != 0) {
+		qep_err(probe, "%s : qep_stmn_init failed Err:%d",
+			__func__, ret);
+		goto err_exit;
+	}
+
+	if (xpriv->netdev->features & NETIF_F_RXHASH) {
+		ret = qep_init_reta(xpriv, 0,
+				    xpriv->netdev->real_num_rx_queues);
+		if (ret != 0) {
+			qep_err(probe, "%s : qep_init_reta failed Err:%d",
+					__func__, ret);
+			goto err_exit;
+		}
+	}
 
 	ret = qep_qdma_setup(xpriv);
-	if (ret < 0) {
+	if (ret != 0) {
 		qep_err(probe, "%s : qdma_setup failed Err:%d", __func__, ret);
-		goto Err;
+		goto err_exit;
 	}
-
 
 	ret = qep_cmac_setup(xpriv);
 	if ((ret != 0) && (ret != -EAGAIN)) {
@@ -1960,20 +2276,7 @@ static int qep_pci_probe(struct pci_dev *pdev,
 		goto close_qdma_device;
 	}
 
-	ret = register_netdev(netdev);
-	if (ret != 0) {
-		qep_err(probe, "%s: Failed to register network driver\n",
-			__func__);
-		goto close_qdma_device;
-	}
-
 	spin_lock_init(&xpriv->lnk_state_lock);
-
-	spin_lock(&xpriv->lnk_state_lock);
-	xpriv->dev_state = QEP_DEV_STATE_DOWN;
-	netif_carrier_off(xpriv->netdev);
-	spin_unlock(&xpriv->lnk_state_lock);
-
 	spin_lock_init(&xpriv->config_lock);
 	init_waitqueue_head(&xpriv->link_mon_needed);
 
@@ -1985,12 +2288,27 @@ static int qep_pci_probe(struct pci_dev *pdev,
 			__func__, ret);
 		goto close_qdma_device;
 	}
-	qep_info(probe, "%s : %s  probed successfully", __func__, netdev->name);
+
+	ret = register_netdev(netdev);
+	if (ret != 0) {
+		qep_err(probe, "%s: Failed to register network driver\n",
+			__func__);
+		goto close_thread;
+	}
+
+	spin_lock(&xpriv->lnk_state_lock);
+	xpriv->dev_state = QEP_DEV_STATE_DOWN;
+	netif_carrier_off(xpriv->netdev);
+	spin_unlock(&xpriv->lnk_state_lock);
+
+	qep_info(drv, "%s : device probe done ", __func__);
 	return 0;
 
+close_thread:
+	qep_thread_stop(xpriv);
 close_qdma_device:
 	qdma_device_close(pdev, xpriv->dev_handle);
-Err:
+err_exit:
 	qep_debugfs_dev_exit(xpriv);
 	kfree(netdev);
 	return ret;
@@ -2011,11 +2329,6 @@ static void qep_pci_remove(struct pci_dev *pdev)
 		return;
 
 	/* Stop link thread if it is running */
-	spin_lock(&xpriv->lnk_state_lock);
-	xpriv->dev_state = QEP_DEV_STATE_EXIT;
-	spin_unlock(&xpriv->lnk_state_lock);
-
-	wake_up_interruptible(&xpriv->link_mon_needed);
 	qep_thread_stop(xpriv);
 
 	if (loopback_en)
@@ -2042,6 +2355,7 @@ static void qep_pci_remove(struct pci_dev *pdev)
 
 
 	qdma_device_close(pdev, xpriv->dev_handle);
+	debugfs_remove_recursive(xpriv->debugfs_dev_root);
 
 	if (xpriv->bar_base)
 		iounmap(xpriv->bar_base);
@@ -2056,6 +2370,7 @@ static pci_ers_result_t qep_pci_error_detected(struct pci_dev *pdev,
 					       pci_channel_state_t state)
 {
 	struct qep_priv *xpriv = dev_get_drvdata(&pdev->dev);
+	int ret = 0;
 
 	rtnl_lock();
 
@@ -2069,8 +2384,11 @@ static pci_ers_result_t qep_pci_error_detected(struct pci_dev *pdev,
 			pdev, xpriv);
 		/* Mark device as removed */
 		netif_device_detach(xpriv->netdev);
-		if (netif_running(xpriv->netdev))
-			qep_stop(xpriv->netdev);
+		if (netif_running(xpriv->netdev)) {
+			ret = qep_stop(xpriv->netdev);
+			if (ret != 0)
+				pr_err("%s qep_stop failed", __func__, ret);
+		}
 		pci_disable_device(pdev);
 		rtnl_unlock();
 		return PCI_ERS_RESULT_NEED_RESET;
@@ -2078,8 +2396,11 @@ static pci_ers_result_t qep_pci_error_detected(struct pci_dev *pdev,
 		qep_dev_warn(
 			"dev 0x%p,0x%p, failure state error, req. disconnect\n",
 			pdev, xpriv);
-		if (netif_running(xpriv->netdev))
-			qep_stop(xpriv->netdev);
+		if (netif_running(xpriv->netdev)) {
+			ret = qep_stop(xpriv->netdev);
+			if (ret != 0)
+				pr_err("%s qep_stop failed", __func__, ret);
+		}
 		rtnl_unlock();
 		return PCI_ERS_RESULT_DISCONNECT;
 	}
@@ -2142,14 +2463,18 @@ static void qep_pci_error_resume(struct pci_dev *pdev)
 static void qep_pci_reset_prepare(struct pci_dev *pdev)
 {
 	struct qep_priv *xpriv = dev_get_drvdata(&pdev->dev);
+	int ret = 0;
 
 	qep_dev_info("%s pdev 0x%p, xdev 0x%p, hndl 0x%lx.\n",
 		     dev_name(&pdev->dev), pdev, xpriv, xpriv->dev_handle);
 
-	qdma_device_offline(pdev, xpriv->dev_handle);
+	qdma_device_offline(pdev, xpriv->dev_handle, 1);
 	qdma_device_flr_quirk_set(pdev, xpriv->dev_handle);
-	if (netif_running(xpriv->netdev))
-		qep_stop(xpriv->netdev);
+	if (netif_running(xpriv->netdev)) {
+		ret = qep_stop(xpriv->netdev);
+		if (ret != 0)
+			pr_err("%s qep_stop failed", __func__, ret);
+	}
 	qdma_device_flr_quirk_check(pdev, xpriv->dev_handle);
 }
 
@@ -2157,12 +2482,18 @@ static void qep_pci_reset_prepare(struct pci_dev *pdev)
 static void qep_pci_reset_done(struct pci_dev *pdev)
 {
 	struct qep_priv *xpriv = dev_get_drvdata(&pdev->dev);
+	int ret = 0;
 
 	qep_dev_info("%s pdev 0x%p, xdev 0x%p, hndl 0x%lx.\n",
 		     dev_name(&pdev->dev), pdev, xpriv, xpriv->dev_handle);
-	qdma_device_online(pdev, xpriv->dev_handle);
-	if (netif_running(xpriv->netdev))
-		qep_open(xpriv->netdev);
+	qdma_device_online(pdev, xpriv->dev_handle, 1);
+	if (netif_running(xpriv->netdev)) {
+		ret = qep_open(xpriv->netdev);
+		if (ret != 0) {
+			pr_err("%s qep_open failed err=%d",
+				__func__, ret);
+		}
+	}
 }
 
 #elif KERNEL_VERSION(3, 16, 0) <= LINUX_VERSION_CODE
@@ -2170,20 +2501,27 @@ static void qep_pci_reset_done(struct pci_dev *pdev)
 static void qep_pci_reset_notify(struct pci_dev *pdev, bool prepare)
 {
 	struct qep_priv *xpriv = dev_get_drvdata(&pdev->dev);
+	int ret = 0;
 
 	qep_dev_info("pdev = 0x%p, xpriv = 0x%p, prepare = %d.\n", pdev, xpriv,
 		     prepare);
 
 	if (prepare) {
-		qdma_device_offline(pdev, xpriv->dev_handle);
+		qdma_device_offline(pdev, xpriv->dev_handle, 1);
 		qdma_device_flr_quirk_set(pdev, xpriv->dev_handle);
-		if (netif_running(xpriv->netdev))
-			qep_stop(xpriv->netdev);
+		if (netif_running(xpriv->netdev)) {
+			ret = qep_stop(xpriv->netdev);
+			pr_err("%s qep_stop failed err=%d",
+					__func__, ret);
+		}
 		qdma_device_flr_quirk_check(pdev, xpriv->dev_handle);
 	} else {
-		qdma_device_online(pdev, xpriv->dev_handle);
-		if (netif_running(xpriv->netdev))
-			qep_open(xpriv->netdev);
+		qdma_device_online(pdev, xpriv->dev_handle, 1);
+		if (netif_running(xpriv->netdev)) {
+			ret = qep_open(xpriv->netdev);
+			pr_err("%s qep_open failed err=%d",
+					__func__, ret);
+		}
 	}
 }
 #endif
@@ -2216,16 +2554,19 @@ static struct pci_driver qep_pci_driver = {
 static int __init qep_module_init(void)
 {
 	int err = 0;
+	enum qep_design_support des_idx;
 
-	pr_info("Initializing %s Version %s ", DRV_DESC, DRV_VER);
 
 #ifdef QAP_DESIGN
-	pr_info("QAP design\n");
+	des_idx = QAP;
 #elif defined(QAP_STMN_DESIGN)
-	pr_info("QAP_STMN design\n");
+	des_idx = QAP_STMN;
 #else
-	pr_info("QEP design\n");
+	des_idx = QEP;
 #endif
+
+	pr_info("%s Initializing %s Version %s ", design_name[des_idx],
+			DRV_DESC, DRV_VER);
 
 	err = qep_debugfs_init();
 	if (err != 0) {

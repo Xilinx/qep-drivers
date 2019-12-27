@@ -409,10 +409,22 @@ static int qep_set_ringparam(struct net_device *netdev,
 	xpriv->rx_desc_rng_sz_idx = rx_idx;
 	xpriv->cmpl_rng_sz_idx = rx_idx;
 
-	if (netif_running(netdev)) {
-		qep_stop(netdev); /* Stop the interface */
-		usleep_range(1000, 2000);
-		qep_open(netdev);
+	if (!netif_running(netdev))
+		return 0;
+
+	ret = qep_stop(netdev); /* Stop the interface */
+	if (ret != 0) {
+		qep_err(drv, "%s qep_stop  failed err=%d",
+				__func__, ret);
+		return ret;
+	}
+
+	usleep_range(1000, 2000);
+	ret = qep_open(netdev);
+	if (ret != 0) {
+		qep_err(drv, "%s qep_open failed err=%d",
+			__func__, ret);
+		return ret;
 	}
 
 	return 0;
@@ -444,15 +456,16 @@ static int qep_set_channels(struct net_device *netdev,
 
 	if ((ch->rx_count == 0) || (ch->tx_count == 0)) {
 		qep_err(drv,
-			"%s: Invalid channel count passed, Supported Rx|Tx Only, Rx = %d, Tx = %d\n",
+			"%s: invalid channel count passed, Rx = %d, Tx = %d\n",
 			__func__, ch->rx_count, ch->tx_count);
 		return -EINVAL;
 	}
 
 	if ((ch->rx_count > QEP_NUM_MAX_QUEUES) ||
-			(ch->tx_count > QEP_NUM_MAX_QUEUES)) {
-		qep_err(drv, "%s: channel count passed %d more then max Supported %d\n",
-				__func__, ch->rx_count, QEP_NUM_MAX_QUEUES);
+	    (ch->tx_count > QEP_NUM_MAX_QUEUES)) {
+		qep_err(drv, "%s: channel count passed %d %d more then max supported %d\n",
+				__func__, ch->tx_count,
+				ch->rx_count, QEP_NUM_MAX_QUEUES);
 		return -EINVAL;
 	}
 
@@ -461,18 +474,38 @@ static int qep_set_channels(struct net_device *netdev,
 
 	if (netif_running(netdev)) {
 		iface_up = 1;
-		qep_stop(netdev); /* Stop the interface */
+		ret = qep_stop(netdev); /* Stop the interface */
+		if (ret != 0) {
+			qep_err(drv, "%s qep_stop failed err=%d",
+					__func__, ret);
+			return ret;
+		}
 	}
 
 	netif_set_real_num_tx_queues(netdev, ch->tx_count);
 	netif_set_real_num_rx_queues(netdev, ch->rx_count);
 
-	if (iface_up) {
-		usleep_range(1000, 2000);
-		qep_open(netdev); /* Open the interface */
+	if (xpriv->netdev->features & NETIF_F_RXHASH) {
+		ret = qep_init_reta(xpriv, 0, ch->rx_count);
+		if (ret != 0) {
+			qep_err(drv, "%s qep_init_reta failed err=%d",
+					__func__, ret);
+			return ret;
+		}
 	}
 
-	return ret;
+	if (!iface_up)
+		return 0;
+
+	usleep_range(1000, 2000);
+	ret = qep_open(netdev); /* Open the interface */
+	if (ret != 0) {
+		qep_err(drv, "%s qep_open failed err=%d",
+				__func__, ret);
+		return ret;
+	}
+
+	return 0;
 }
 
 /* This is a ethtool callback and populates  stats as strings*/
@@ -547,7 +580,7 @@ void qep_get_cmac_stats(struct net_device *netdev, u32 len, void *msg)
 	p = stat_string;
 
 	for (i = 0; i < QEP_GLOBAL_STATS_LEN; i++) {
-		snprintf(msg + strlen(msg), len - strlen(msg),
+		snprintf((u8 *)msg + strlen(msg), len - strlen(msg),
 			 "%-32s = %llu\n", p, val[i]);
 		p += ETH_GSTRING_LEN;
 	}
@@ -629,10 +662,20 @@ static int qep_set_coalesce(struct net_device *netdev,
 	xpriv->rx_timer_idx = index;
 
 	/* Stop the interface */
-	qep_stop(netdev);
+	ret = qep_stop(netdev);
+	if (ret != 0) {
+		qep_err(drv, "%s qep_stop failed err=%d",
+				__func__, ret);
+		return ret;
+	}
 
 	/* Open the interface */
-	qep_open(netdev);
+	ret = qep_open(netdev);
+	if (ret != 0) {
+		qep_err(drv, "%s qep_open failed err=%d",
+				__func__, ret);
+		return ret;
+	}
 
 	return 0;
 }
@@ -975,6 +1018,145 @@ void qep_update_stats(struct net_device *netdev)
 	spin_unlock_irqrestore(&xpriv->stats_lock, flags);
 }
 
+#define QEP_RSS_INDR_TBL_SIZE 256
+#define QEP_RSS_HKEY_SIZE 40
+#define QEP_RSS_OFFSET 0x00300000
+#define QEP_RSS_INDR_DATA_MASK 0x7ff
+
+#if KERNEL_VERSION(4, 5, 0) < LINUX_VERSION_CODE
+static u32 qep_get_rxfh_key_size(struct net_device *netdev)
+{
+	return QEP_RSS_HKEY_SIZE;
+}
+#endif
+
+static u32 qep_rss_indir_size(struct net_device *netdev)
+{
+	return QEP_RSS_INDR_TBL_SIZE;
+}
+
+static void qep_get_reta(struct qep_priv *xpriv, u32 *indir)
+{
+	int i, reta_size = QEP_RSS_INDR_TBL_SIZE;
+	void __iomem *io_addr;
+	unsigned long flags;
+
+	io_addr = (void __iomem *)((u64)xpriv->bar_base +
+			QEP_RSS_OFFSET);
+
+	spin_lock_irqsave(&xpriv->stats_lock, flags);
+	for (i = 0; i < reta_size; i++)
+		indir[i] = readl((void __iomem *)((u32 *)io_addr + i)) &
+					QEP_RSS_INDR_DATA_MASK;
+
+	spin_unlock_irqrestore(&xpriv->stats_lock, flags);
+
+}
+
+
+static int qep_set_reta(struct qep_priv *xpriv, const u32 *indir)
+{
+	int i, reta_size = QEP_RSS_INDR_TBL_SIZE;
+	void __iomem *io_addr;
+	unsigned long flags;
+
+	io_addr = (void __iomem *)((u64)xpriv->bar_base +
+			QEP_RSS_OFFSET);
+
+	for (i = 0; i < reta_size; i++) {
+		if (indir[i] > xpriv->netdev->real_num_rx_queues) {
+			pr_err("Invalid Indirection Table");
+			return -EINVAL;
+		}
+	}
+
+	spin_lock_irqsave(&xpriv->stats_lock, flags);
+	for (i = 0; i < reta_size; i++)
+		writel(indir[i], (void __iomem *)((u32 *)io_addr + i));
+
+	spin_unlock_irqrestore(&xpriv->stats_lock, flags);
+	return 0;
+}
+
+int qep_init_reta(struct qep_priv *xpriv, u32 start, u32 q)
+{
+	u32 *indir = NULL;
+	u32 i;
+	int ret = 0;
+
+	indir = kcalloc(QEP_RSS_INDR_TBL_SIZE, sizeof(u32), GFP_KERNEL);
+	if (!indir)
+		return -ENOMEM;
+
+	for (i = 0; i < QEP_RSS_INDR_TBL_SIZE; i++)
+		indir[i] = start + (i % q);
+
+	ret = qep_set_reta(xpriv, indir);
+	kfree(indir);
+
+	return ret;
+}
+static int qep_get_rxfh(struct net_device *netdev, u32 *indir, u8 *key,
+			  u8 *hfunc)
+{
+
+	struct qep_priv *xpriv;
+
+	xpriv = netdev_priv(netdev);
+	if (!xpriv)
+		return -EINVAL;
+
+	if (hfunc)
+		*hfunc = ETH_RSS_HASH_TOP;
+
+	if (indir)
+		qep_get_reta(xpriv, indir);
+
+	return 0;
+}
+
+
+static int qep_set_rxfh(struct net_device *netdev, const u32 *indir,
+			  const u8 *key, const u8 hfunc)
+{
+	struct qep_priv *xpriv;
+	int ret = -EOPNOTSUPP;
+
+	xpriv = netdev_priv(netdev);
+	if (!xpriv)
+		return -EINVAL;
+
+	if (indir) {
+		qep_set_reta(xpriv, indir);
+		ret = 0;
+	}
+
+	if (key)
+		ret = -EOPNOTSUPP;
+
+	if (hfunc)
+		ret = -EOPNOTSUPP;
+
+	return ret;
+}
+
+static int qep_get_rxnfc(struct net_device *dev, struct ethtool_rxnfc *cmd,
+			   u32 *rule_locs)
+{
+	int ret = -EOPNOTSUPP;
+
+	switch (cmd->cmd) {
+	case ETHTOOL_GRXRINGS:
+		cmd->data = dev->real_num_rx_queues;
+		ret = 0;
+		break;
+	default:
+		break;
+	}
+
+	return ret;
+}
+
 static const struct ethtool_ops qep_ethtool_ops = {
 	.get_drvinfo = qep_get_drvinfo,
 	.get_regs_len = qep_get_regs_len,
@@ -995,7 +1177,13 @@ static const struct ethtool_ops qep_ethtool_ops = {
 	.set_per_queue_coalesce = qep_set_per_queue_coalesce,
 	.get_fecparam = qep_get_fecparam,
 	.set_fecparam = qep_set_fecparam,
+	.get_rxfh_key_size	= qep_get_rxfh_key_size,
 #endif
+	.get_rxfh_indir_size	= qep_rss_indir_size,
+	.get_rxfh		= qep_get_rxfh,
+	.set_rxfh		= qep_set_rxfh,
+	.get_rxnfc		= qep_get_rxnfc,
+	//.set_rxnfc		= qep_set_rxnfc,
 	.get_sset_count = qep_get_sset_count
 };
 

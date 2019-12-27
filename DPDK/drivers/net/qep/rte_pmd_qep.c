@@ -37,7 +37,7 @@
 
 /******************************************************************************/
 /**
- * Function Name:	rte_pmd_qdma_get_bar_details
+ * Function Name:	rte_pmd_qep_get_bar_details
  * Description:		Returns the BAR indices of the QDMA BARs
  *
  * @param	portid : Port ID
@@ -58,7 +58,7 @@ int rte_pmd_qep_get_bar_details(int portid, int32_t *config_bar_idx,
 
 /******************************************************************************/
 /**
- * Function Name:	rte_pmd_qdma_get_queue_base
+ * Function Name:	rte_pmd_qep_get_queue_base
  * Description:		Returns queue base for given port
  *
  * @param	portid : Port ID.
@@ -97,41 +97,94 @@ static int qdma_desc_type(enum rte_pmd_qep_desc_type type,
 	return ret;
 }
 
-int rte_pmd_qep_dbg_regdump(uint8_t port_id)
+/******************************************************************************/
+/**
+ * Function Name:	rte_pmd_qep_dbg_regdump
+ * Description:		Dumps the QDMA configuration registers
+ *			for the given port.
+ *
+ * @param	portid : Port ID
+ *
+ * @return	'0' on success and "< 0" on failure.
+ *
+ * @note	None.
+ ******************************************************************************/
+int rte_pmd_qep_dbg_regdump(uint8_t portid)
 {
-	return rte_pmd_qdma_xdebug(port_id,
-				   RTE_PMD_QDMA_XDEBUG_QDMA_GLOBAL_CSR,
-				   NULL);
+	return rte_pmd_qdma_dbg_regdump(portid);
 }
 
-int rte_pmd_qep_dbg_qinfo(uint8_t port_id, uint16_t queue)
+/******************************************************************************/
+/**
+ * Function Name:	rte_pmd_qep_dbg_qinfo
+ * Description:		Dumps the queue contexts and queue specific SW
+ *			structures for the given queue ID.
+ *
+ * @param	portid : Port ID
+ * @param	queue  : Queue ID relative to the Port
+ *
+ * @return	'0' on success and "< 0" on failure.
+ *
+ * @note	None.
+ ******************************************************************************/
+int rte_pmd_qep_dbg_qinfo(uint8_t portid, uint16_t queue)
 {
-	return rte_pmd_qdma_xdebug(port_id, RTE_PMD_QDMA_XDEBUG_QUEUE_CONTEXT,
-				   &queue) ?: rte_pmd_qdma_xdebug(port_id,
-				RTE_PMD_QDMA_XDEBUG_QUEUE_STRUCT, &queue);
+	return rte_pmd_qdma_dbg_qinfo(portid, queue);
 }
 
-int rte_pmd_qep_dbg_qdesc(uint8_t port_id, uint16_t queue, int start, int end,
+/******************************************************************************/
+/**
+ * Function Name:	rte_pmd_qep_dbg_qdesc
+ * Description:		Dumps the Queue descriptors.
+ *
+ * @param	portid : Port ID
+ * @param	queue  : Queue ID relative to the Port
+ * @param	start  : start index of the descriptor to dump
+ * @param	end    : end index of the descriptor to dump
+ * @param	type   : Descriptor type
+ *
+ * @return	'0' on success and "< 0" on failure.
+ *
+ * @note	None.
+ ******************************************************************************/
+int rte_pmd_qep_dbg_qdesc(uint8_t portid, uint16_t queue, int start, int end,
 			  enum rte_pmd_qep_desc_type type)
 {
-	struct rte_pmd_qdma_xdebug_desc_param param;
-	int ret = -EINVAL;
+	enum rte_pmd_qdma_xdebug_desc_type desc_type;
+	int ret;
 
-	param.queue = queue;
-	param.start = start;
-	param.end = end;
-	ret = qdma_desc_type(type, &param.type);
+	ret = qdma_desc_type(type, &desc_type);
 	if (ret)
 		return -EINVAL;
 
-	return rte_pmd_qdma_xdebug(port_id, RTE_PMD_QDMA_XDEBUG_QUEUE_DESC_DUMP,
-				   &param);
+	return rte_pmd_qdma_dbg_qdesc(portid, queue, start, end, desc_type);
 }
 
-int rte_pmd_qep_dbg_stmninfo(uint8_t port_id)
+/******************************************************************************/
+/**
+ * Function Name:	rte_pmd_qep_dbg_stmninfo
+ * Description:		Dumps the STM-N status and statistics
+ *
+ * @param	portid : Port ID
+ *
+ * @return	'0' on success and "< 0" on failure.
+ *
+ * @note	None.
+ ******************************************************************************/
+int rte_pmd_qep_dbg_stmninfo(uint8_t portid)
 {
-	return rte_pmd_qdma_xdebug(port_id, RTE_PMD_QDMA_XDEBUG_STMN, NULL);
+	struct rte_eth_dev *dev;
+	struct qdma_pci_dev *dma_priv;
+	char msg[STMN_MSG_BUF_LEN_MAX];
 
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(portid, -ENODEV);
+	dev = &rte_eth_devices[portid];
+	dma_priv = (struct qdma_pci_dev *)dev->data->dev_private;
+
+	stmn_print_debug(dma_priv, msg, STMN_MSG_BUF_LEN_MAX);
+	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "%s", msg);
+
+	return 0;
 }
 
 /******************************************************************************/

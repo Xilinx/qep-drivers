@@ -315,7 +315,8 @@ static ssize_t cmpt_q_desc_read(struct file *fp, char __user *user_buffer,
  * @return	>0: size read
  * @return	<0: error
  *****************************************************************************/
-int create_cmpt_q_dbg_files(struct qdma_descq *descq, struct dentry *queue_root)
+static int create_cmpt_q_dbg_files(struct qdma_descq *descq,
+		struct dentry *queue_root)
 {
 	struct dentry  *fp[DBGFS_QINFO_END] = { NULL };
 	struct file_operations *fops = NULL;
@@ -493,15 +494,14 @@ static int qdbg_cntxt_read(unsigned long dev_hndl, unsigned long id,
 	descq = qdma_device_get_descq_by_id(xdev, id, buf, buflen, 0);
 	if (!descq) {
 		kfree(buf);
-		return QDMA_ERR_INVALID_QIDX;
+		return -EINVAL;
 	}
 
 	/** initialize the context */
 	memset(&ctxt, 0, sizeof(struct qdma_descq_context));
 	/** read the descq context for the given qid */
 	rv = qdma_descq_context_read(descq->xdev, descq->qidx_hw,
-			descq->conf.st, descq->conf.c2h,
-			descq->mm_cmpt_ring_crtd, &ctxt);
+			descq->conf.st, descq->conf.q_type, &ctxt);
 	if (rv < 0) {
 		len += sprintf(buf + len, "%s read context failed %d.\n",
 				descq->conf.name, rv);
@@ -522,6 +522,7 @@ static int qdbg_cntxt_read(unsigned long dev_hndl, unsigned long id,
 			qdma_fill_cmpt_ctxt(&ctxt.cmpt_ctxt, 0);
 
 		len += qdma_parse_ctxt_to_buf(QDMA_CMPT_CNTXT,
+				&xdev->version_info,
 				buf + len, buflen - len);
 	} else {
 		/** convert SW context to human readable text */
@@ -532,20 +533,23 @@ static int qdbg_cntxt_read(unsigned long dev_hndl, unsigned long id,
 		else
 			qdma_fill_sw_ctxt(&ctxt.sw_ctxt, 0);
 		len += qdma_parse_ctxt_to_buf(QDMA_SW_CNTXT,
+				&xdev->version_info,
 				buf + len, buflen - len);
 
 		/** convert hardware context to human readable text */
 		len += snprintf(buf + len, buflen - len, "HARDWARE CTXT:\n");
 		qdma_fill_hw_ctxt(&ctxt.hw_ctxt);
 		len += qdma_parse_ctxt_to_buf(QDMA_HW_CNTXT,
+				&xdev->version_info,
 				buf + len, buflen - len);
-		if (!(descq->conf.st && descq->conf.c2h))
+		if (!(descq->conf.st && descq->conf.q_type))
 			goto cntxt_exit;
 
 		/** convert credit context to human readable text */
 		len += snprintf(buf + len, buflen - len, "CREDIT CTXT:\n");
 		qdma_fill_credit_ctxt(&ctxt.cr_ctxt);
 		len += qdma_parse_ctxt_to_buf(QDMA_CR_CNTXT,
+				&xdev->version_info,
 				buf + len, buflen - len);
 
 		if (type == DBGFS_DESC_TYPE_C2H) {
@@ -554,6 +558,7 @@ static int qdbg_cntxt_read(unsigned long dev_hndl, unsigned long id,
 							"PREFETCH CTXT:\n");
 			qdma_fill_pfetch_ctxt(&ctxt.pfetch_ctxt);
 			len += qdma_parse_ctxt_to_buf(QDMA_PFETCH_CNTXT,
+					&xdev->version_info,
 					buf + len, buflen - len);
 		}
 	}
@@ -597,7 +602,7 @@ static int qdbg_info_read(unsigned long dev_hndl, unsigned long id, char **data,
 	descq = qdma_device_get_descq_by_id(xdev, id, buf, buflen, 0);
 	if (!descq) {
 		kfree(buf);
-		return QDMA_ERR_INVALID_QIDX;
+		return -EINVAL;
 	}
 
 	len = qdma_descq_dump_state(descq, buf + len, buflen - len);
@@ -633,7 +638,7 @@ static int qdbg_desc_read(unsigned long dev_hndl, unsigned long id, char **data,
 
 	descq = qdma_device_get_descq_by_id(xdev, id, buf, buflen, 0);
 	if (!descq)
-		return QDMA_ERR_INVALID_QIDX;
+		return -EINVAL;
 
 	/** get the ring size */
 	if (type != DBGFS_DESC_TYPE_CMPT)
@@ -842,7 +847,8 @@ static ssize_t q_desc_read(struct file *fp, char __user *user_buffer,
  * @return	>0: size read
  * @return	<0: error
  *****************************************************************************/
-int create_q_dbg_files(struct qdma_descq *descq, struct dentry *queue_root)
+static int create_q_dbg_files(struct qdma_descq *descq,
+		struct dentry *queue_root)
 {
 	struct dentry  *fp[DBGFS_QINFO_END] = { NULL };
 	struct file_operations *fops = NULL;
@@ -928,10 +934,12 @@ int dbgfs_queue_init(struct qdma_queue_conf *conf,
 	}
 
 	/* create a directory for direction */
-	if (conf->c2h)
+	if (conf->q_type == Q_C2H)
 		snprintf(qdir, 8, "%s", "c2h");
-	else
+	else if (conf->q_type == Q_H2C)
 		snprintf(qdir, 8, "%s", "h2c");
+	else
+		snprintf(qdir, 8, "%s", "cmpt");
 
 	dbgfs_queue_root = debugfs_create_dir(qdir,
 			dbgfs_qidx_root);
@@ -941,7 +949,7 @@ int dbgfs_queue_init(struct qdma_queue_conf *conf,
 		goto dbgfs_queue_init_fail;
 	}
 
-	if (conf->c2h && conf->st) {
+	if ((conf->q_type == Q_C2H) && conf->st) {
 		/* create a directory for the cmpt in debugfs */
 		dbgfs_cmpt_queue_root = debugfs_create_dir("cmpt",
 				dbgfs_qidx_root);

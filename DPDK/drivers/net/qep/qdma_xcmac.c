@@ -187,6 +187,7 @@ int xcmac_start(struct rte_eth_dev *dev)
 		(QEP_CMAC_CTRL_BASE + QEP_CMAC_CTRL_TX_CTRL_OFFSET), reg_val);
 
 	qdma_dev->is_cmac_on = 1;
+
 	return ret;
 }
 
@@ -236,64 +237,4 @@ void xcmac_set_mtu(struct rte_eth_dev *dev, uint16_t new_mtu)
 			 QEP_CMAC_CTL_RX_MAX_PACKET_LEN_OFFSET),
 			new_mtu);
 
-}
-
-#define CMAC_LINK_CHECK_INTERVAL			(5000000)
-/*
- * Thread function routine which keeps polling of
- * link status in background in every QEP_LINK_CHECK_INTERVAL
- */
-static void cmac_link_monitor(void *arg)
-{
-	int ret = 0, retry = 0;
-	struct rte_eth_dev *dev = (struct rte_eth_dev *)arg;
-	struct qdma_pci_dev *qdma_dev = dev->data->dev_private;
-	struct xcmac_rx_lane_am_status lane_status;
-	struct rte_eth_link link;
-
-	memset(&link, 0, sizeof(link));
-
-	retry = 100;
-	while (retry != 0) {
-		ret = xcmac_get_rx_lane_status(&qdma_dev->cmac_instance,
-					       &lane_status);
-		if (ret != 0) {
-			RTE_LOG(ERR, PMD,
-				"%s: Error in retrieving Rx lane status\n",
-				__func__);
-			lane_status.aligned = false;
-			break;
-		}
-
-		if (lane_status.aligned == true)
-			break;
-
-		retry--;
-		usleep(100*1000);
-	}
-
-	if (lane_status.aligned == true) {
-		//RTE_LOG(INFO, PMD, "%s: Rx Lane is Aligned\n", __func__);
-		link.link_status = ETH_LINK_UP;
-	} else {
-		RTE_LOG(INFO, PMD, "%s: Rx Lane is not Aligned\n", __func__);
-		link.link_status = ETH_LINK_DOWN;
-	}
-	link.link_duplex = ETH_LINK_FULL_DUPLEX;
-	link.link_speed = ETH_SPEED_NUM_100G;
-	rte_eth_linkstatus_set(dev, &link);
-
-	rte_eal_alarm_set(CMAC_LINK_CHECK_INTERVAL, cmac_link_monitor,
-					(void *)arg);
-}
-
-void xcmac_link_check_thread_start(struct rte_eth_dev *dev)
-{
-	rte_eal_alarm_set(CMAC_LINK_CHECK_INTERVAL, cmac_link_monitor,
-					(void *)dev);
-}
-
-void xcmac_link_check_thread_stop(struct rte_eth_dev *dev)
-{
-	rte_eal_alarm_cancel(cmac_link_monitor, (void *)dev);
 }

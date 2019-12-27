@@ -37,6 +37,49 @@
 #endif
 #include "xcmac.h"
 
+
+#ifdef DEBUG
+#define DEBUG_PRINT printf
+#else
+#define DEBUG_PRINT(...)
+#endif
+
+/**< Half word mask */
+#define HALF_WORD_MASK 0xFFFF
+/**< WORD mask */
+#define WORD_MASK 0xffffffff
+/**< Macro to indicate 16 bits */
+#define SIXTEEN_BITS 16
+/**< 16 LSB bits mask */
+#define TWO_LSB_MASK 0xFFFF
+/**< 16 MSB bits mask */
+#define TWO_MSB_MASK 0xFFFF0000
+/**< Number of bytes in a WORD */
+#define NUM_WORD_BYTES 4
+/**< Number of bytes in a DWORD */
+#define NUM_DWORD_BYTES 8
+/**< Number of bits in a WORD */
+#define NUM_WORD_BITS 32
+
+/** Function macro to left shift 1 by x times */
+#define bit(x) (0x1 << x)
+/** Function macro that sets a bit in the given value
+ *  If user wants to set a bit num 0 in bits [31:0], then pass Pos as 0
+ */
+#define set_bit(val, pos) (val |= bit(pos))
+/** Function macro that clears a bit in the given value
+ *  If user wants to clear a bit num 0 in bits [31:0], then pass pos as 0
+ */
+#define clear_bit(val, pos) (val &= ~bit(pos))
+/** Function macro to check if the argument is NULL */
+#define is_null(arg)                                                           \
+	do { if (!(arg))                                                       \
+		return -EINVAL; } while (0)
+/** Function macro that  that return the value at a position
+ *  If user wants to check a bit at num 0 in bits [31:0], then pass pos as 0
+ */
+#define get_bit_status(val, pos) ((val & bit(pos)) ? 1 : 0)
+
 /** function macro to return TRUE/FALSE values */
 #define get_status(offset, mask)                                               \
 	((xcmac_in32(instance->base_address + offset) & mask) ? true : false)
@@ -109,7 +152,6 @@ int xcmac_initialize(struct xcmac *instance, uint64_t cmac_va_base)
 	if (instance->is_started == XIL_COMPONENT_IS_STARTED)
 		return -EPERM;
 	/* Set some default values */
-	instance->is_ready = 0;
 	instance->is_started = 0; /* not started */
 	instance->base_address = cmac_va_base;
 	/* Indicate instance is now ready to use, initialized without error */
@@ -408,10 +450,13 @@ int xcmac_set_caui_mode(struct xcmac *instance, enum xcmac_caui_mode caui_mode)
  **************************************************************************/
 enum xcmac_caui_mode  xcmac_get_caui_mode(struct xcmac *instance)
 {
-	is_null(instance);
+	if (!instance)
+		return XCMAC_CAUI_INVALID;
+
 	if (instance->is_ready != XIL_COMPONENT_IS_READY)
 		return XCMAC_CAUI_INVALID;
-	return read_mem_with_mask(XCMAC_MODE_REG_OFFSET, XCMAC_CAUI_MODE_MASK);
+	return (enum xcmac_caui_mode)read_mem_with_mask(XCMAC_MODE_REG_OFFSET,
+		XCMAC_CAUI_MODE_MASK);
 }
 
 /*************************************************************************/
@@ -427,10 +472,13 @@ enum xcmac_caui_mode  xcmac_get_caui_mode(struct xcmac *instance)
  **************************************************************************/
 enum xcmac_caui_mode  xcmac_get_core_mode(struct xcmac *instance)
 {
-	is_null(instance);
+	if (!instance)
+		return XCMAC_CAUI_INVALID;
+
 	if (instance->is_ready != XIL_COMPONENT_IS_READY)
 		return XCMAC_CAUI_INVALID;
-	return read_mem_with_mask(XCMAC_CORE_MODE_REG_OFFSET,
+	return (enum xcmac_caui_mode)read_mem_with_mask(
+			XCMAC_CORE_MODE_REG_OFFSET,
 			XCMAC_CORE_MODE_MASK);
 }
 
@@ -1067,12 +1115,14 @@ int xcmac_set_gt_loopback_config(struct xcmac *instance,
  **************************************************************************/
 enum xcmac_gt_loopback_type xcmac_get_gt_loopback_config(struct xcmac *instance)
 {
-	is_null(instance);
+	if (!instance)
+		return XCMAC_GT_LOOPBACK_INVALID;
+
 	if (instance->is_ready != XIL_COMPONENT_IS_READY)
 		return XCMAC_GT_LOOPBACK_INVALID;
 
-	return read_mem_with_mask(XCMAC_GT_LOOPBACK_REG_OFFSET,
-			XCMAC_GT_LOOPBACK_CTL_BIT);
+	return (enum xcmac_gt_loopback_type)read_mem_with_mask(
+		XCMAC_GT_LOOPBACK_REG_OFFSET, XCMAC_GT_LOOPBACK_CTL_BIT);
 }
 
 /*************************************************************************/
@@ -1104,16 +1154,16 @@ int xcmac_set_tx_flow_control_config(struct xcmac *instance,
 	for (index = 0; index < TOTAL_TX_PAUSE_REFRESH_TIMERS; index += 2) {
 		refresh_val = flow_control->refresh_interval[index];
 		quanta_val = flow_control->pause_quanta[index];
-		if (index != TOTAL_TX_PAUSE_REFRESH_TIMERS) {
-			/* refresh */
-			refresh_val <<= SIXTEEN_BITS;
-			refresh_val = refresh_val |
-				flow_control->refresh_interval[index + 1];
-			/* quanta */
-			quanta_val <<= SIXTEEN_BITS;
-			quanta_val = quanta_val |
-				flow_control->pause_quanta[index + 1];
-		}
+
+		/* refresh */
+		refresh_val <<= SIXTEEN_BITS;
+		refresh_val = refresh_val |
+			flow_control->refresh_interval[index + 1];
+		/* quanta */
+		quanta_val <<= SIXTEEN_BITS;
+		quanta_val = quanta_val |
+			flow_control->pause_quanta[index + 1];
+
 		/* This sets the retransmission time of pause packets for
 		 * priority 0 and priority 1 and 2, 3 and so on
 		 */
@@ -1169,13 +1219,11 @@ int xcmac_get_tx_flow_control_config(struct xcmac *instance,
 
 		flow_control->refresh_interval[index] = refresh & TWO_LSB_MASK;
 		flow_control->pause_quanta[index] = quanta & TWO_LSB_MASK;
+		flow_control->refresh_interval[index + 1] =
+				(uint16_t)(refresh >> SIXTEEN_BITS);
+		flow_control->pause_quanta[index + 1] =
+				(uint16_t)(quanta >> SIXTEEN_BITS);
 
-		if (index != TOTAL_TX_PAUSE_REFRESH_TIMERS) {
-			flow_control->refresh_interval[index + 1] =
-					(uint16_t)(refresh >> SIXTEEN_BITS);
-			flow_control->pause_quanta[index + 1] =
-					(uint16_t)(quanta >> SIXTEEN_BITS);
-		}
 		offset_1 += NUM_WORD_BYTES;
 		offset_2 += NUM_WORD_BYTES;
 	}
@@ -1507,7 +1555,7 @@ int xcmac_get_rx_flow_control_packet_config(
 		flow_control->check_source_address =
 				(value & XCMAC_CTL_RX_CHECK_SA_GCP_BIT_MASK) >>
 				XCMAC_CTL_RX_CHECK_SA_GCP_BIT;
-		flow_control->check_multicast =
+		flow_control->check_ether_type =
 				(value & XCMAC_CTL_RX_CHECK_ETYPE_GCP_BIT_MASK)
 				>> XCMAC_CTL_RX_CHECK_ETYPE_GCP_BIT;
 		flow_control->check_opcode =
@@ -1531,7 +1579,7 @@ int xcmac_get_rx_flow_control_packet_config(
 		flow_control->check_source_address =
 				(value & XCMAC_CTL_RX_CHECK_SA_PCP_BIT_MASK) >>
 				XCMAC_CTL_RX_CHECK_SA_PCP_BIT;
-		flow_control->check_multicast =
+		flow_control->check_ether_type =
 				(value & XCMAC_CTL_RX_CHECK_ETYPE_PCP_BIT_MASK)
 				>> XCMAC_CTL_RX_CHECK_ETYPE_PCP_BIT;
 		flow_control->check_opcode =
@@ -1551,7 +1599,7 @@ int xcmac_get_rx_flow_control_packet_config(
 		flow_control->check_source_address =
 				(value & XCMAC_CTL_RX_CHECK_SA_GPP_BIT_MASK) >>
 				XCMAC_CTL_RX_CHECK_SA_GPP_BIT;
-		flow_control->check_multicast =
+		flow_control->check_ether_type =
 				(value & XCMAC_CTL_RX_CHECK_ETYPE_GPP_BIT_MASK)
 				>> XCMAC_CTL_RX_CHECK_ETYPE_GPP_BIT;
 		flow_control->check_opcode =
@@ -1571,7 +1619,7 @@ int xcmac_get_rx_flow_control_packet_config(
 		flow_control->check_source_address =
 				(value & XCMAC_CTL_RX_CHECK_SA_PPP_BIT_MASK) >>
 				XCMAC_CTL_RX_CHECK_SA_PPP_BIT;
-		flow_control->check_multicast =
+		flow_control->check_ether_type =
 				(value & XCMAC_CTL_RX_CHECK_ETYPE_PPP_BIT_MASK)
 				>> XCMAC_CTL_RX_CHECK_ETYPE_PPP_BIT;
 		flow_control->check_opcode =

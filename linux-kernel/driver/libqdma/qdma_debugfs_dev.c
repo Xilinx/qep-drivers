@@ -125,6 +125,10 @@ static int dbgfs_dump_qdma_regs(unsigned long dev_hndl, char *dev_name,
 	int rv;
 	char *buf = NULL;
 	int buflen = qdma_reg_dump_buf_len() + BANNER_LEN;
+	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
+
+	if (!xdev)
+		return -EINVAL;
 
 	/** allocate memory */
 	buf = (char *) kzalloc(buflen, GFP_KERNEL);
@@ -134,19 +138,22 @@ static int dbgfs_dump_qdma_regs(unsigned long dev_hndl, char *dev_name,
 	/* print the banner with device info */
 	rv = dump_banner(dev_name, buf + len, buflen - len);
 	if (rv < 0) {
-		pr_warn("insufficient space to dump register banner\n");
+		pr_warn("insufficient space to dump register banner, err =%d\n",
+				rv);
+		kfree(buf);
 		return len;
 	}
 	len += rv;
 #ifndef __QDMA_VF__
-	rv = qdma_dump_config_regs((void *)dev_hndl, 0,
+	rv = xdev->hw.qdma_dump_config_regs((void *)dev_hndl, 0,
 			buf + len, buflen - len);
 #else
-	rv = qdma_dump_config_regs((void *)dev_hndl, 1,
+	rv = xdev->hw.qdma_dump_config_regs((void *)dev_hndl, 1,
 			buf + len, buflen - len);
 #endif
 	if (rv < 0) {
-		pr_warn("Not able to dump Config Bar register values\n");
+		pr_warn("Not able to dump Config Bar register values, err = %d\n",
+					rv);
 		*data = buf;
 		*data_len = buflen;
 		return len;
@@ -256,14 +263,17 @@ static int dbgfs_dump_intr_cntx(unsigned long dev_hndl, char *dev_name,
 						&intr_ctxt);
 			if (rv < 0) {
 				len += sprintf(buf + len,
-							   "%s read intr context failed %d.\n",
-							   xdev->conf.name, rv);
+					"%s read intr context failed %d.\n",
+					xdev->conf.name, rv);
+				*data = buf;
+				*data_len = buflen;
 				return rv;
 			}
 			len += snprintf(buf + len, buflen - len,
 							"\tINTR CTXT:\n");
 			qdma_fill_intr_ctxt(&intr_ctxt);
 			len += qdma_parse_ctxt_to_buf(QDMA_INTR_CNTXT,
+					&xdev->version_info,
 					buf + len, buflen - len);
 		}
 	}
@@ -311,6 +321,7 @@ static int dbgfs_dump_intr_ring(unsigned long dev_hndl, char *dev_name,
 		len += sprintf(buf + len,
 					   "%s read intr context failed %d.\n",
 					   xdev->conf.name, rv);
+		kfree(buf);
 		return rv;
 	}
 
@@ -796,7 +807,7 @@ int dbgfs_dev_init(struct xlnx_dma_dev *xdev)
 	struct pci_dev *pdev = xdev->conf.pdev;
 	int rv = 0;
 
-	if (! xdev->conf.debugfs_dev_root) {
+	if (!xdev->conf.debugfs_dev_root) {
 		snprintf(dname, QDMA_DEV_NAME_SZ, "%02x:%02x:%x",
 				pdev->bus->number,
 				PCI_SLOT(pdev->devfn),

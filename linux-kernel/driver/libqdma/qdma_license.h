@@ -1,5 +1,10 @@
+#ifndef LIBQDMA_QDMA_LICENSE_H_
+#define LIBQDMA_QDMA_LICENSE_H_
 /*
- * Copyright(c) 2019 Xilinx, Inc. All rights reserved.
+ * This file is part of the Xilinx DMA IP Core driver for Linux
+ *
+ * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -14,23 +19,4 @@
  * the file called "COPYING".
  */
 
-#ifndef QDMA_VERSION_H_
-#define QDMA_VERSION_H_
-
-
-#define QDMA_VERSION_MAJOR	2019
-#define QDMA_VERSION_MINOR	1
-#define QDMA_VERSION_PATCH	23
-
-#define QDMA_VERSION_STR	\
-	__stringify(QDMA_VERSION_MAJOR) "." \
-	__stringify(QDMA_VERSION_MINOR) "." \
-	__stringify(QDMA_VERSION_PATCH)
-
-#define QDMA_VERSION  \
-	((QDMA_VERSION_MAJOR)*1000 + \
-	 (QDMA_VERSION_MINOR)*100 + \
-	  QDMA_VERSION_PATCH)
-
-
-#endif /* COMMON_QDMA_VERSION_H_ */
+#endif /* LIBQDMA_QDMA_LICENSE_H_ */

@@ -25,6 +25,11 @@
 MOD_NAME := qep_drv
 QEP_DRV_HOME := $(shell pwd)
 QEP_DRV_KVER := $(shell uname -r)
+grep = grep 2>/dev/null
+
+# Only if KSRC/KOBJ were not defined on the command line.
+KSRC ?= $(wildcard /lib/modules/$(QEP_DRV_KVER)/source)
+KINC  = $(KSRC)/include
 
 ifneq ($(SUBDIRS),)
 	EXTRA_CFLAGS += -I. 
@@ -44,17 +49,43 @@ EXTRA_CFLAGS += -DQAP_STMN_DESIGN
 endif
 endif
 
+qep_cso ?= 1
+qep_rss ?= 1
+ifneq ($(qep_cso), 0)
+EXTRA_CFLAGS += -DQEP_CSO_EN
+endif
+ifneq ($(qep_rss), 0)
+EXTRA_CFLAGS += -DQEP_RSS_EN
+endif
+
 EXTRA_CFLAGS += -DDEBUGFS
-EXTRA_CFLAGS += -DMAILBOX_INTERRUPT_DISABLE -DUSER_INTERRUPT_DISABLE 
+EXTRA_CFLAGS += -DMBOX_INTERRUPT_DISABLE -DUSER_INTERRUPT_DISABLE 
 
 obj-m += $(MOD_NAME).o
 $(MOD_NAME)-objs += $(QEP_CORE_OBJS)
 $(MOD_NAME)-objs += $(QEP_LIBQDMA_OBJS)
 
-
 #ccflags-y := -Wno-format -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-strict-aliasing  -Wno-sign-compare -Wno-unused-function -Wno-comment
 
 ccflags-y := -Wall -Wno-format
+
+# linux <= 3.13 pci_msix_vec_count is not defined.
+#
+ifeq ($(shell $(grep) -c 'int pci_msix_vec_count' $(KINC)/linux/pci.h),0)
+  EXTRA_CFLAGS += -D__PCI_MSI_VEC_COUNT__
+endif
+
+# linux < 3.13 list_next_entry is not defined.
+#
+ifeq ($(shell $(grep) -c 'list_next_entry' $(KINC)/linux/list.h),0)
+  EXTRA_CFLAGS += -D__LIST_NEXT_ENTRY__
+endif
+
+# linux < 3.18.13 READ_ONCE is not defined.
+#
+ifneq ($(shell $(grep) -c 'READ_ONCE' $(KINC)/linux/compiler.h),0)
+  EXTRA_CFLAGS += -D__READ_ONCE_DEFINED__
+endif
 
 all:
 	make -C /lib/modules/$(QEP_DRV_KVER)/build M=$(QEP_DRV_HOME) SUBDIRS=$(shell pwd)  modules

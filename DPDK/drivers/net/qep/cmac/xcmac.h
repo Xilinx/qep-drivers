@@ -46,36 +46,12 @@
 #define XIL_COMPONENT_IS_READY 0x11111111
 /**< component has been started */
 #define XIL_COMPONENT_IS_STARTED 0x22222222
-/**< Half word mask */
-#define HALF_WORD_MASK 0xFFFF
-/**< Macro to indicate 16 bits */
-#define SIXTEEN_BITS 16
-/**< 16 LSB bits mask */
-#define TWO_LSB_MASK 0xFFFF
-/**< 16 MSB bits mask */
-#define TWO_MSB_MASK 0xFFFF0000
-/**< Number of bytes in a WORD */
-#define NUM_WORD_BYTES 4
-/**< Number of bytes in a DWORD */
-#define NUM_DWORD_BYTES 8
-/**< Number of bits in a WORD */
-#define NUM_WORD_BITS 32
 /**< Total refresh timers in the CMAC IP */
 #define TOTAL_TX_PAUSE_REFRESH_TIMERS 8
-/** Total Pause Refresh Timers */
-#define TOTAL_PAUSE_REFRESH_TIMERS 8
 /** Total Pause Quantas */
 #define TOTAL_PAUSE_QUANTAS 8
-/**< WORD mask */
-#define WORD_MASK 0xffffffff
 /**< XCMAC_PCS_LANE_COUNT specifies the count of PCS lanes. */
 #define XCMAC_PCS_LANE_COUNT (20)
-
-#ifdef DEBUG
-#define DEBUG_PRINT printf
-#else
-#define DEBUG_PRINT(...)
-#endif
 
 /**
  * This enum represents CMAC core
@@ -191,7 +167,7 @@ struct xcmac_tx_flow_control {
 	/**< Pause packets enable/disable */
 	uint16_t pause_enable;
 	/**< Refresh interval to send pause packet */
-	uint16_t refresh_interval[TOTAL_PAUSE_REFRESH_TIMERS];
+	uint16_t refresh_interval[TOTAL_TX_PAUSE_REFRESH_TIMERS];
 	/**< Pause quanta */
 	uint16_t pause_quanta[TOTAL_PAUSE_QUANTAS];
 };
@@ -605,25 +581,6 @@ struct xcmac_link_training_status {
 	uint8_t link_training_rx_sof;
 	/**< LT start of link training frame */
 };
-
-/** Function macro to left shift 1 by x times */
-#define bit(x) (0x1 << x)
-/** Function macro that sets a bit in the given value
- *  If user wants to set a bit num 0 in bits [31:0], then pass Pos as 0
- */
-#define set_bit(val, pos) (val |= bit(pos))
-/** Function macro that clears a bit in the given value
- *  If user wants to clear a bit num 0 in bits [31:0], then pass pos as 0
- */
-#define clear_bit(val, pos) (val &= ~bit(pos))
-/** Function macro to check if the argument is NULL */
-#define is_null(arg)                                                           \
-	do { if (!(arg))                                                       \
-		return -EINVAL; } while (0)
-/** Function macro that  that return the value at a position
- *  If user wants to check a bit at num 0 in bits [31:0], then pass pos as 0
- */
-#define get_bit_status(val, pos) ((val & bit(pos)) ? 1 : 0)
 
 /************************** Function Prototypes ******************************/
 void xcmac_out32(uint64_t address, uint32_t data);
