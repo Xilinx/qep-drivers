@@ -52,132 +52,279 @@
 #include "qdma_mbox.h"
 #include "stmn.h"
 #include "qdma_xcmac.h"
+#include "qdma_reg_dump.h"
+#include "qdma_platform.h"
 
-struct rte_qdma_xstats_name {
+struct rte_qep_xstats_name {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
 	unsigned int offset;
 };
 
-struct rte_qdma_stmn_stats32 {
+struct rte_qep_stmn_stats32 {
 	struct stmn_fifo_fill_level fifo_fill;
 	struct stmn_dsc_sts_min_max dsc_sts;
 };
 
-static const struct rte_qdma_xstats_name rte_qdma_stmn_stats_str32[] = {
-	{"c2h_cmpt", offsetof(struct rte_qdma_stmn_stats32,
-			      fifo_fill.c2h_cmpt)},
-	{"qdma_c2h_sts", offsetof(struct rte_qdma_stmn_stats32,
-				  fifo_fill.qdma_c2h_sts)},
-	{"h2c_meta", offsetof(struct rte_qdma_stmn_stats32,
-			      fifo_fill.h2c_meta)},
-	{"c2h_dsc_sts", offsetof(struct rte_qdma_stmn_stats32,
-				 fifo_fill.c2h_dsc_sts)},
-	{"h2c_dsc_sts", offsetof(struct rte_qdma_stmn_stats32,
-				 fifo_fill.h2c_dsc_sts)},
-	{"c2h_crdt", offsetof(struct rte_qdma_stmn_stats32,
-			      fifo_fill.c2h_crdt)},
-	{"h2c_crdt", offsetof(struct rte_qdma_stmn_stats32,
-			      fifo_fill.h2c_crdt)},
-	{"c2h_byp_out", offsetof(struct rte_qdma_stmn_stats32,
-				 fifo_fill.c2h_byp_out)},
-	{"h2c_byp_out", offsetof(struct rte_qdma_stmn_stats32,
-				 fifo_fill.h2c_byp_out)},
-	{"dsc_sts_c2h_min_avl", offsetof(struct rte_qdma_stmn_stats32,
-					 dsc_sts.c2h_min_avl)},
-	{"dsc_sts_c2h_max_avl", offsetof(struct rte_qdma_stmn_stats32,
-					 dsc_sts.c2h_max_avl)},
-	{"dsc_sts_h2c_min_avl", offsetof(struct rte_qdma_stmn_stats32,
-					 dsc_sts.h2c_min_avl)},
-	{"dsc_sts_h2c_min_avl", offsetof(struct rte_qdma_stmn_stats32,
-					 dsc_sts.h2c_max_avl)},
+static const struct rte_qep_xstats_name rte_qep_stmn_stats_str32[] = {
+	{"c2h_cmpt", offsetof(struct rte_qep_stmn_stats32,
+					fifo_fill.c2h_cmpt)},
+	{"qdma_c2h_sts", offsetof(struct rte_qep_stmn_stats32,
+					fifo_fill.qdma_c2h_sts)},
+	{"h2c_meta", offsetof(struct rte_qep_stmn_stats32,
+					fifo_fill.h2c_meta)},
+	{"c2h_dsc_sts", offsetof(struct rte_qep_stmn_stats32,
+					fifo_fill.c2h_dsc_sts)},
+	{"h2c_dsc_sts", offsetof(struct rte_qep_stmn_stats32,
+					fifo_fill.h2c_dsc_sts)},
+	{"c2h_crdt", offsetof(struct rte_qep_stmn_stats32,
+					fifo_fill.c2h_crdt)},
+	{"h2c_crdt", offsetof(struct rte_qep_stmn_stats32,
+					fifo_fill.h2c_crdt)},
+	{"c2h_byp_out", offsetof(struct rte_qep_stmn_stats32,
+					fifo_fill.c2h_byp_out)},
+	{"h2c_byp_out", offsetof(struct rte_qep_stmn_stats32,
+					fifo_fill.h2c_byp_out)},
+	{"dsc_sts_c2h_min_avl", offsetof(struct rte_qep_stmn_stats32,
+					dsc_sts.c2h_min_avl)},
+	{"dsc_sts_c2h_max_avl", offsetof(struct rte_qep_stmn_stats32,
+					dsc_sts.c2h_max_avl)},
+	{"dsc_sts_h2c_min_avl", offsetof(struct rte_qep_stmn_stats32,
+					dsc_sts.h2c_min_avl)},
+	{"dsc_sts_h2c_min_avl", offsetof(struct rte_qep_stmn_stats32,
+					dsc_sts.h2c_max_avl)},
 };
 
-#define QDMA_NB_STMN_XSTATS32 (sizeof(rte_qdma_stmn_stats_str32) / \
-		sizeof(rte_qdma_stmn_stats_str32[0]))
+#define QEP_NB_STMN_XSTATS32 (sizeof(rte_qep_stmn_stats_str32) / \
+		sizeof(rte_qep_stmn_stats_str32[0]))
 
-
-static const struct rte_qdma_xstats_name rte_qdma_stmn_stats_str64[] = {
+static const struct rte_qep_xstats_name rte_qep_stmn_stats_str64[] = {
 	{"cycle_cnt", offsetof(struct stmn_stats, cycle_cnt)},
 	{"s_axis_pkt_in_cnt", offsetof(struct stmn_stats,
-				       s_axis.s_axis_pkt_in_cnt)},
+					s_axis.s_axis_pkt_in_cnt)},
 	{"s_axis_pkt_accept_cnt", offsetof(struct stmn_stats,
-					   s_axis.s_axis_pkt_accept_cnt)},
+					s_axis.s_axis_pkt_accept_cnt)},
 	{"s_axis_byte_accept_cnt", offsetof(struct stmn_stats,
-					    s_axis.s_axis_byte_accept_cnt)},
+					s_axis.s_axis_byte_accept_cnt)},
 	{"s_axis_pkt_drop_cnt", offsetof(struct stmn_stats,
-					 s_axis.s_axis_pkt_drop_cnt)},
+					s_axis.s_axis_pkt_drop_cnt)},
 	{"s_axis_byte_drop_cnt", offsetof(struct stmn_stats,
-					  s_axis.s_axis_byte_drop_cnt)},
+					s_axis.s_axis_byte_drop_cnt)},
 	{"qdma_pkt_accept_cnt", offsetof(struct stmn_stats,
-					 s_axis.qdma_pkt_accept_cnt)},
+					s_axis.qdma_pkt_accept_cnt)},
 	{"qdma_byte_accept_cnt", offsetof(struct stmn_stats,
-					  s_axis.qdma_byte_accept_cnt)},
+					s_axis.qdma_byte_accept_cnt)},
 	{"qdma_pkt_drop_cnt", offsetof(struct stmn_stats,
-				       s_axis.qdma_pkt_drop_cnt)},
+					s_axis.qdma_pkt_drop_cnt)},
 	{"qdma_byte_drop_cnt", offsetof(struct stmn_stats,
 					s_axis.qdma_byte_drop_cnt)},
 	{"s_axis_active", offsetof(struct stmn_stats, s_axis.s_axis_active)},
 	{"s_axis_idle", offsetof(struct stmn_stats, s_axis.s_axis_idle)},
 	{"s_axis_pause", offsetof(struct stmn_stats, s_axis.s_axis_pause)},
 	{"qdma_axis_c2h_active", offsetof(struct stmn_stats,
-					  s_axis.qdma_axis_c2h_active)},
+					s_axis.qdma_axis_c2h_active)},
 	{"qdma_axis_c2h_idle", offsetof(struct stmn_stats,
 					s_axis.qdma_axis_c2h_idle)},
 	{"qdma_axis_c2h_pause", offsetof(struct stmn_stats,
-					 s_axis.qdma_axis_c2h_pause)},
+					s_axis.qdma_axis_c2h_pause)},
 	{"qdma_axis_c2h_cmpt_active", offsetof(struct stmn_stats,
 					s_axis.qdma_axis_c2h_cmpt_active)},
 	{"qdma_axis_c2h_cmpt_idle", offsetof(struct stmn_stats,
-					     s_axis.qdma_axis_c2h_cmpt_idle)},
+					s_axis.qdma_axis_c2h_cmpt_idle)},
 	{"qdma_axis_c2h_cmpt_pause", offsetof(struct stmn_stats,
-					      s_axis.qdma_axis_c2h_cmpt_pause)},
+					s_axis.qdma_axis_c2h_cmpt_pause)},
 	{"qdma_axis_c2h_dmawr_cmp_cnt", offsetof(struct stmn_stats,
 					s_axis.qdma_axis_c2h_dmawr_cmp_cnt)},
 	{"c2h_cmpt_fifo_avg_cnt", offsetof(struct stmn_stats,
-					   s_axis.c2h_cmpt_fifo_avg_cnt)},
+					s_axis.c2h_cmpt_fifo_avg_cnt)},
 	{"qdma_c2h_sts_fifo_avg_cnt", offsetof(struct stmn_stats,
 					s_axis.qdma_c2h_sts_fifo_avg_cnt)},
 	{"m_axis_pkt_cnt", offsetof(struct stmn_stats, m_axis.m_axis_pkt_cnt)},
 	{"m_axis_byte_cnt", offsetof(struct stmn_stats,
-				     m_axis.m_axis_byte_cnt)},
+					m_axis.m_axis_byte_cnt)},
 	{"m_axis_active", offsetof(struct stmn_stats, m_axis.m_axis_active)},
 	{"m_axis_idle", offsetof(struct stmn_stats, m_axis.m_axis_idle)},
 	{"m_axis_pause", offsetof(struct stmn_stats, m_axis.m_axis_pause)},
 	{"h2c_meta_fifo_avg_cnt", offsetof(struct stmn_stats,
-					   m_axis.h2c_meta_fifo_avg_cnt)},
+					m_axis.h2c_meta_fifo_avg_cnt)},
 	{"dsc_sts_c2h_cnt", offsetof(struct stmn_stats, desc.dsc_sts_c2h_cnt)},
 	{"dsc_sts_h2c_cnt", offsetof(struct stmn_stats, desc.dsc_sts_h2c_cnt)},
 	{"dsc_sts_c2h_avl_cnt", offsetof(struct stmn_stats,
-					 desc.dsc_sts_c2h_avl_cnt)},
+					desc.dsc_sts_c2h_avl_cnt)},
 	{"dsc_sts_h2c_avl_cnt", offsetof(struct stmn_stats,
-					 desc.dsc_sts_h2c_avl_cnt)},
+					desc.dsc_sts_h2c_avl_cnt)},
 	{"dsc_sts_c2h_fifo_avg_cnt", offsetof(struct stmn_stats,
-					      desc.dsc_sts_c2h_fifo_avg_cnt)},
+					desc.dsc_sts_c2h_fifo_avg_cnt)},
 	{"dsc_sts_h2c_fifo_avg_cnt", offsetof(struct stmn_stats,
-					      desc.dsc_sts_h2c_fifo_avg_cnt)},
+					desc.dsc_sts_h2c_fifo_avg_cnt)},
 	{"crdt_in_c2h_vld_cnt", offsetof(struct stmn_stats,
-					 crdt_bypout.crdt_in_c2h_vld_cnt)},
+					crdt_bypout.crdt_in_c2h_vld_cnt)},
 	{"crdt_in_h2c_vld_cnt", offsetof(struct stmn_stats,
-					 crdt_bypout.crdt_in_h2c_vld_cnt)},
+					crdt_bypout.crdt_in_h2c_vld_cnt)},
 	{"crdt_in_c2h_cnt", offsetof(struct stmn_stats,
-				     crdt_bypout.crdt_in_c2h_cnt)},
+					crdt_bypout.crdt_in_c2h_cnt)},
 	{"crdt_in_h2c_cnt", offsetof(struct stmn_stats,
-				     crdt_bypout.crdt_in_h2c_cnt)},
+					crdt_bypout.crdt_in_h2c_cnt)},
 	{"byp_out_c2h_cnt", offsetof(struct stmn_stats,
-				     crdt_bypout.byp_out_c2h_cnt)},
+					crdt_bypout.byp_out_c2h_cnt)},
 	{"byp_out_h2c_cnt", offsetof(struct stmn_stats,
-				     crdt_bypout.byp_out_h2c_cnt)},
+					crdt_bypout.byp_out_h2c_cnt)},
 	{"c2h_crdt_fifo_avg_cnt", offsetof(struct stmn_stats,
-					   crdt_bypout.c2h_crdt_fifo_avg_cnt)},
+					crdt_bypout.c2h_crdt_fifo_avg_cnt)},
 	{"h2c_crdt_fifo_avg_cnt", offsetof(struct stmn_stats,
-					   crdt_bypout.h2c_crdt_fifo_avg_cnt)},
+					crdt_bypout.h2c_crdt_fifo_avg_cnt)},
 	{"c2h_byp_out_fifo_avg_cnt", offsetof(struct stmn_stats,
 					crdt_bypout.c2h_byp_out_fifo_avg_cnt)},
-
 };
 
-#define QDMA_NB_STMN_XSTATS64 (sizeof(rte_qdma_stmn_stats_str64) / \
-		sizeof(rte_qdma_stmn_stats_str64[0]))
+#define QEP_NB_STMN_XSTATS64 (sizeof(rte_qep_stmn_stats_str64) / \
+		sizeof(rte_qep_stmn_stats_str64[0]))
+
+/* CMAC Statistics */
+struct rte_qep_cmac_stats {
+	struct xcmac_packet_count_statistics rx_pkt_count;
+	struct xcmac_packet_type_statistics rx_pkt_types;
+	struct xcmac_malformed_statistics rx_malformed;
+	uint64_t rx_bad_code_pkts;
+	uint64_t rx_range_error_pkts;
+	uint64_t rx_truncated_pkts;
+	struct xcmac_packet_count_statistics tx_pkt_count;
+	struct xcmac_packet_type_statistics tx_pkt_types;
+	struct xcmac_malformed_statistics tx_malformed;
+	uint64_t tx_frame_error_pkts;
+};
+
+static const struct rte_qep_xstats_name rte_qep_cmac_stats_str64[] = {
+	{ "rx_mac_packets", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_count.total_packets)},
+	{ "rx_good_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_count.total_good_packets)},
+	{ "rx_mac_bytes", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_count.total_bytes)},
+	{ "rx_good_bytes", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_count.total_good_bytes)},
+	{ "rx_hist_less_64_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_count.packets_small)},
+	{ "rx_hist_64_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_count.packets_0_to_64_bytes)},
+	{ "rx_hist_65_127_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_count.packets_65_to_127_bytes)},
+	{ "rx_hist_128_255_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_count.packets_128_to_255_bytes)},
+	{ "rx_hist_256_511_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_count.packets_256_to_511_bytes)},
+	{ "rx_hist_512_1023_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_count.packets_512_to_1023_bytes)},
+	{ "rx_hist_1024_1518_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_count.packets_1024_to_1518_bytes)},
+	{ "rx_hist_1519_1522_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_count.packets_1519_to_1522_bytes)},
+	{ "rx_hist_1523_1548_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_count.packets_1523_to_1548_bytes)},
+	{ "rx_hist_1549_2047_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_count.packets_1549_to_2047_bytes)},
+	{ "rx_hist_2048_4095_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_count.packets_2048_to_4095_bytes)},
+	{ "rx_hist_4096_8191_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_count.packets_4096_to_8191_bytes)},
+	{ "rx_hist_8192_9215_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_count.packets_8192_to_9215_bytes)},
+	{ "rx_hist_greater_eq_9216_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_count.packets_large)},
+
+	{ "rx_unicast_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_types.packets_unicast)},
+	{ "rx_multicast_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_types.packets_multicast)},
+	{ "rx_broadcast_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_types.packets_broadcast)},
+	{ "rx_pause_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_types.packets_pause)},
+	{ "rx_vlan_tagged_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_types.packets_vlan)},
+	{ "rx_priority_pause_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_pkt_types.packets_priority_pause)},
+
+	{ "rx_undersized_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_malformed.under_size_count)},
+	{ "rx_frag_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_malformed.fragment_count)},
+	{ "rx_oversized_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_malformed.oversize_count)},
+	{ "rx_too_long_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_malformed.toolong_count)},
+	{ "rx_jabber_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_malformed.jabber_count)},
+	{ "rx_bad_fcs_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_malformed.bad_fcs_count)},
+	{ "rx_bad_fcs_pkts_64b_to_max", offsetof(struct rte_qep_cmac_stats,
+				rx_malformed.packet_bad_fcs_count)},
+	{ "rx_stomped_fcs_pkts", offsetof(struct rte_qep_cmac_stats,
+				rx_malformed.stomped_fcs_count)},
+
+	{ "rx_bad_code_pkts", 0},
+	{ "rx_range_error_pkts", 0},
+	{ "rx_truncated_pkts", 0},
+
+	{ "tx_mac_bytes", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_count.total_bytes)},
+	{ "tx_good_bytes", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_count.total_good_bytes)},
+	{ "tx_mac_packets", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_count.total_packets)},
+	{ "tx_good_pkts", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_count.total_good_packets)},
+	{ "tx_hist_less_64_pkts", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_count.packets_small)},
+	{ "tx_hist_64_pkts", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_count.packets_0_to_64_bytes)},
+	{ "tx_hist_65_127_pkts", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_count.packets_65_to_127_bytes)},
+	{ "tx_hist_128_255_pkts", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_count.packets_128_to_255_bytes)},
+	{ "tx_hist_256_511_pkts", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_count.packets_256_to_511_bytes)},
+	{ "tx_hist_512_1023_pkts", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_count.packets_512_to_1023_bytes)},
+	{ "tx_hist_1024_1518_pkts", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_count.packets_1024_to_1518_bytes)},
+	{ "tx_hist_1519_1522_pkts", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_count.packets_1519_to_1522_bytes)},
+	{ "tx_hist_1523_1548_pkts", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_count.packets_1523_to_1548_bytes)},
+	{ "tx_hist_1549_2047_pkts", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_count.packets_1549_to_2047_bytes)},
+	{ "tx_hist_2048_4095_pkts", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_count.packets_2048_to_4095_bytes)},
+	{ "tx_hist_4096_8191_pkts", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_count.packets_4096_to_8191_bytes)},
+	{ "tx_hist_8192_9215_pkts", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_count.packets_8192_to_9215_bytes)},
+	{ "tx_hist_greater_eq_9216_pkts", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_count.packets_large)},
+
+	{ "tx_unicast_pkts", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_types.packets_unicast)},
+	{ "tx_multicast_pkts", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_types.packets_multicast)},
+	{ "tx_broadcast_pkts", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_types.packets_broadcast)},
+	{ "tx_pause_pkts", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_types.packets_pause)},
+	{ "tx_vlan_tagged_pkts", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_types.packets_vlan)},
+	{ "tx_priority_pause_pkts", offsetof(struct rte_qep_cmac_stats,
+				tx_pkt_types.packets_priority_pause)},
+
+	{ "tx_bad_fcs_pkts", offsetof(struct rte_qep_cmac_stats,
+				tx_malformed.bad_fcs_count)},
+	{ "tx_frame_error_pkts", 0},
+};
+
+#define QEP_NB_CMAC_XSTATS64 (sizeof(rte_qep_cmac_stats_str64) / \
+		sizeof(rte_qep_cmac_stats_str64[0]))
+
+#define QEP_NB_XSTATS (QEP_NB_CMAC_XSTATS64 + \
+			QEP_NB_STMN_XSTATS32 +	QEP_NB_STMN_XSTATS64)
 
 void qep_init_reta(struct rte_eth_dev *dev, uint32_t offset)
 {
@@ -390,7 +537,10 @@ uint8_t qmda_get_desc_sz_idx(enum rte_pmd_qdma_bypass_desc_len size)
  *   Memory pool for buffer allocations.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success,
+ *   -ENOMEM when memory allocation fails
+ *   -ENOTSUP when HW doesn't support the required configuration
+ *   -EINVAL on other failure.
  */
 int qdma_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 				uint16_t nb_rx_desc, unsigned int socket_id,
@@ -754,7 +904,9 @@ rx_setup_err:
  *   Thresholds parameters.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success
+ *   -ENOMEM when memory allocation fails
+ *   -EINVAL on other failure.
  */
 int qdma_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 			    uint16_t nb_tx_desc, unsigned int socket_id,
@@ -1434,6 +1586,41 @@ static int validate_offload_support(struct rte_eth_dev *dev)
 }
 
 /**
+ * DPDK callback to reset the device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+static int qdma_dev_reset(struct rte_eth_dev *dev)
+{
+#ifdef RTE_LIBRTE_QDMA_DEBUG_DRIVER
+	struct qdma_pci_dev *qdma_dev = dev->data->dev_private;
+#endif
+	int ret = 0;
+
+	/* Uninitialze PCI device */
+	ret = qdma_eth_dev_uninit(dev);
+	if (ret != QDMA_SUCCESS) {
+		PMD_DRV_LOG(ERR, "PF-%d(DEVFN) uninitialization failed: %d\n",
+			qdma_dev->func_id, ret);
+		return -1;
+	}
+
+	/* Initialize PCI device */
+	ret = qdma_eth_dev_init(dev);
+	if (ret != QDMA_SUCCESS) {
+		PMD_DRV_LOG(ERR, "PF-%d(DEVFN) initialization failed: %d\n",
+			qdma_dev->func_id, ret);
+		return -1;
+	}
+
+	return ret;
+}
+
+/**
  * DPDK callback for Ethernet device configuration.
  *
  * @param dev
@@ -1450,6 +1637,7 @@ static int qdma_dev_configure(struct rte_eth_dev *dev)
 	uint64_t rsstype;
 	uint16_t qid = 0;
 	int ret = 0, queue_base = -1;
+	uint8_t stat_id;
 
 	rsstype = eth_conf->rx_adv_conf.rss_conf.rss_hf;
 	if (qdma_dev->dev_configured == 0) {
@@ -1523,7 +1711,7 @@ static int qdma_dev_configure(struct rte_eth_dev *dev)
 			return -(ENOMEM);
 		}
 
-		for (qid = 0 ; qid < qdma_dev->qsets_en; qid++) {
+		for (qid = 0; qid < qdma_dev->qsets_en; qid++) {
 			/* Initialize queue_modes Streaming */
 			qdma_dev->q_info[qid].queue_mode =
 					RTE_PMD_QDMA_STREAMING_MODE;
@@ -1537,7 +1725,7 @@ static int qdma_dev_configure(struct rte_eth_dev *dev)
 						qdma_dev->timer_count;
 		}
 
-		for (qid = 0 ; qid < dev->data->nb_rx_queues; qid++) {
+		for (qid = 0; qid < dev->data->nb_rx_queues; qid++) {
 			qdma_dev->q_info[qid].cmpt_desc_sz =
 						qdma_dev->cmpt_desc_len;
 			qdma_dev->q_info[qid].rx_bypass_mode =
@@ -1547,9 +1735,19 @@ static int qdma_dev_configure(struct rte_eth_dev *dev)
 			qdma_dev->q_info[qid].immediate_data_state = 0;
 		}
 
-		for (qid = 0 ; qid < dev->data->nb_tx_queues; qid++)
+		for (qid = 0; qid < dev->data->nb_tx_queues; qid++)
 			qdma_dev->q_info[qid].tx_bypass_mode =
 						qdma_dev->h2c_bypass_mode;
+
+		for (stat_id = 0, qid = 0;
+			stat_id < RTE_ETHDEV_QUEUE_STAT_CNTRS;
+			stat_id++, qid++) {
+			/* Initialize map with qid same as stat_id */
+			qdma_dev->tx_qid_statid_map[stat_id] =
+				(qid < dev->data->nb_tx_queues) ? qid : -1;
+			qdma_dev->rx_qid_statid_map[stat_id] =
+				(qid < dev->data->nb_rx_queues) ? qid : -1;
+		}
 
 		ret = qdma_pf_fmap_prog(dev);
 		if (ret < 0) {
@@ -1773,26 +1971,10 @@ int qdma_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t qid)
 	struct qdma_rx_queue *rxq;
 	uint32_t queue_base =  qdma_dev->queue_base;
 	int i = 0;
-	int cnt = 0;
 
 	rxq = (struct qdma_rx_queue *)dev->data->rx_queues[qid];
 
 	rxq->status = RTE_ETH_QUEUE_STATE_STOPPED;
-
-	/* Wait for queue to recv all packets. */
-	if (rxq->st_mode) {  /** ST-mode **/
-		while (rxq->wb_status->pidx != rxq->cmpt_cidx_info.wrb_cidx) {
-			usleep(10);
-			if (cnt++ > 10000)
-				break;
-		}
-	} else { /* MM mode */
-		while (rxq->wb_status->cidx != rxq->q_pidx_info.pidx) {
-			usleep(10);
-			if (cnt++ > 10000)
-				break;
-		}
-	}
 
 	qdma_inv_rx_queue_ctxts(dev, (qid + queue_base), rxq->st_mode);
 
@@ -1829,19 +2011,11 @@ int qdma_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t qid)
 	struct qdma_pci_dev *qdma_dev = dev->data->dev_private;
 	uint32_t queue_base =  qdma_dev->queue_base;
 	struct qdma_tx_queue *txq;
-	int cnt = 0;
 	uint16_t count;
 
 	txq = (struct qdma_tx_queue *)dev->data->tx_queues[qid];
 
 	txq->status = RTE_ETH_QUEUE_STATE_STOPPED;
-	/* Wait for TXQ to send out all packets. */
-	while (txq->wb_status->cidx != txq->q_pidx_info.pidx) {
-		usleep(10);
-		if (cnt++ > 10000)
-			break;
-	}
-
 	qdma_inv_tx_queue_ctxts(dev, (qid + queue_base), txq->st_mode);
 
 	/* Relinquish pending mbufs */
@@ -1857,6 +2031,101 @@ int qdma_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t qid)
 }
 
 /**
+ * DPDK callback to retrieve device registers and
+ * register attributes (number of registers and register size)
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param regs
+ *   Pointer to rte_dev_reg_info structure to fill in. If regs->data is
+ *   NULL the function fills in the width and length fields. If non-NULL
+ *   the registers are put into the buffer pointed at by the data field.
+ *
+ * @return
+ *   0 on success, -ENOTSUP on failure.
+ */
+static int
+qdma_dev_get_regs(struct rte_eth_dev *dev,
+	      struct rte_dev_reg_info *regs)
+{
+	uint32_t *data = regs->data;
+	uint32_t count = 0;
+	uint32_t reg_length = (sizeof(qdma_config_regs) /
+				sizeof(qdma_config_regs[0])) - 1;
+
+	if (data == NULL) {
+		regs->length = reg_length;
+		regs->width = sizeof(uint32_t);
+		return 0;
+	}
+
+	/* Support only full register dump */
+	if ((regs->length == 0) ||
+	    (regs->length == reg_length)) {
+		regs->version = 1;
+		for (count = 0; count < reg_length; count++) {
+			data[count] = qdma_reg_read(dev,
+					qdma_config_regs[count].addr);
+		}
+		return 0;
+	}
+
+	PMD_DRV_LOG(ERR, "%s: Unsupported length (0x%x) requested\n",
+				__func__, regs->length);
+	return -ENOTSUP;
+}
+
+/**
+ * DPDK callback to set a queue statistics mapping for
+ * a tx/rx queue of an Ethernet device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param queue_id
+ *   Index of the queue for which a queue stats mapping is required.
+ * @param stat_idx
+ *   The per-queue packet statistics functionality number that
+ *   the queue_id is to be assigned.
+ * @param is_rx
+ *   Whether queue is a Rx or a Tx queue.
+ *
+ * @return
+ *   0 on success, -EINVAL on failure.
+ */
+static int qdma_dev_queue_stats_mapping(struct rte_eth_dev *dev,
+					     uint16_t queue_id,
+					     uint8_t stat_idx,
+					     uint8_t is_rx)
+{
+	struct qdma_pci_dev *qdma_dev = dev->data->dev_private;
+
+	if (is_rx && (queue_id >= dev->data->nb_rx_queues)) {
+		PMD_DRV_LOG(ERR, "%s: Invalid Rx qid %d\n",
+			__func__, queue_id);
+		return -EINVAL;
+	}
+
+	if (!is_rx && (queue_id >= dev->data->nb_tx_queues)) {
+		PMD_DRV_LOG(ERR, "%s: Invalid Tx qid %d\n",
+			__func__, queue_id);
+		return -EINVAL;
+	}
+
+	if (stat_idx >= RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+		PMD_DRV_LOG(ERR, "%s: Invalid stats index %d\n",
+			__func__, stat_idx);
+		return -EINVAL;
+	}
+
+	if (is_rx)
+		qdma_dev->rx_qid_statid_map[stat_idx] = queue_id;
+	else
+		qdma_dev->tx_qid_statid_map[stat_idx] = queue_id;
+
+	return 0;
+}
+
+/**
  * DPDK callback for retrieving Port statistics.
  *
  * @param dev
@@ -1865,36 +2134,88 @@ int qdma_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t qid)
  *   Pointer to structure containing statistics.
  *
  * @return
- *   0 on success, < 0 on failure.
+ *   Returns 0 i.e. success
  */
 int qdma_dev_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *eth_stats)
 {
-	unsigned int i;
+	uint32_t i;
+	int qid;
+	struct qdma_rx_queue *rxq;
+	struct qdma_tx_queue *txq;
+	struct qdma_pci_dev *qdma_dev = dev->data->dev_private;
 
 	memset(eth_stats, 0, sizeof(struct rte_eth_stats));
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		struct qdma_rx_queue *rxq =
-			(struct qdma_rx_queue *)dev->data->rx_queues[i];
-		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			eth_stats->q_ipackets[i] = rxq->stats.pkts;
-			eth_stats->q_ibytes[i] = rxq->stats.bytes;
-		}
+		rxq = (struct qdma_rx_queue *)dev->data->rx_queues[i];
 		eth_stats->ipackets += rxq->stats.pkts;
 		eth_stats->ibytes += rxq->stats.bytes;
+	}
+
+	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS; i++) {
+		qid = qdma_dev->rx_qid_statid_map[i];
+		if (qid >= 0) {
+			rxq = (struct qdma_rx_queue *)dev->data->rx_queues[qid];
+			eth_stats->q_ipackets[i] = rxq->stats.pkts;
+			eth_stats->q_ibytes[i] = rxq->stats.bytes;
+#ifdef QEP_DEBUG_DESC_USAGE
+			RTE_LOG(INFO, PMD, ": Rx Q %d cmpt nb_pkts_avail 0x%x\n",
+			qid, rxq->stats.max_desc_used);
+#endif
+		}
+	}
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = (struct qdma_tx_queue *)dev->data->tx_queues[i];
+		eth_stats->opackets += txq->stats.pkts;
+		eth_stats->obytes   += txq->stats.bytes;
+	}
+
+	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS; i++) {
+		qid = qdma_dev->tx_qid_statid_map[i];
+		if (qid >= 0) {
+			txq = (struct qdma_tx_queue *)dev->data->tx_queues[qid];
+			eth_stats->q_opackets[i] = txq->stats.pkts;
+			eth_stats->q_obytes[i] = txq->stats.bytes;
+#ifdef QEP_DEBUG_DESC_USAGE
+			RTE_LOG(INFO, PMD, ": Tx Q %d in_use 0x%x\n",
+			qid, txq->stats.max_desc_used);
+#endif
+		}
+	}
+	return 0;
+}
+
+/**
+ * DPDK callback to reset Port statistics.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ */
+static void qdma_dev_stats_reset(struct rte_eth_dev *dev)
+{
+	uint32_t i;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct qdma_rx_queue *rxq =
+			(struct qdma_rx_queue *)dev->data->rx_queues[i];
+		rxq->stats.pkts = 0;
+		rxq->stats.bytes = 0;
+#ifdef QEP_DEBUG_DESC_USAGE
+		rxq->stats.max_desc_used = 0;
+#endif
 	}
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		struct qdma_tx_queue *txq =
 			(struct qdma_tx_queue *)dev->data->tx_queues[i];
-		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			eth_stats->q_opackets[i] = txq->stats.pkts;
-			eth_stats->q_obytes[i] = txq->stats.bytes;
-		}
-		eth_stats->opackets += txq->stats.pkts;
-		eth_stats->obytes   += txq->stats.bytes;
+		txq->stats.pkts = 0;
+		txq->stats.bytes = 0;
+#ifdef QEP_DEBUG_DESC_USAGE
+		txq->stats.max_desc_used = 0;
+#endif
 	}
-	return 0;
 }
 
 /**
@@ -1914,30 +2235,100 @@ int qdma_dev_stats_get(struct rte_eth_dev *dev,
  *   When size < the number of available stats,
  *   return the number of stats values,
  *   and do not fill in any data into xstats_names.
- *
- *   A negative value on error
  */
 static int
-qdma_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+qep_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 		      struct rte_eth_xstat_name *xstats_names,
-		      __rte_unused unsigned int size)
+		      unsigned int size)
 {
-	unsigned int i, count = 0;
+	uint32_t i, count = 0;
+	uint32_t exp_size = QEP_NB_XSTATS;
 
-	if (xstats_names == NULL)
-		return (QDMA_NB_STMN_XSTATS32 + QDMA_NB_STMN_XSTATS64);
+	if ((xstats_names == NULL) || (size < exp_size))
+		return exp_size;
 
-
-	for (i = 0; i < QDMA_NB_STMN_XSTATS32; i++, count++) {
+	for (i = 0; i < QEP_NB_CMAC_XSTATS64; i++, count++) {
 		snprintf(xstats_names[count].name, sizeof(xstats_names[i].name),
-			 "%s", rte_qdma_stmn_stats_str32[i].name);
+			 "%s", rte_qep_cmac_stats_str64[i].name);
 	}
-	for (i = 0; i < QDMA_NB_STMN_XSTATS64; i++, count++) {
+	for (i = 0; i < QEP_NB_STMN_XSTATS32; i++, count++) {
 		snprintf(xstats_names[count].name, sizeof(xstats_names[i].name),
-			 "%s", rte_qdma_stmn_stats_str64[i].name);
+			 "%s", rte_qep_stmn_stats_str32[i].name);
+	}
+	for (i = 0; i < QEP_NB_STMN_XSTATS64; i++, count++) {
+		snprintf(xstats_names[count].name, sizeof(xstats_names[i].name),
+			 "%s", rte_qep_stmn_stats_str64[i].name);
 	}
 
-	return QDMA_NB_STMN_XSTATS32 + QDMA_NB_STMN_XSTATS64;
+	return count;
+}
+
+/**
+ * DPDK callback to get names of extended stats of the device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param xstats_names
+ *   An rte_eth_xstat_name array of at least size elements to be filled.
+ *   If set to NULL, the function returns the required number of elements.
+ * @param ids
+ *   IDs array given by app to retrieve specific statistics
+ * @param size
+ *   Number of elements in the xstats_names array
+ *
+ * @return
+ *   Success: A positive value lower or equal to size.
+ *   The return value is the number of entries filled in the stats table.
+ *
+ *   Error: A positive value higher than size,
+ *   the given statistics table is too small.
+ *   The return value corresponds to the size that should be given to succeed.
+ *   The entries in the table are not valid and shall not be used by the caller.
+ *
+ *   A negative value on other error
+ */
+static int
+qep_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
+	struct rte_eth_xstat_name *xstats_names, const uint64_t *ids,
+	unsigned int size)
+{
+	uint32_t i = 0;
+	uint32_t exp_size = QEP_NB_XSTATS;
+	struct rte_eth_xstat_name xstats_names_cp[QEP_NB_XSTATS];
+
+	if (!ids) {
+		if (!xstats_names)
+			return exp_size;
+		else if (xstats_names && size < exp_size)
+			return exp_size;
+	}
+
+	if (ids && !xstats_names) {
+		PMD_DRV_LOG(ERR, "%s: Invalid xstats_names pointer\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	qep_dev_xstats_get_names(dev, xstats_names_cp, exp_size);
+
+	if (!ids) {
+		for (i = 0; i < exp_size; i++) {
+			strcpy(xstats_names[i].name,
+				xstats_names_cp[i].name);
+		}
+	} else {
+		for (i = 0; i < size; i++) {
+			if (ids[i] >= exp_size) {
+				PMD_DRV_LOG(ERR, "%s: id value isn't valid",
+					__func__);
+				return -EINVAL;
+			}
+			strcpy(xstats_names[i].name,
+				xstats_names_cp[ids[i]].name);
+		}
+	}
+
+	return i;
 }
 
 /**
@@ -1952,43 +2343,213 @@ qdma_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
  *   Number of elements in the xstats array
  *
  * @return
- *   The number of entries successfully filled into the xstats array
+ *   When n >= the number of stats,
+ *   return the number of stat values filled into the array.
+ *
+ *   When n < the number of available stats,
+ *   return the number of supported extended stats
+ *   and do not fill in any data into xstats array.
  */
 static int
-qdma_xstats_get(__rte_unused struct rte_eth_dev *dev,
+qep_dev_xstats_get(__rte_unused struct rte_eth_dev *dev,
 		struct rte_eth_xstat *xstats,
 		unsigned int n)
 {
-	struct rte_qdma_stmn_stats32 stats;
+	struct rte_qep_stmn_stats32 stats;
 	struct qdma_pci_dev *dma_priv;
 	struct stmn_stats stats64;
-	int count = 0;
+	struct rte_qep_cmac_stats cmac_stats;
+	int count = 0, ret = 0;
 	uint32_t i;
+	uint32_t exp_size = QEP_NB_XSTATS;
 
-	if (n < (QDMA_NB_STMN_XSTATS32 + QDMA_NB_STMN_XSTATS64))
-		return count;
+	if ((xstats == NULL) || (n < exp_size))
+		return exp_size;
 
-	if (!xstats)
-		return 0;
 	dma_priv = (struct qdma_pci_dev *)dev->data->dev_private;
+	memset(&cmac_stats, 0, sizeof(cmac_stats));
+
+	/* Set the Tick register so that statistics are
+	 * captured in readable registers
+	 */
+	ret = xcmac_latch_statistics(&dma_priv->cmac_instance);
+	if (ret != 0)
+		PMD_DRV_LOG(ERR, "%s: Error in setting tick register\n",
+				__func__);
+
+	/* Get Rx Packet count statistics */
+	ret = xcmac_get_rx_packet_statistics(&dma_priv->cmac_instance,
+					&cmac_stats.rx_pkt_count);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR,
+			"%s: Error in retrieving Rx packet count statistics\n",
+			__func__);
+	}
+
+	/* Get Rx Packet types statistics */
+	ret = xcmac_get_rx_packet_type_statistics(&dma_priv->cmac_instance,
+					&cmac_stats.rx_pkt_types);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR,
+			"%s: Error in retrieving Rx packet count statistics\n",
+			__func__);
+	}
+
+	/* Get Rx malformed packet statistics */
+	ret = xcmac_get_rx_malformed_statistics(&dma_priv->cmac_instance,
+					&cmac_stats.rx_malformed);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR,
+			"%s: Error in retrieving Rx Malformed statistics\n",
+			__func__);
+	}
+
+	cmac_stats.rx_bad_code_pkts =
+		xcmac_get_rx_bad_64b66b_code_count(&dma_priv->cmac_instance);
+	cmac_stats.rx_range_error_pkts =
+		xcmac_get_rx_range_error_count(&dma_priv->cmac_instance);
+	cmac_stats.rx_truncated_pkts =
+		xcmac_get_rx_truncated_count(&dma_priv->cmac_instance);
+
+	/* Get Tx Packet count statistics */
+	ret = xcmac_get_tx_packet_statistics(&dma_priv->cmac_instance,
+					&cmac_stats.tx_pkt_count);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR,
+			"%s: Error in retrieving Tx packet count statistics\n",
+			__func__);
+	}
+
+	/* Get Tx Packet types statistics */
+	ret = xcmac_get_tx_packet_type_statistics(&dma_priv->cmac_instance,
+					&cmac_stats.tx_pkt_types);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR,
+			"%s: Error in retrieving Tx packet count statistics\n",
+			__func__);
+	}
+
+	/* Get Tx malformed packet statistics */
+	ret = xcmac_get_tx_malformed_statistics(&dma_priv->cmac_instance,
+					&cmac_stats.tx_malformed);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR,
+			"%s: Error in retrieving Tx Malformed statistics\n",
+			__func__);
+	}
+
+	cmac_stats.tx_frame_error_pkts +=
+		xcmac_get_tx_frame_error_count(&dma_priv->cmac_instance);
+
+	/* Get STM-N statistics */
 	stmn_get_fifo_fill_level(dma_priv, &stats.fifo_fill);
 	stmn_get_dsc_sts_min_max(dma_priv, &stats.dsc_sts);
 	stmn_get_stats(dma_priv, &stats64);
+
 	count = 0;
-	for (i = 0; i < QDMA_NB_STMN_XSTATS32; i++) {
-		xstats[count].value = *(uint32_t *)(((char *)&stats) +
-				rte_qdma_stmn_stats_str32[i].offset);
+	for (i = 0; i < QEP_NB_CMAC_XSTATS64; i++) {
+		xstats[count].value = *(uint64_t *)(((uint8_t *)&cmac_stats) +
+				rte_qep_cmac_stats_str64[i].offset);
 		xstats[count].id = count;
 		count++;
 	}
-	for (i = 0; i < QDMA_NB_STMN_XSTATS64; i++) {
-		xstats[count].value = *(uint64_t *)(((char *)&stats64) +
-				rte_qdma_stmn_stats_str64[i].offset);
+	for (i = 0; i < QEP_NB_STMN_XSTATS32; i++) {
+		xstats[count].value = *(uint32_t *)(((uint8_t *)&stats) +
+				rte_qep_stmn_stats_str32[i].offset);
+		xstats[count].id = count;
+		count++;
+	}
+	for (i = 0; i < QEP_NB_STMN_XSTATS64; i++) {
+		xstats[count].value = *(uint64_t *)(((uint8_t *)&stats64) +
+				rte_qep_stmn_stats_str64[i].offset);
 		xstats[count].id = count;
 		count++;
 	}
 
 	return count;
+}
+
+/**
+ * DPDK callback to retrieve extended statistics of an Ethernet device by ID.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param ids
+ *   A pointer to an ids array passed by application.
+ *   This tells which statistics values function should retrieve.
+ * @param values
+ *   A pointer to a table to be filled with device statistics values
+ * @param n
+ *   The size of the ids array (number of elements)
+ *
+ * @return
+ *   A positive value lower or equal to size: success.
+ *     The return value is the number of entries filled in the stats table.
+ *   A positive value higher than size: error,
+ *     the given statistics table is too small.
+ *     The return value corresponds to the size that should be given to succeed.
+ *     The entries in the table are not valid
+ *     and shall not be used by the caller.
+ *   A negative value on error.
+ */
+static int
+qep_dev_xstats_get_by_id(struct rte_eth_dev *dev,
+				      const uint64_t *ids,
+				      uint64_t *values,
+				      unsigned int n)
+{
+	uint32_t i = 0;
+	uint32_t exp_size = QEP_NB_XSTATS;
+	struct rte_eth_xstat xstats[QEP_NB_XSTATS];
+
+	if (!ids && !values) {
+		PMD_DRV_LOG(ERR, "%s: Invalid ids and values pointer\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	if (ids && !values) {
+		PMD_DRV_LOG(ERR, "%s: Invalid values pointer\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	if (!ids && n < exp_size)
+		return exp_size;
+
+	qep_dev_xstats_get(dev, xstats, exp_size);
+
+	if (!ids) {
+		for (i = 0; i < exp_size; i++)
+			values[i] = xstats[i].value;
+	} else {
+		for (i = 0; i < n; i++) {
+			if (ids[i] >= exp_size) {
+				PMD_DRV_LOG(ERR, "%s: id value isn't valid",
+					__func__);
+				return -EINVAL;
+			}
+			values[i] = xstats[ids[i]].value;
+		}
+	}
+
+	return i;
+}
+
+/**
+ * DPDK callback to reset extended statistics of an Ethernet device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ */
+static void qep_dev_xstats_reset(struct rte_eth_dev *dev)
+{
+	struct qdma_pci_dev *dma_priv;
+	dma_priv = (struct qdma_pci_dev *)dev->data->dev_private;
+
+	xcmac_latch_statistics(&dma_priv->cmac_instance);
+	stmn_snap_stats(dma_priv);
 }
 
 /**
@@ -2002,12 +2563,7 @@ qdma_xstats_get(__rte_unused struct rte_eth_dev *dev,
  * @param qinfo
  *   A pointer to a structure of type rte_eth_rxq_info_info to be filled with
  *   the information of given Rx queue.
- *
- * @return
- *  0 on success, negative errno value on failure.
  */
-
-
 static void
 qep_dev_rxq_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		     struct rte_eth_rxq_info *qinfo)
@@ -2042,12 +2598,7 @@ qep_dev_rxq_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
  * @param qinfo
  *   A pointer to a structure of type rte_eth_txq_info_info to be filled with
  *   the information of given Tx queue.
- *
- * @return
- *   0 on success, negative errno value on failure.
  */
-
-
 static void
 qep_dev_txq_info_get(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 		      struct rte_eth_txq_info *qinfo)
@@ -2063,6 +2614,38 @@ qep_dev_txq_info_get(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 	qinfo->conf.tx_rs_thresh = 0;
 	qinfo->nb_desc = txq->nb_tx_desc - 1;
 
+}
+
+/**
+ * DPDK callback to get packet types supported and identified by device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   Pointer to an array of type uint32_t indicating supported packet types.
+ *   Returns NULL if called from secondary application.
+ */
+static const uint32_t *
+qep_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+{
+	static const uint32_t ptypes[] = {
+		RTE_PTYPE_L2_ETHER_VLAN,
+		RTE_PTYPE_L3_IPV4,
+		RTE_PTYPE_L3_IPV4_EXT,
+		RTE_PTYPE_L3_IPV6,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_L4_FRAG,
+		RTE_PTYPE_UNKNOWN
+	};
+
+	if (dev->rx_pkt_burst == qdma_recv_pkts)
+		return ptypes;
+
+	PMD_DRV_LOG(ERR, "%s: ptypes unsupported\n",
+		__func__);
+	return NULL;
 }
 
 /**
@@ -2139,7 +2722,7 @@ static int qep_dev_set_link_down(struct rte_eth_dev *dev)
  *   Size of the RETA table
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, -EINVAL on failure.
  */
 
 static int
@@ -2154,6 +2737,8 @@ qep_dev_rss_reta_query(struct rte_eth_dev *dev,
 
 	dma_priv = (struct qdma_pci_dev *)dev->data->dev_private;
 	if (!reta_size || reta_size > QEP_RSS_TBL_SIZE) {
+		PMD_DRV_LOG(ERR, "%s: Invalid RETA table size %d\n",
+			__func__, reta_size);
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
@@ -2183,7 +2768,7 @@ qep_dev_rss_reta_query(struct rte_eth_dev *dev,
  *   Size of the RETA table.
  *
  * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
+ *   0 on success, -EINVAL on failure.
  */
 
 int
@@ -2205,8 +2790,12 @@ qep_dev_rss_reta_update(struct rte_eth_dev *dev,
 		pos = i % RTE_RETA_GROUP_SIZE;
 		if (((reta_conf[idx].mask >> pos) & 0x1) == 0)
 			continue;
-		if (reta_conf[idx].reta[pos] >= nrxq)
+		if (reta_conf[idx].reta[pos] >= nrxq) {
+			PMD_DRV_LOG(ERR, "%s: Invalid qid %d "
+				"specified in reta_conf\n",
+				__func__, reta_conf[idx].reta[pos]);
 			return -EINVAL;
+		}
 	}
 
 	/* Program queue id received into Redirection table */
@@ -2233,7 +2822,7 @@ qep_dev_rss_reta_update(struct rte_eth_dev *dev,
  *   RSS configuration data to be stored.
  *
  * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
+ *   0 on success, -EINVAL on failure and rte_errno is set.
  */
 
 int
@@ -2253,6 +2842,8 @@ qep_dev_rss_conf_get(struct rte_eth_dev *dev,
 
 	(void)dma_priv;
 	if (!rss_conf) {
+		PMD_DRV_LOG(ERR, "%s: Invalid rss_conf pointer\n",
+			__func__);
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
@@ -2276,7 +2867,7 @@ qep_dev_rss_conf_get(struct rte_eth_dev *dev,
  *   Pointer to operation-specific structure.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, -EINVAL on failure.
  */
 
 static int
@@ -2302,32 +2893,44 @@ qep_filter_ctrl(struct rte_eth_dev *dev __rte_unused,
 }
 
 static struct eth_dev_ops qdma_eth_dev_ops = {
-	.dev_configure        = qdma_dev_configure,
-	.dev_infos_get        = qdma_dev_infos_get,
-	.dev_start            = qdma_dev_start,
-	.dev_stop             = qdma_dev_stop,
-	.dev_close            = qdma_dev_close,
-	.link_update          = qdma_dev_link_update,
-	.dev_set_link_up      = qep_dev_set_link_up,
-	.dev_set_link_down    = qep_dev_set_link_down,
-	.rx_queue_setup       = qdma_dev_rx_queue_setup,
-	.tx_queue_setup       = qdma_dev_tx_queue_setup,
-	.rx_queue_release     = qdma_dev_rx_queue_release,
-	.tx_queue_release     = qdma_dev_tx_queue_release,
-	.rx_queue_start       = qdma_dev_rx_queue_start,
-	.rx_queue_stop        = qdma_dev_rx_queue_stop,
-	.tx_queue_start       = qdma_dev_tx_queue_start,
-	.tx_queue_stop        = qdma_dev_tx_queue_stop,
-	.stats_get            = qdma_dev_stats_get,
-	.xstats_get_names     = qdma_xstats_get_names,
-	.xstats_get           = qdma_xstats_get,
-	.mtu_set              = qdma_dev_mtu_set,
-	.rxq_info_get         = qep_dev_rxq_info_get,
-	.txq_info_get         = qep_dev_txq_info_get,
-	.reta_query	      = qep_dev_rss_reta_query,
-	.reta_update	      = qep_dev_rss_reta_update,
-	.rss_hash_conf_get    = qep_dev_rss_conf_get,
-	.filter_ctrl          = qep_filter_ctrl,
+	.dev_configure            = qdma_dev_configure,
+	.dev_infos_get            = qdma_dev_infos_get,
+	.dev_start                = qdma_dev_start,
+	.dev_stop                 = qdma_dev_stop,
+	.dev_close                = qdma_dev_close,
+	.dev_reset                = qdma_dev_reset,
+	.link_update              = qdma_dev_link_update,
+	.dev_set_link_up          = qep_dev_set_link_up,
+	.dev_set_link_down        = qep_dev_set_link_down,
+	.rx_queue_setup           = qdma_dev_rx_queue_setup,
+	.tx_queue_setup           = qdma_dev_tx_queue_setup,
+	.rx_queue_release         = qdma_dev_rx_queue_release,
+	.tx_queue_release         = qdma_dev_tx_queue_release,
+	.rx_queue_start           = qdma_dev_rx_queue_start,
+	.rx_queue_stop            = qdma_dev_rx_queue_stop,
+	.tx_queue_start           = qdma_dev_tx_queue_start,
+	.tx_queue_stop            = qdma_dev_tx_queue_stop,
+	.rx_queue_count           = qdma_dev_rx_queue_count,
+	.rx_descriptor_status     = qdma_dev_rx_descriptor_status,
+	.tx_descriptor_status     = qdma_dev_tx_descriptor_status,
+	.tx_done_cleanup          = qdma_dev_tx_done_cleanup,
+	.queue_stats_mapping_set  = qdma_dev_queue_stats_mapping,
+	.get_reg                  = qdma_dev_get_regs,
+	.stats_get                = qdma_dev_stats_get,
+	.stats_reset              = qdma_dev_stats_reset,
+	.xstats_get_names         = qep_dev_xstats_get_names,
+	.xstats_get_names_by_id   = qep_dev_xstats_get_names_by_id,
+	.xstats_get               = qep_dev_xstats_get,
+	.xstats_get_by_id         = qep_dev_xstats_get_by_id,
+	.xstats_reset             = qep_dev_xstats_reset,
+	.mtu_set                  = qdma_dev_mtu_set,
+	.rxq_info_get             = qep_dev_rxq_info_get,
+	.txq_info_get             = qep_dev_txq_info_get,
+	.dev_supported_ptypes_get = qep_dev_supported_ptypes_get,
+	.reta_query	              = qep_dev_rss_reta_query,
+	.reta_update	          = qep_dev_rss_reta_update,
+	.rss_hash_conf_get        = qep_dev_rss_conf_get,
+	.filter_ctrl              = qep_filter_ctrl,
 };
 
 void qdma_dev_ops_init(struct rte_eth_dev *dev)

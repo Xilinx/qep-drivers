@@ -118,7 +118,8 @@ int dma_wb_monitor(void *xq, uint8_t dir, uint16_t expected_count)
 	return -1;
 }
 
-static void reclaim_tx_mbuf(struct qdma_tx_queue *txq, uint16_t cidx)
+static int reclaim_tx_mbuf(struct qdma_tx_queue *txq,
+			uint16_t cidx, uint16_t free_cnt)
 {
 	int fl_desc = 0;
 	uint16_t count;
@@ -128,6 +129,9 @@ static void reclaim_tx_mbuf(struct qdma_tx_queue *txq, uint16_t cidx)
 	fl_desc = (int)cidx - id;
 	if (fl_desc < 0)
 		fl_desc += (txq->nb_tx_desc - 1);
+
+	if (free_cnt && (fl_desc > free_cnt))
+		fl_desc = free_cnt;
 
 	for (count = 0; count < fl_desc; count++) {
 		if (txq->sw_ring[id]) {
@@ -139,6 +143,8 @@ static void reclaim_tx_mbuf(struct qdma_tx_queue *txq, uint16_t cidx)
 			id -= (txq->nb_tx_desc - 1);
 	}
 	txq->tx_fl_tail = id;
+
+	return fl_desc;
 }
 
 #ifdef TEST_64B_DESC_BYPASS
@@ -158,7 +164,7 @@ static uint16_t qdma_xmit_64B_desc_bypass(struct qdma_tx_queue *txq,
 		memset(&tx_ring_st_bypass[id * (txq->bypass_desc_sz)],
 				((id  % 255) + 1), txq->bypass_desc_sz);
 
-		sprintf(fln, "q_%d_%s", txq->queue_id,
+		sprintf(fln, "q_%u_%s", txq->queue_id,
 				"h2c_desc_data.txt");
 		ofd = open(fln, O_RDWR | O_CREAT | O_APPEND | O_SYNC,
 				0666);
@@ -235,7 +241,7 @@ uint32_t get_mm_buff_size(void *queue_hndl)
 struct qdma_ul_st_h2c_desc *get_st_h2c_desc(void *queue_hndl)
 {
 	volatile uint16_t id;
-	struct qdma_ul_st_h2c_desc *tx_ring_st = NULL;
+	struct qdma_ul_st_h2c_desc *tx_ring_st;
 	struct qdma_ul_st_h2c_desc *desc;
 	struct qdma_tx_queue *txq = (struct qdma_tx_queue *)queue_hndl;
 
@@ -276,6 +282,128 @@ uint32_t get_mm_h2c_ep_addr(void *queue_hndl)
 	return txq->ep_addr;
 }
 
+static uint32_t rx_queue_count(void *rx_queue)
+{
+	struct qdma_rx_queue *rxq = rx_queue;
+	struct wb_status *wb_status;
+	uint16_t pkt_length;
+	uint16_t nb_pkts_avail = 0;
+	uint16_t rx_cmpt_tail = 0;
+	uint16_t cmpt_pidx;
+	uint32_t nb_desc_used = 0, count = 0;
+	struct qdma_ul_st_cmpt_ring *user_cmpt_entry;
+	struct qdma_ul_st_cmpt_ring cmpt_data;
+
+	wb_status = rxq->wb_status;
+	rx_cmpt_tail = rxq->cmpt_cidx_info.wrb_cidx;
+	cmpt_pidx = wb_status->pidx;
+
+	if (rx_cmpt_tail < cmpt_pidx)
+		nb_pkts_avail = cmpt_pidx - rx_cmpt_tail;
+	else if (rx_cmpt_tail > cmpt_pidx)
+		nb_pkts_avail = rxq->nb_rx_cmpt_desc - 1 - rx_cmpt_tail +
+				cmpt_pidx;
+
+	if (nb_pkts_avail == 0)
+		return 0;
+
+	while (count < nb_pkts_avail) {
+		user_cmpt_entry =
+		(struct qdma_ul_st_cmpt_ring *)((uint64_t)rxq->cmpt_ring +
+		((uint64_t)rx_cmpt_tail *
+		rxq->cmpt_desc_len));
+
+		if (qdma_ul_extract_st_cmpt_info(user_cmpt_entry,
+				&cmpt_data, rxq->cmpt_desc_len)) {
+			break;
+		}
+
+		qdma_ul_get_cmpt_pkt_len(&cmpt_data, &pkt_length);
+		if (unlikely(!pkt_length)) {
+			count++;
+			continue;
+		}
+
+		nb_desc_used += ((pkt_length/rxq->rx_buff_size) + 1);
+		rx_cmpt_tail++;
+		if (unlikely(rx_cmpt_tail >= (rxq->nb_rx_cmpt_desc - 1)))
+			rx_cmpt_tail -= (rxq->nb_rx_cmpt_desc - 1);
+		count++;
+	}
+	PMD_DRV_LOG(DEBUG, "%s: nb_desc_used = %d",
+			__func__, nb_desc_used);
+	return nb_desc_used;
+}
+
+/**
+ * DPDK callback to get the number of used descriptors of a rx queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param rx_queue_id
+ *   The RX queue on the Ethernet device for which information will be
+ *   retrieved
+ *
+ * @return
+ *   The number of used descriptors in the specific queue.
+ */
+uint32_t
+qdma_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	return rx_queue_count(dev->data->rx_queues[rx_queue_id]);
+}
+
+/**
+ * DPDK callback to check the status of a Rx descriptor in the queue.
+ *
+ * @param rx_queue
+ *   Pointer to Rx queue specific data structure.
+ * @param offset
+ *   The offset of the descriptor starting from tail (0 is the next
+ *   packet to be received by the driver).
+ *
+ * @return
+ *  - (RTE_ETH_RX_DESC_AVAIL): Descriptor is available for the hardware to
+ *    receive a packet.
+ *  - (RTE_ETH_RX_DESC_DONE): Descriptor is done, it is filled by hw, but
+ *    not yet processed by the driver (i.e. in the receive queue).
+ *  - (RTE_ETH_RX_DESC_UNAVAIL): Descriptor is unavailable, either hold by
+ *    the driver and not yet returned to hw, or reserved by the hw.
+ *  - (-EINVAL) bad descriptor offset.
+ */
+int
+qdma_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
+{
+	struct qdma_rx_queue *rxq = rx_queue;
+	uint32_t desc_used_count;
+	uint16_t rx_tail, c2h_pidx, pending_desc;
+
+	if (unlikely(offset >= (rxq->nb_rx_desc - 1)))
+		return -EINVAL;
+
+	/* One descriptor is reserved so that pidx is not same as tail */
+	if (offset == (rxq->nb_rx_desc - 2))
+		return RTE_ETH_RX_DESC_UNAVAIL;
+
+	desc_used_count = rx_queue_count(rxq);
+	if (offset < desc_used_count)
+		return RTE_ETH_RX_DESC_DONE;
+
+	/* If Tail is not same as PIDX, descriptors are held by the driver */
+	rx_tail = rxq->rx_tail;
+	c2h_pidx = rxq->q_pidx_info.pidx;
+
+	pending_desc = rx_tail - c2h_pidx - 1;
+	if (rx_tail < (c2h_pidx + 1))
+		pending_desc = rxq->nb_rx_desc - 2 + rx_tail -
+				c2h_pidx;
+
+	if (offset < (desc_used_count + pending_desc))
+		return RTE_ETH_RX_DESC_UNAVAIL;
+
+	return RTE_ETH_RX_DESC_AVAIL;
+}
+
 uint16_t qdma_recv_pkts_st(struct qdma_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 				uint16_t nb_pkts)
 {
@@ -291,7 +419,6 @@ uint16_t qdma_recv_pkts_st(struct qdma_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	uint16_t nb_pkts_avail = 0;
 	uint16_t rx_cmpt_tail = 0;
 	uint16_t mbuf_index = 0;
-	struct qdma_ul_st_cmpt_ring cmpt_data[QDMA_MAX_BURST_SIZE];
 	uint16_t rx_buff_size;
 	uint16_t cmpt_pidx, c2h_pidx;
 	uint16_t pending_desc;
@@ -333,7 +460,10 @@ uint16_t qdma_recv_pkts_st(struct qdma_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 				__func__, __LINE__);
 		return 0;
 	}
-
+#ifdef QEP_DEBUG_DESC_USAGE
+	if (nb_pkts_avail > rxq->stats.max_desc_used)
+		rxq->stats.max_desc_used = nb_pkts_avail;
+#endif
 	if (nb_pkts > QDMA_MAX_BURST_SIZE)
 		nb_pkts = QDMA_MAX_BURST_SIZE;
 
@@ -351,8 +481,6 @@ uint16_t qdma_recv_pkts_st(struct qdma_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	 * accessing the ring
 	 */
 	rte_rmb();
-	memset(cmpt_data, 0,
-		sizeof(struct qdma_ul_st_cmpt_ring) * QDMA_MAX_BURST_SIZE);
 	while (count < nb_pkts) {
 		user_cmpt_entry =
 		(struct qdma_ul_st_cmpt_ring *)((uint64_t)rxq->cmpt_ring +
@@ -360,7 +488,7 @@ uint16_t qdma_recv_pkts_st(struct qdma_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		rxq->cmpt_desc_len));
 
 		ret = qdma_ul_extract_st_cmpt_info(user_cmpt_entry,
-				&cmpt_data[count], rxq->cmpt_desc_len);
+				&rxq->cmpt_data[count], rxq->cmpt_desc_len);
 		if (ret != 0) {
 			PMD_DRV_LOG(ERR, "Error detected on CMPT ring at index %d, "
 					 "queue_id = %d\n",
@@ -396,7 +524,7 @@ uint16_t qdma_recv_pkts_st(struct qdma_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	mbuf_index = 0;
 	id = rxq->rx_tail;
 	while (count < nb_pkts) {
-		qdma_ul_get_cmpt_pkt_len(&cmpt_data[count], &pkt_length);
+		qdma_ul_get_cmpt_pkt_len(&rxq->cmpt_data[count], &pkt_length);
 		if (unlikely(!pkt_length)) {
 			count++;
 			continue;
@@ -430,7 +558,7 @@ uint16_t qdma_recv_pkts_st(struct qdma_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 				first_seg->hash.rss = 0;
 
 				qdma_update_st_c2h_mbuf_flags(rxq,
-					&cmpt_data[count],
+					&rxq->cmpt_data[count],
 					rxq->offloads, first_seg);
 			} else {
 				first_seg->nb_segs++;
@@ -638,6 +766,81 @@ uint16_t qdma_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	return count;
 }
 
+/**
+ * DPDK callback to request the driver to free mbufs
+ * currently cached by the driver.
+ *
+ * @param tx_queue
+ *   Pointer to Tx queue specific data structure.
+ * @param free_cnt
+ *   Maximum number of packets to free. Use 0 to indicate all possible packets
+ *   should be freed. Note that a packet may be using multiple mbufs.
+ *
+ * @return
+ *   Failure: < 0
+ *   Success: >= 0
+ *     0-n: Number of packets freed. More packets may still remain in ring that
+ *     are in use.
+ */
+int
+qdma_dev_tx_done_cleanup(void *tx_queue, uint32_t free_cnt)
+{
+	struct qdma_tx_queue *txq = tx_queue;
+
+	if ((uint16_t)free_cnt >= (txq->nb_tx_desc - 1))
+		return -EINVAL;
+
+	/* Free transmitted mbufs back to pool */
+	return reclaim_tx_mbuf(txq, txq->wb_status->cidx, free_cnt);
+}
+
+/**
+ * DPDK callback to check the status of a Tx descriptor in the queue.
+ *
+ * @param tx_queue
+ *   Pointer to Tx queue specific data structure.
+ * @param offset
+ *   The offset of the descriptor starting from tail (0 is the place where
+ *   the next packet will be send).
+ *
+ * @return
+ *  - (RTE_ETH_TX_DESC_FULL) Descriptor is being processed by the hw, i.e.
+ *    in the transmit queue.
+ *  - (RTE_ETH_TX_DESC_DONE) Hardware is done with this descriptor, it can
+ *    be reused by the driver.
+ *  - (RTE_ETH_TX_DESC_UNAVAIL): Descriptor is unavailable, reserved by the
+ *    driver or the hardware.
+ *  - (-EINVAL) bad descriptor offset.
+ */
+int
+qdma_dev_tx_descriptor_status(void *tx_queue, uint16_t offset)
+{
+	struct qdma_tx_queue *txq = tx_queue;
+	uint16_t id;
+	int avail, in_use;
+	uint16_t cidx = 0;
+
+	if (unlikely(offset >= (txq->nb_tx_desc - 1)))
+		return -EINVAL;
+
+	/* One descriptor is reserved so that pidx is not same as old pidx */
+	if (offset == (txq->nb_tx_desc - 2))
+		return RTE_ETH_TX_DESC_UNAVAIL;
+
+	id = txq->q_pidx_info.pidx;
+	cidx = txq->wb_status->cidx;
+
+	in_use = (int)id - cidx;
+	if (in_use < 0)
+		in_use += (txq->nb_tx_desc - 1);
+	avail = txq->nb_tx_desc - 2 - in_use;
+
+	if (offset < avail)
+		return RTE_ETH_TX_DESC_DONE;
+
+	return RTE_ETH_TX_DESC_FULL;
+}
+
 uint16_t qdma_xmit_pkts_st(struct qdma_tx_queue *txq, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts)
 {
@@ -662,12 +865,15 @@ uint16_t qdma_xmit_pkts_st(struct qdma_tx_queue *txq, struct rte_mbuf **tx_pkts,
 			txq->queue_id, id);
 
 	/* Free transmitted mbufs back to pool */
-	reclaim_tx_mbuf(txq, cidx);
+	reclaim_tx_mbuf(txq, cidx, 0);
 
 	in_use = (int)id - cidx;
 	if (in_use < 0)
 		in_use += (txq->nb_tx_desc - 1);
-
+#ifdef QEP_DEBUG_DESC_USAGE
+	if ((uint32_t)in_use > txq->stats.max_desc_used)
+		txq->stats.max_desc_used = in_use;
+#endif
 	/* Make 1 less available, otherwise if we allow all descriptors
 	 * to be filled, when nb_pkts = nb_tx_desc - 1, pidx will be same
 	 * as old pidx and HW will treat this as no new descriptors were added.
@@ -758,7 +964,7 @@ uint16_t qdma_xmit_pkts_mm(struct qdma_tx_queue *txq, struct rte_mbuf **tx_pkts,
 #endif
 	cidx = txq->wb_status->cidx;
 	/* Free transmitted mbufs back to pool */
-	reclaim_tx_mbuf(txq, cidx);
+	reclaim_tx_mbuf(txq, cidx, 0);
 	in_use = (int)id - cidx;
 	if (in_use < 0)
 		in_use += (txq->nb_tx_desc - 1);

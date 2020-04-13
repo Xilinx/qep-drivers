@@ -1,5 +1,5 @@
 /*
- * Copyright(c) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright(c) 2019 - 2020 Xilinx, Inc. All rights reserved.
  *
  * BSD LICENSE
  *
@@ -42,20 +42,18 @@ static unsigned int sleep(unsigned int msec)
 	mdelay(msec);
 	return 0;
 }
+#define PRIu64 "llu"
 #else
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <inttypes.h>
+#include <stdlib.h>
 #define dummy_p(...)
 #define pr_err printf
 #define pr_debug dummy_p
 #endif
 
-/*
- * TODO  Add more documentation as per kernel guidelines
- * TODO  Reuse bit manipulation macro from reg.h of common lib
- *
- */
 
 /**************************************************************************/
 /** Boiler Plate Macros for null and failure check, code reuse and readability*/
@@ -192,8 +190,8 @@ int stmn_get_version(void *dev_hndl, struct stmn_ip_version *ver)
 	ver->major = (uint8_t)(reg_val >> STMN_MAJOR_VERSION_SHIFT);
 	ver->block_id = (uint16_t)(reg_val >> STMN_BLOCK_ID_SHIFT);
 
-	pr_debug("%s Reg:%x Minor:%d Major:%d BlcokID:%x", __func__, reg_val,
-		 ver->minor, ver->major, ver->block_id);
+	pr_debug("%s: Reg: %x Major: %d Minor: %d BlcokID: %x\n",
+		__func__, reg_val, ver->major, ver->minor, ver->block_id);
 	return STMN_SUCCESS;
 }
 
@@ -201,18 +199,21 @@ int stmn_validate_version(struct stmn_ip_version *ver)
 {
 	stmn_null_check(ver, "stmn_ip_version");
 
-	if (ver->minor != STMN_MINOR_VERSION) {
-		pr_err("%s : minor version mismatch", __func__);
+	if (ver->major != STMN_MAJOR_VERSION) {
+		pr_err("%s : Major version mismatch, Expected: %d, Actual: %d\n",
+			__func__, STMN_MAJOR_VERSION, ver->major);
 		return -STMN_INVALID_IP;
 	}
 
-	if (ver->major != STMN_MAJOR_VERSION) {
-		pr_err("%s : major version mismatch", __func__);
+	if (ver->minor != STMN_MINOR_VERSION) {
+		pr_err("%s : Minor version mismatch, Expected: %d, Actual: %d\n",
+		__func__, STMN_MINOR_VERSION, ver->minor);
 		return -STMN_INVALID_IP;
 	}
 
 	if (ver->block_id != STMN_BLOCK_ID) {
-		pr_err("%s : block ID version mismatch", __func__);
+		pr_err("%s : Block ID version mismatch, Expected: %d, Actual: %d\n",
+			__func__, STMN_BLOCK_ID, ver->block_id);
 		return -STMN_INVALID_IP;
 	}
 
@@ -222,7 +223,7 @@ int stmn_validate_version(struct stmn_ip_version *ver)
 int stmn_present_check(void *dev_hndl, unsigned short pcidev_id)
 {
 	int i;
-	int len = sizeof(stmn_enabled_device_id) /
+	int len = sizeof(stmn_enabled_device_id)/
 		  sizeof(stmn_enabled_device_id[0]);
 
 	stmn_null_check(dev_hndl, "dev_hndl");
@@ -232,7 +233,7 @@ int stmn_present_check(void *dev_hndl, unsigned short pcidev_id)
 			break;
 
 	if (i == len) {
-		pr_err("PCIe Device does Not support STMN\n");
+		pr_err("%s: PCIe Device does Not support STMN\n", __func__);
 		return -STMN_FAILURE;
 	}
 
@@ -265,7 +266,7 @@ int stmn_set_c2h_buf_size(void *dev_hndl, uint32_t buf_size_idx)
 	reg_val |= (buf_size_idx & STMN_REGS_C2H_CFG_BUF_SIZE_MASK);
 	stmn_reg_write(dev_hndl, STMN_REGS_C2H_CFG_BUF_SIZE, reg_val);
 
-	pr_debug(" Stmn: C2H buf size %d reg_setting %x ", buf_size_idx,
+	pr_debug("%s: C2H buf size %d reg_setting %x ", __func__, buf_size_idx,
 		 reg_val);
 
 	return STMN_SUCCESS;
@@ -329,7 +330,8 @@ int stmn_initialize(void *dev_hndl, struct stmn_dev *stmn,
 
 	ret = stmn_validate_version(&ver);
 	if (ret == -STMN_INVALID_IP)
-		pr_err("IP HW version and Software version mismatch\n");
+		pr_err("%s: stmn_validate_version() failed. IP HW version and Software version mismatch\n",
+			__func__);
 
 	stmn->xdev = dev_hndl;
 
@@ -366,7 +368,7 @@ int stmn_snap_stats(void *dev_hndl)
 		reg = stmn_reg_read(dev_hndl, STMN_REG_SNAP);
 		if ((reg & STMN_REG_SNAP_MASK) || counter > STMN_POLL_COUNT_MAX)
 			break;
-		pr_debug("%s : Reg:0x%x Counter:%d\n", __func__, reg, counter);
+		pr_debug("%s: Reg: 0x%x Counter: %d\n", __func__, reg, counter);
 		counter++;
 		sleep(STMN_POLL_INTERVAL);
 	} while (1);
@@ -390,7 +392,7 @@ int stmn_get_stats(void *dev_hndl, struct stmn_stats *stats)
 
 	ret = stmn_snap_stats(dev_hndl);
 	if (ret < 0) {
-		pr_err("Polling failed for stats snap done\n");
+		pr_err("%s: stmn_snap_stats() failed\n", __func__);
 		return -STMN_INVALID_ARGS;
 	}
 	for (i = 0; i < num_reg; i++)
@@ -411,7 +413,7 @@ int stmn_get_fifo_fill_level(void *dev_hndl, struct stmn_fifo_fill_level *stats)
 
 	for (i = 0; i < num_reg; i++)
 		*(val + i) = stmn_reg_read(dev_hndl,
-					   stmn_regs.fifo_fill_level + (4 * i));
+			stmn_regs.fifo_fill_level + (4 * i));
 
 	return STMN_SUCCESS;
 }
@@ -480,8 +482,8 @@ static void stmn_print_stats_group(struct stmn_stats *stats,
 	snprintf(buf + strlen(buf), len - strlen(buf), "%s", rg);
 	for (i = 0; i < num_entry; i++)
 		snprintf(buf + strlen(buf), len - strlen(buf),
-			 "  %-30s %lu\n", stmn_reg_name_stats[offset + i],
-			 *(stats_ptr + offset + i));
+		"%-30s %" PRIu64 "\n", stmn_reg_name_stats[offset + i],
+		*(stats_ptr + offset + i));
 }
 
 int stmn_print_stats_msg(void *dev_hndl, char *buf, int len)
@@ -657,14 +659,14 @@ static int stmn_trigger_ram_read(void *dev_hndl, uint16_t qid,
 		    counter > STMN_POLL_COUNT_MAX)
 			break;
 		counter++;
-		pr_debug("Polling for read-done, RegVal:%d Counter:%d\n", reg,
-			 counter);
+		pr_debug("%s: Polling for read-done, RegVal: %d Counter: %d\n",
+			__func__, reg, counter);
 		sleep(STMN_POLL_INTERVAL);
 	} while (1);
 
 	if (counter > STMN_POLL_COUNT_MAX) {
-		pr_err("Polling failed for qid %d RamOffset:0x%x\n", qid,
-		       reg_offst);
+		pr_err("%s: Polling failed for qid %d RamOffset: 0x%x\n",
+			__func__, qid, reg_offst);
 		return -STMN_FAILURE;
 	}
 
@@ -736,7 +738,7 @@ int stmn_print_ram_status_msg(void *dev_hndl, char *buf, int len, int tx_numq,
 	stmn_fail_check(ret, "stmn_get_ctrl_ram_status");
 
 	snprintf(buf + strlen(buf), len - strlen(buf),
-			 "qid qen byp init irq_arm rst err mm sts_avl dsc_avl\n");
+		"qid qen byp init irq_arm rst err mm sts_avl dsc_avl\n");
 
 	snprintf(buf + strlen(buf), len - strlen(buf), "C2H TM STS RAM\n");
 	for (i = qbase; i < rx_numq + qbase; i++)
@@ -866,7 +868,7 @@ int stmn_print_stats(void *dev_hndl, char *msg, int len)
 	ret = stmn_print_dsc_minmax_msg(dev_hndl, msg, len);
 	stmn_fail_check(ret, "stmn_print_dsc_minmax_msg");
 
-	pr_debug("%s buf_len: %lu\n", __func__, strlen(msg));
+	pr_debug("%s buf_len: %" PRIu64 "\n", __func__, (uint64_t)strlen(msg));
 
 	return STMN_SUCCESS;
 }

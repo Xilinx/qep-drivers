@@ -518,75 +518,82 @@ struct qdma_queue_conf {
 	/** @irq_en: poll or interrupt */
 	u32 irq_en:1;
 
+	u32 rsvd:3;
+
 	/** descriptor ring	 */
 	/** @desc_rng_sz_idx: global_csr_conf.ringsz[N] */
 	u32 desc_rng_sz_idx:4;
 
 	/** config flags: byte #2 */
 	/** @wb_status_en: writeback enable, disabled for ST C2H */
-	u8 wb_status_en:1;
+	u32 wb_status_en:1;
 	/** @cmpl_status_acc_en: sw context.cmpl_status_acc_en */
-	u8 cmpl_status_acc_en:1;
+	u32 cmpl_status_acc_en:1;
 	/** @cmpl_status_pend_chk: sw context.cmpl_stauts_pend_chk */
-	u8 cmpl_status_pend_chk:1;
+	u32 cmpl_status_pend_chk:1;
 	/** @desc_bypass: send descriptor to bypass out */
-	u8 desc_bypass:1;
+	u32 desc_bypass:1;
 	/** @pfetch_en: descriptor prefetch enable control */
-	u8 pfetch_en:1;
+	u32 pfetch_en:1;
 	/** @fetch_credit: sw context.frcd_en[32] */
-	u8 fetch_credit:1;
+	u32 fetch_credit:1;
 	/**
 	 *  @st_pkt_mode: SDx only: ST packet mode
 	 *  (i.e., with TLAST to identify the packet boundary)
 	 */
-	u8 st_pkt_mode:1;
+	u32 st_pkt_mode:1;
 
 	/** config flags: byte #3 */
 	/** @c2h_buf_sz_idx: global_csr_conf.c2h_buf_sz[N] */
-	u8 c2h_buf_sz_idx:4;
+	u32 c2h_buf_sz_idx:4;
 
 	/**  ST C2H Completion/Writeback ring */
 	/** @cmpl_rng_sz_idx: global_csr_conf.ringsz[N] */
-	u8 cmpl_rng_sz_idx:4;
+	u32 cmpl_rng_sz_idx:4;
 
 	/** config flags: byte #4 */
 	/** @cmpl_desc_sz: C2H ST cmpt + immediate data, desc_sz_t */
-	u8 cmpl_desc_sz:2;
+	u32 cmpl_desc_sz:2;
 	/** @cmpl_stat_en: enable status desc. for CMPT */
-	u8 cmpl_stat_en:1;
+	u32 cmpl_stat_en:1;
 	/** @cmpl_udd_en: C2H Completion entry user-defined data */
-	u8 cmpl_udd_en:1;
+	u32 cmpl_udd_en:1;
 	/** @cmpl_timer_idx: global_csr_conf.c2h_timer_cnt[N] */
-	u8 cmpl_timer_idx:4;
+	u32 cmpl_timer_idx:4;
 
 	/** config flags: byte #5 */
 	/** @cmpl_cnt_th_idx: global_csr_conf.c2h_cnt_th[N] */
-	u8 cmpl_cnt_th_idx:4;
-	/** @cmpl_trig_mode: tigger_mode_t */
-	u8 cmpl_trig_mode:3;
+	u32 cmpl_cnt_th_idx:4;
 	/** @cmpl_en_intr: enable interrupt for CMPT */
-	u8 cmpl_en_intr:1;
+	u32 cmpl_en_intr:1;
+
+	/** @cmpl_trig_mode: tigger_mode_t */
+	u32 cmpl_trig_mode:3;
 
 	/** config flags: byte #6 */
 	/** @sw_desc_sz: SW Context desc size, desc_sz_t */
-	u8 sw_desc_sz:2;
+	u32 sw_desc_sz:2;
 	/** @pfetch_bypass: prefetch bypass en */
-	u8 pfetch_bypass:1;
+	u32 pfetch_bypass:1;
 	/** @cmpl_ovf_chk_dis: OVF_DIS C2H ST over flow disable */
-	u8 cmpl_ovf_chk_dis:1;
+	u32 cmpl_ovf_chk_dis:1;
 	/** @port_id: Port ID */
-	u8 port_id:3;
+	u32 port_id:3;
 	/** @at: Address Translation */
-	u8 at:1;
+	u32 at:1;
 	/** @adaptive_rx: Adaptive rx counter threshold */
-	u8 adaptive_rx:1;
+	u32 adaptive_rx:1;
 	/** @latency_optimize: optimize for latency */
-	u8 latency_optimize:1;
+	u32 latency_optimize:1;
 	/** @init_pidx_dis : Disable pidx initialiaztion for ST C2H */
-	u8 init_pidx_dis:1;
+	u32 init_pidx_dis:1;
 
 	/** @mm_channel: MM Channel */
-	u8 mm_channel:1;
+	u32 mm_channel:1;
+	/** @pidx_acc: acummulate PIDX to batch packets */
+	u32 pidx_acc:8;
+	/** @pidx_upd_timeout_usecs: pidx update timeout in microsecs */
+	u32 pidx_upd_timeout_usecs;
 
 	/*
 	 * TODO: for Platform streaming DSA
@@ -1387,8 +1394,10 @@ int qdma_queue_packet_write(unsigned long dev_hndl, unsigned long qhndl,
  * @budget:		ST C2H only, max number of completions to be processed.
  * @c2h_upd_cmpl:   flag to update the completion
  *
+ * Return:	0 for success or <0 for error
+ *
  *****************************************************************************/
-void qdma_queue_service(unsigned long dev_hndl, unsigned long qhndl,
+int qdma_queue_service(unsigned long dev_hndl, unsigned long qhndl,
 			int budget, bool c2h_upd_cmpl);
 
 /*****************************************************************************/
@@ -1398,8 +1407,10 @@ void qdma_queue_service(unsigned long dev_hndl, unsigned long qhndl,
  * @dev_hndl:	dev_hndl returned from qdma_device_open()
  * @qhndl:		hndl returned from qdma_queue_add()
  *
+ * Return:	0 for success or <0 for error
+ *
  *****************************************************************************/
-void qdma_queue_update_pointers(unsigned long dev_hndl, unsigned long qhndl);
+int qdma_queue_update_pointers(unsigned long dev_hndl, unsigned long qhndl);
 
 /*****************************************************************************/
 /**

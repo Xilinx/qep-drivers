@@ -2058,6 +2058,15 @@ int qdma_queue_start(unsigned long dev_hndl, unsigned long id,
 		spin_unlock_irqrestore(&dev_intr_info_list->vec_q_list, flags);
 	}
 
+#ifdef CONFIG_HIGH_RES_TIMERS
+	hrtimer_init(&descq->pidx_upd_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	descq->pidx_upd_timer.function = &qdma_descq_pidx_upd_timer_cb;
+	INIT_WORK(&descq->pidx_upd_work,
+			  qdma_descq_pidx_update_handler);
+#else
+	INIT_DELAYED_WORK(&descq->pidx_upd_work,
+			  qdma_descq_pidx_update_handler);
+#endif
 	qdma_thread_add_work(descq);
 
 	snprintf(buf, buflen, "queue %s, idx %u started\n",
@@ -2210,6 +2219,11 @@ int qdma_queue_stop(unsigned long dev_hndl, unsigned long id, char *buf,
 	/** free the descq by updating the state */
 	descq->q_state = Q_STATE_ENABLED;
 	descq->q_stop_wait = 0;
+#ifdef CONFIG_HIGH_RES_TIMERS
+	hrtimer_try_to_cancel(&descq->pidx_upd_timer);
+#else
+	cancel_delayed_work(&descq->pidx_upd_work);
+#endif
 	list_for_each_entry_safe(cb, tmp, &descq->pend_list, list) {
 		req = (struct qdma_request *)cb;
 		cb->done = 1;

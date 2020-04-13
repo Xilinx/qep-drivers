@@ -564,7 +564,7 @@ int rte_pmd_qdma_get_device_capabilities(int portid,
  *		rte_eth_dev_configure() and rte_pmd_qdma_set_queue_mode()
  *		for queues in memory mapped mode.
  ******************************************************************************/
-int rte_pmd_qdma_dev_cmptq_setup(int portid, uint32_t qid,
+int rte_pmd_qdma_dev_cmptq_setup(int portid, uint32_t cmpt_queue_id,
 					uint16_t nb_cmpt_desc,
 					unsigned int socket_id);
 

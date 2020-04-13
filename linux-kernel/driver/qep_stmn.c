@@ -132,15 +132,13 @@ int qep_stmn_parse_cmpl_entry(void *cmpl_entry, struct qdma_ul_cmpt_info *cmpl)
 	cmpl->f.color = cmpt->color;
 	cmpl->f.err = (cmpt->err | cmpt->usr_err);
 	cmpl->f.desc_used = (cmpt->desc_used);
-
-
 	if (!cmpl->f.format && cmpl->f.desc_used) {
 		cmpl->len = (cmpt->len);
 		/* zero length transfer allowed */
 	} else
 		cmpl->len = 0;
 
-	return 0;
+	return cmpl->f.err ? -EINVAL : 0;
 }
 
 /* Fill desc entry for DMA request */

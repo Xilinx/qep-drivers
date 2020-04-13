@@ -42,7 +42,7 @@
  */
 int xcmac_setup(struct rte_eth_dev *dev)
 {
-	int ret = 0, retry = 25;
+	int ret = 0, retry = 100;
 	struct qdma_pci_dev *dma_priv;
 
 	dma_priv = (struct qdma_pci_dev *)dev->data->dev_private;

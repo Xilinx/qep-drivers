@@ -692,8 +692,8 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 
 	/* once an error happens, stop processing of the Q */
 	if (descq->err) {
-		pr_info("%s: err.\n", descq->conf.name);
-		return 0;
+		pr_err("%s: err.\n", descq->conf.name);
+		return -EINVAL;
 	}
 
 	dma_rmb();
@@ -712,7 +712,7 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 				return -EINVAL;
 			}
 		}
-		return 0;
+		return -ENODATA;
 	}
 
 #if 0
@@ -806,7 +806,6 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 			}
 			qdma_c2h_packets_proc_dflt(descq);
 		}
-
 		flq->pkt_cnt = ring_idx_delta(cs->pidx, descq->cidx_cmpt,
 					      rngsz_cmpt);
 

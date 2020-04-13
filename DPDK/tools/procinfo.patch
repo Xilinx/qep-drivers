@@ -1,0 +1,298 @@
+From bb53cb7c7da15870bfff1b8473da4f0abc0a5a27 Mon Sep 17 00:00:00 2001
+From: tarakr <tarakr@xilinx.com>
+Date: Thu, 26 Mar 2020 03:18:04 -0600
+Subject: [PATCH] Add QDMA debug to proc-info of dpdk-18.11.0
+
+Signed-off-by: Nikhil agarwal <nagarwal@xilinx.com>
+Signed-off-by: Thanneeru Srinivasulu <sthannee@xilinx.com>
+---
+ app/proc-info/Makefile |   1 +
+ app/proc-info/main.c   | 138 ++++++++++++++++++++++++++++++++++++++---
+ 2 files changed, 132 insertions(+), 7 deletions(-)
+
+diff --git a/app/proc-info/Makefile b/app/proc-info/Makefile
+index 9e87f524d..6bd8c006b 100644
+--- a/app/proc-info/Makefile
++++ b/app/proc-info/Makefile
+@@ -7,6 +7,7 @@ APP = dpdk-procinfo
+ 
+ CFLAGS += -DALLOW_EXPERIMENTAL_API
+ CFLAGS += $(WERROR_FLAGS)
++LDLIBS += -lrte_pmd_qep
+ 
+ # all source are stored in SRCS-y
+ 
+diff --git a/app/proc-info/main.c b/app/proc-info/main.c
+index c20effa4f..ac194bd58 100644
+--- a/app/proc-info/main.c
++++ b/app/proc-info/main.c
+@@ -29,6 +29,7 @@
+ #include <rte_branch_prediction.h>
+ #include <rte_string_fns.h>
+ #include <rte_metrics.h>
++#include <rte_pmd_qep.h>
+ 
+ /* Maximum long option length for option parsing. */
+ #define MAX_LONG_OPT_SZ 64
+@@ -37,9 +38,21 @@
+ #define MAX_STRING_LEN 256
+ 
+ /**< mask of enabled ports */
+-static uint32_t enabled_port_mask;
++static uint64_t enabled_port_mask;
++/**< QID for queue context */
++static uint32_t qid;
++/**< desc dump type */
++static uint32_t desc_type;
++/**< QID for desc start value */
++static uint32_t start;
++/**< QID for desc end value */
++static uint32_t end;
++/**< Enable desc dump. */
++static uint32_t enable_desc_dump;
+ /**< Enable stats. */
+ static uint32_t enable_stats;
++/**< Enable Queue context. */
++static uint32_t qinfo;
+ /**< Enable xstats. */
+ static uint32_t enable_xstats;
+ /**< Enable collectd format*/
+@@ -56,9 +69,13 @@ static uint32_t reset_stats;
+ static uint32_t reset_xstats;
+ /**< Enable memory info. */
+ static uint32_t mem_info;
++/**< Enable Global Errors . */
++static uint32_t qdma_csr_info;
+ /**< Enable displaying xstat name. */
+ static uint32_t enable_xstats_name;
+ static char *xstats_name;
++/**< Enable stmn debug stats. */
++static uint32_t stmn_debug;
+ 
+ /**< Enable xstats by ids. */
+ #define MAX_NB_XSTATS_IDS 1024
+@@ -71,8 +88,11 @@ proc_info_usage(const char *prgname)
+ {
+ 	printf("%s [EAL options] -- -p PORTMASK\n"
+ 		"  -m to display DPDK memory zones, segments and TAILQ information\n"
++		"  -g to display DPDK QDMA PMD global CSR info\n"
+ 		"  -p PORTMASK: hexadecimal bitmask of ports to retrieve stats for\n"
+ 		"  --stats: to display port statistics, enabled by default\n"
++		"  --qinfo: to display QDMA queue context and structure\n"
++		"  --desc-dump {rx | tx | cmpt}: to dump QDMA queue descriptors\n"
+ 		"  --xstats: to display extended port statistics, disabled by "
+ 			"default\n"
+ 		"  --metrics: to display derived metrics of the ports, disabled by "
+@@ -83,6 +103,7 @@ proc_info_usage(const char *prgname)
+ 		"  --stats-reset: to reset port statistics\n"
+ 		"  --xstats-reset: to reset port extended statistics\n"
+ 		"  --collectd-format: to print statistics to STDOUT in expected by collectd format\n"
++		"  --stmn: to print stmn debug info\n"
+ 		"  --host-id STRING: host id used to identify the system process is running on\n",
+ 		prgname);
+ }
+@@ -90,7 +111,7 @@ proc_info_usage(const char *prgname)
+ /*
+  * Parse the portmask provided at run time.
+  */
+-static int
++static int64_t
+ parse_portmask(const char *portmask)
+ {
+ 	char *end = NULL;
+@@ -113,6 +134,47 @@ parse_portmask(const char *portmask)
+ 
+ }
+ 
++/*
++ *  * Parse the QID provided at run time.
++ **/
++static int
++parse_int(const char *id)
++{
++	char *end = NULL;
++	unsigned long val;
++
++	errno = 0;
++
++	/* parse hexadecimal string */
++	val = strtoul(id, &end, 10);
++	if ((id[0] == '\0') || (end == NULL) || (*end != '\0') ||
++			(errno != 0)) {
++		printf("%s ERROR parsing the QID\n", __func__);
++		return -1;
++	}
++
++	return val;
++}
++
++/*
++ *  * Parse the desc dump type provided at run time.
++ **/
++static int
++parse_desc_type(const char *type)
++{
++	if (!strcmp(type, "rx")) {
++		desc_type = RTE_PMD_QEP_DESC_C2H;
++	} else if (!strcmp(type, "tx")) {
++		desc_type = RTE_PMD_QEP_DESC_H2C;
++	} else if (!strcmp(type, "cmpt")) {
++		desc_type = RTE_PMD_QEP_DESC_CMPT;
++	} else {
++		printf("%s ERROR parsing the desc type\n", __func__);
++		return -1;
++	}
++	return 0;
++}
++
+ /*
+  * Parse ids value list into array
+  */
+@@ -177,11 +239,13 @@ proc_info_preparse_args(int argc, char **argv)
+ static int
+ proc_info_parse_args(int argc, char **argv)
+ {
+-	int opt;
++	int opt, ret;
+ 	int option_index;
+ 	char *prgname = argv[0];
+ 	static struct option long_option[] = {
+ 		{"stats", 0, NULL, 0},
++		{"qinfo", 0, NULL, 0},
++		{"desc-dump", required_argument, NULL, 1},
+ 		{"stats-reset", 0, NULL, 0},
+ 		{"xstats", 0, NULL, 0},
+ 		{"metrics", 0, NULL, 0},
+@@ -189,6 +253,7 @@ proc_info_parse_args(int argc, char **argv)
+ 		{"xstats-name", required_argument, NULL, 1},
+ 		{"collectd-format", 0, NULL, 0},
+ 		{"xstats-ids", 1, NULL, 1},
++		{"stmn", 0, NULL, 0},
+ 		{"host-id", 0, NULL, 0},
+ 		{NULL, 0, 0, 0}
+ 	};
+@@ -197,7 +262,7 @@ proc_info_parse_args(int argc, char **argv)
+ 		proc_info_usage(prgname);
+ 
+ 	/* Parse command line */
+-	while ((opt = getopt_long(argc, argv, "p:m",
++	while ((opt = getopt_long(argc, argv, "p:mq:gs:e:",
+ 			long_option, &option_index)) != EOF) {
+ 		switch (opt) {
+ 		/* portmask */
+@@ -212,11 +277,42 @@ proc_info_parse_args(int argc, char **argv)
+ 		case 'm':
+ 			mem_info = 1;
+ 			break;
++		case 'g':
++			qdma_csr_info = 1;
++			break;
++		case 'q':
++			ret = parse_int(optarg);
++			if (ret < 0) {
++				printf("Invalid queue\n");
++				return -1;
++			}
++			qid = ret;
++			break;
++		case 's':
++			ret = parse_int(optarg);
++			if (ret < 0) {
++				printf("Invalid start value\n");
++				return -1;
++			}
++			start = ret;
++			break;
++		case 'e':
++			ret = parse_int(optarg);
++			if (ret < 0) {
++				printf("Invalid end value\n");
++				return -1;
++			}
++			end = ret;
++			break;
+ 		case 0:
+ 			/* Print stats */
+ 			if (!strncmp(long_option[option_index].name, "stats",
+ 					MAX_LONG_OPT_SZ))
+ 				enable_stats = 1;
++			/* Print queue Structures */
++			if (!strncmp(long_option[option_index].name, "qinfo",
++					MAX_LONG_OPT_SZ))
++				qinfo = 1;
+ 			/* Print xstats */
+ 			else if (!strncmp(long_option[option_index].name, "xstats",
+ 					MAX_LONG_OPT_SZ))
+@@ -225,6 +321,10 @@ proc_info_parse_args(int argc, char **argv)
+ 					"metrics",
+ 					MAX_LONG_OPT_SZ))
+ 				enable_metrics = 1;
++			if (!strncmp(long_option[option_index].name, "stmn",
++					MAX_LONG_OPT_SZ))
++				stmn_debug = 1;
++
+ 			/* Reset stats */
+ 			if (!strncmp(long_option[option_index].name, "stats-reset",
+ 					MAX_LONG_OPT_SZ))
+@@ -254,6 +354,15 @@ proc_info_parse_args(int argc, char **argv)
+ 					return -1;
+ 				}
+ 
++			} else if (!strncmp(long_option[option_index].name,
++					"desc-dump",
++					MAX_LONG_OPT_SZ)) {
++				if (parse_desc_type(optarg) < 0) {
++					printf("desc-dump parse error.\n");
++					proc_info_usage(prgname);
++					return -1;
++				}
++				enable_desc_dump = 1;
+ 			}
+ 			break;
+ 		default:
+@@ -263,7 +372,11 @@ proc_info_parse_args(int argc, char **argv)
+ 	}
+ 	return 0;
+ }
+-
++static void
++qdmainfo_display(void)
++{
++	rte_pmd_qep_dbg_regdump(0);
++}
+ static void
+ meminfo_display(void)
+ {
+@@ -629,8 +742,9 @@ main(int argc, char **argv)
+ 
+ 	if (mem_info) {
+ 		meminfo_display();
+-		return 0;
+ 	}
++	if (qdma_csr_info)
++		qdmainfo_display();
+ 
+ 	nb_ports = rte_eth_dev_count_avail();
+ 	if (nb_ports == 0)
+@@ -641,7 +755,17 @@ main(int argc, char **argv)
+ 		enabled_port_mask = 0xffff;
+ 
+ 	RTE_ETH_FOREACH_DEV(i) {
+-		if (enabled_port_mask & (1 << i)) {
++		if (enabled_port_mask & ((uint64_t)1 << i)) {
++			if (qinfo)
++				rte_pmd_qep_dbg_qinfo(i, qid);
++			if (stmn_debug) {
++				rte_pmd_qep_dbg_stmninfo(i);
++				rte_pmd_qep_dbg_lbusinfo(i);
++			}
++			if (enable_desc_dump) {
++				rte_pmd_qep_dbg_qdesc(i, qid, start, end,
++						      desc_type);
++			}
+ 			if (enable_stats)
+ 				nic_stats_display(i);
+ 			else if (enable_xstats)
+-- 
+2.17.1
+

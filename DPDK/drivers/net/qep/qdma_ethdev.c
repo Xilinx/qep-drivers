@@ -220,7 +220,7 @@ static int is_mac_addr_zero(const uint8_t *mac_addr)
  * @return
  *   0 on success, negative errno value on failure.
  */
-static int eth_qdma_dev_init(struct rte_eth_dev *dev)
+int qdma_eth_dev_init(struct rte_eth_dev *dev)
 {
 	struct qdma_pci_dev *dma_priv;
 	uint8_t *baseaddr;
@@ -451,7 +451,7 @@ static int eth_qdma_dev_init(struct rte_eth_dev *dev)
  * @return
  *   0 on success, negative errno value on failure.
  */
-static int eth_qdma_dev_uninit(struct rte_eth_dev *dev)
+int qdma_eth_dev_uninit(struct rte_eth_dev *dev)
 {
 	struct qdma_pci_dev *qdma_dev = dev->data->dev_private;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
@@ -551,13 +551,13 @@ static int eth_qdma_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 {
 	return rte_eth_dev_pci_generic_probe(pci_dev,
 						sizeof(struct qdma_pci_dev),
-						eth_qdma_dev_init);
+						qdma_eth_dev_init);
 }
 
 /* Detach a ethdev interface */
 static int eth_qdma_pci_remove(struct rte_pci_device *pci_dev)
 {
-	return rte_eth_dev_pci_generic_remove(pci_dev, eth_qdma_dev_uninit);
+	return rte_eth_dev_pci_generic_remove(pci_dev, qdma_eth_dev_uninit);
 }
 
 static struct rte_pci_driver rte_qep_pmd = {

@@ -181,7 +181,37 @@ int rte_pmd_qep_dbg_stmninfo(uint8_t portid)
 	dev = &rte_eth_devices[portid];
 	dma_priv = (struct qdma_pci_dev *)dev->data->dev_private;
 
+	memset(msg, 0, STMN_MSG_BUF_LEN_MAX);
 	stmn_print_debug(dma_priv, msg, STMN_MSG_BUF_LEN_MAX);
+	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "%s", msg);
+
+	return 0;
+}
+
+/******************************************************************************/
+/**
+ * Function Name:	rte_pmd_qep_dbg_lbusinfo
+ * Description:		Dumps the LBUS status and statistics
+ *
+ * @param	portid : Port ID
+ *
+ * @return	'0' on success and "< 0" on failure.
+ *
+ * @note	None.
+ ******************************************************************************/
+int rte_pmd_qep_dbg_lbusinfo(uint8_t portid)
+{
+	struct rte_eth_dev *dev;
+	struct qdma_pci_dev *dma_priv;
+	char msg[qep_lbus_get_buf_len()];
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(portid, -ENODEV);
+	dev = &rte_eth_devices[portid];
+	dma_priv = (struct qdma_pci_dev *)dev->data->dev_private;
+
+	memset(msg, 0, qep_lbus_get_buf_len());
+	qep_lbus_snprintf(dma_priv->bar_addr[dma_priv->user_bar_idx], msg,
+		qep_lbus_get_buf_len());
 	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "%s", msg);
 
 	return 0;

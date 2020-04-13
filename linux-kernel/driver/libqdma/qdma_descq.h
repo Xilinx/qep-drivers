@@ -26,6 +26,10 @@
  */
 #include <linux/spinlock_types.h>
 #include <linux/types.h>
+#ifdef CONFIG_HIGH_RES_TIMERS
+#include <linux/hrtimer.h>
+#include <linux/ktime.h>
+#endif
 #include "qdma_compat.h"
 #include "libqdma_export.h"
 #include "qdma_regs.h"
@@ -82,6 +86,14 @@ struct qdma_descq {
 	unsigned long q_hndl;
 	/** queue handler */
 	struct work_struct work;
+#ifdef CONFIG_HIGH_RES_TIMERS
+	struct hrtimer pidx_upd_timer;
+	/** queue pidx update handler */
+	struct work_struct pidx_upd_work;
+#else
+	/** queue pidx update handler */
+	struct delayed_work pidx_upd_work;
+#endif
 	/** interrupt list */
 	struct list_head intr_list;
 	/** leagcy interrupt list */
@@ -150,6 +162,8 @@ struct qdma_descq {
 	dma_addr_t desc_cmpt_bus;
 	/** descriptor writeback dma bus address*/
 	u8 *desc_cmpt_cmpl_status;
+	/** @desc_pend: pending desc to be updated processed by hw */
+	unsigned char desc_pend;
 	/** pidx info to be written to PIDX regiser*/
 	struct qdma_q_pidx_reg_info pidx_info;
 	/** cmpt cidx info to be written to CMPT CIDX regiser*/
@@ -305,11 +319,16 @@ int qdma_descq_context_cleanup(struct qdma_descq *descq);
  * @param[in]	budget:		number of descriptors to process
  * @param[in]	c2h_upd_cmpl:	C2H only: if update completion needed
  *
- * @return	none
+ * @return	0 - success, < 0 for failure
  *****************************************************************************/
-void qdma_descq_service_cmpl_update(struct qdma_descq *descq, int budget,
+int qdma_descq_service_cmpl_update(struct qdma_descq *descq, int budget,
 			bool c2h_upd_cmpl);
 
+void qdma_descq_pidx_update_handler(struct work_struct *work);
+#ifdef CONFIG_HIGH_RES_TIMERS
+enum hrtimer_restart qdma_descq_pidx_upd_timer_cb(
+		struct hrtimer *timer_for_restart );
+#endif
 /*****************************************************************************/
 /**
  * qdma_descq_dump() - dump the queue sw desciptor data

@@ -1,5 +1,5 @@
 /*
- * Copyright(c) 2015-2019 Xilinx, Inc. All rights reserved.
+ * Copyright(c) 2015-2020 Xilinx, Inc. All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -73,6 +73,7 @@
 
 void xcmac_out32(uint64_t address, uint32_t data)
 {
+
 	*((uint32_t *)(address)) = data;
 }
 
@@ -2717,24 +2718,37 @@ int xcmac_config_autoneg(struct xcmac *instance,
 	value = xcmac_in32(instance->base_address + offset);
 	if (config->enable == 1)
 		set_bit(value, XCMAC_CTL_AUTONEG_ENABLE_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AUTONEG_ENABLE_BIT);
 
 	if (config->bypass == 1)
 		set_bit(value, XCMAC_CTL_AUTONEG_BYPASS_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AUTONEG_BYPASS_BIT);
 
 	if (config->nonce_seed) {
 		value = value & (~XCMAC_CTL_AN_NONCE_SEED_BIT_MASK);
 		value = value | ((config->nonce_seed
 			<< XCMAC_CTL_AN_NONCE_SEED_BIT) &
 			XCMAC_CTL_AN_NONCE_SEED_BIT_MASK);
-	}
+	} else
+		value = value & (~XCMAC_CTL_AN_NONCE_SEED_BIT_MASK);
+
+
 	if (config->pseudo_sel == 1)
 		set_bit(value, XCMAC_CTL_AN_PSEUDO_SEL_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_PSEUDO_SEL_BIT);
 
 	if (config->restart == 1)
-		set_bit(value, XCMAC_CTL_AN_PSEUDO_SEL_BIT);
+		set_bit(value, XCMAC_CTL_RESTART_NEGOTIATION_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_RESTART_NEGOTIATION_BIT);
 
 	if (config->local_fault == 1)
 		set_bit(value, XCMAC_CTL_AN_LOCAL_FAULT_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_LOCAL_FAULT_BIT);
 
 	xcmac_out32(instance->base_address + offset, value);
 
@@ -2743,24 +2757,38 @@ int xcmac_config_autoneg(struct xcmac *instance,
 	value = xcmac_in32(instance->base_address + offset);
 	if (config->pause == 1)
 		set_bit(value, XCMAC_CTL_AN_PAUSE_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_PAUSE_BIT);
 
 	if (config->asmdir == 1)
 		set_bit(value, XCMAC_CTL_AN_ASMDIR_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_ASMDIR_BIT);
 
 	if (config->cl91_fec_request == 1)
 		set_bit(value, XCMAC_CTL_AN_CL91_FEC_REQUEST_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_CL91_FEC_REQUEST_BIT);
 
 	if (config->cl91_fec_ability == 1)
 		set_bit(value, XCMAC_CTL_AN_CL91_FEC_ABILITY_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_CL91_FEC_ABILITY_BIT);
 
 	if (config->fec_25g_rs_request == 1)
 		set_bit(value, XCMAC_CTL_AN_FEC_25G_RS_REQUEST_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_FEC_25G_RS_REQUEST_BIT);
 
 	if (config->loc_np == 1)
 		set_bit(value, XCMAC_CTL_AN_LOC_NP_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_LOC_NP_BIT);
 
 	if (config->lp_np_ack == 1)
 		set_bit(value, XCMAC_CTL_AN_LP_NP_ACK_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_LP_NP_ACK_BIT);
 
 	xcmac_out32(instance->base_address + offset, value);
 
@@ -2795,35 +2823,35 @@ int xcmac_get_config_autoneg(struct xcmac *instance,
 	value = xcmac_in32(instance->base_address + offset);
 
 	config->enable = get_bit_status(
-			value, XCMAC_STAT_AN_LP_ABILITY_100GBASE_CR4_BIT);
+			value, XCMAC_CTL_AUTONEG_ENABLE_BIT);
 	config->bypass = get_bit_status(
-			value, XCMAC_STAT_AN_LP_ABILITY_100GBASE_CR4_BIT);
+			value, XCMAC_CTL_AUTONEG_BYPASS_BIT);
 	config->nonce_seed = (value & XCMAC_CTL_AN_NONCE_SEED_BIT_MASK) >>
 	XCMAC_CTL_AN_NONCE_SEED_BIT;
 	config->pseudo_sel = get_bit_status(
-			value, XCMAC_STAT_AN_LP_ABILITY_100GBASE_CR4_BIT);
+			value, XCMAC_CTL_AN_PSEUDO_SEL_BIT);
 	config->restart = get_bit_status(
-			value, XCMAC_STAT_AN_LP_ABILITY_100GBASE_CR4_BIT);
+			value, XCMAC_CTL_RESTART_NEGOTIATION_BIT);
 	config->local_fault = get_bit_status(
-			value, XCMAC_STAT_AN_LP_ABILITY_100GBASE_CR4_BIT);
+			value, XCMAC_CTL_AN_LOCAL_FAULT_BIT);
 
 	offset = XCMAC_CONFIG_AN_CONTROL_REG2_OFFSET;
 	value = xcmac_in32(instance->base_address + offset);
 
 	config->pause = get_bit_status(
-			value, XCMAC_STAT_AN_LP_ABILITY_100GBASE_CR4_BIT);
+			value, XCMAC_CTL_AN_PAUSE_BIT);
 	config->asmdir = get_bit_status(
-			value, XCMAC_STAT_AN_LP_ABILITY_100GBASE_CR4_BIT);
+			value, XCMAC_CTL_AN_ASMDIR_BIT);
 	config->cl91_fec_request = get_bit_status(
-			value, XCMAC_STAT_AN_LP_ABILITY_100GBASE_CR4_BIT);
+			value, XCMAC_CTL_AN_CL91_FEC_REQUEST_BIT);
 	config->cl91_fec_ability = get_bit_status(
-			value, XCMAC_STAT_AN_LP_ABILITY_100GBASE_CR4_BIT);
+			value, XCMAC_CTL_AN_CL91_FEC_ABILITY_BIT);
 	config->fec_25g_rs_request = get_bit_status(
-			value, XCMAC_STAT_AN_LP_ABILITY_100GBASE_CR4_BIT);
+			value, XCMAC_CTL_AN_FEC_25G_RS_REQUEST_BIT);
 	config->loc_np = get_bit_status(
-			value, XCMAC_STAT_AN_LP_ABILITY_100GBASE_CR4_BIT);
+			value, XCMAC_CTL_AN_LOC_NP_BIT);
 	config->lp_np_ack = get_bit_status(
-			value, XCMAC_STAT_AN_LP_ABILITY_100GBASE_CR4_BIT);
+			value, XCMAC_CTL_AN_LP_NP_ACK_BIT);
 
 	return 0;
 }
@@ -2856,48 +2884,78 @@ int xcmac_config_autoneg_ability(struct xcmac *instance,
 	value = xcmac_in32(instance->base_address + offset);
 	if (autoneg_ability->ctl_autoneg_ability_1000base_kx == true)
 		set_bit(value, XCMAC_CTL_AN_ABILITY_1000BASE_KX_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_ABILITY_1000BASE_KX_BIT);
 
 	if (autoneg_ability->ctl_autoneg_ability_10gbase_kx4 == true)
 		set_bit(value, XCMAC_CTL_AN_ABILITY_10GBASE_KX4_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_ABILITY_10GBASE_KX4_BIT);
 
 	if (autoneg_ability->ctl_autoneg_ability_10gbase_kr == true)
 		set_bit(value, XCMAC_CTL_AN_ABILITY_10GBASE_KR_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_ABILITY_10GBASE_KR_BIT);
 
 	if (autoneg_ability->ctl_autoneg_ability_40gbase_kr4 == true)
 		set_bit(value, XCMAC_CTL_AN_ABILITY_40GBASE_KR4_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_ABILITY_40GBASE_KR4_BIT);
 
 	if (autoneg_ability->ctl_autoneg_ability_40gbase_cr4 == true)
 		set_bit(value, XCMAC_CTL_AN_ABILITY_40GBASE_KR4_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_ABILITY_40GBASE_KR4_BIT);
 
 	if (autoneg_ability->ctl_autoneg_ability_100gbase_cr10 == true)
 		set_bit(value, XCMAC_CTL_AN_ABILITY_100GBASE_CR10_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_ABILITY_100GBASE_CR10_BIT);
 
 	if (autoneg_ability->ctl_autoneg_ability_100gbase_kp4 == true)
 		set_bit(value, XCMAC_CTL_AN_ABILITY_100GBASE_KP4_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_ABILITY_100GBASE_KP4_BIT);
 
 	if (autoneg_ability->ctl_autoneg_ability_100gbase_kr4 == true)
 		set_bit(value, XCMAC_CTL_AN_ABILITY_100GBASE_KR4_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_ABILITY_100GBASE_KR4_BIT);
 
 	if (autoneg_ability->ctl_autoneg_ability_100gbase_cr4 == true)
 		set_bit(value, XCMAC_CTL_AN_ABILITY_100GBASE_CR4_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_ABILITY_100GBASE_CR4_BIT);
 
 	if (autoneg_ability->ctl_autoneg_ability_25gbase_kr == true)
 		set_bit(value, XCMAC_CTL_AN_ABILITY_25GBASE_KR_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_ABILITY_25GBASE_KR_BIT);
 
 	if (autoneg_ability->ctl_autoneg_ability_25gbase_cr == true)
 		set_bit(value, XCMAC_CTL_AN_ABILITY_25GBASE_CR_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_ABILITY_25GBASE_CR_BIT);
 
 	if (autoneg_ability->ctl_autoneg_ability_25gbase_kr1 == true)
 		set_bit(value, XCMAC_CTL_AN_ABILITY_25GBASE_KR1_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_ABILITY_25GBASE_KR1_BIT);
 
 	if (autoneg_ability->ctl_autoneg_ability_25gbase_cr1 == true)
 		set_bit(value, XCMAC_CTL_AN_ABILITY_25GBASE_CR1_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_ABILITY_25GBASE_CR1_BIT);
 
 	if (autoneg_ability->ctl_autoneg_ability_50gbase_kr2 == true)
 		set_bit(value, XCMAC_CTL_AN_ABILITY_50GBASE_KR2_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_ABILITY_50GBASE_KR2_BIT);
 
 	if (autoneg_ability->ctl_autoneg_ability_50gbase_cr2 == true)
 		set_bit(value, XCMAC_CTL_AN_ABILITY_50GBASE_CR2_BIT);
+	else
+		clear_bit(value, XCMAC_CTL_AN_ABILITY_50GBASE_CR2_BIT);
 
 	xcmac_out32(instance->base_address + offset, value);
 	return 0;

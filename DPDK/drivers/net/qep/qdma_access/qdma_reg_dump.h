@@ -87,7 +87,13 @@ struct qctx_entry {
 	uint32_t value;
 };
 
+#ifdef QDMA_MAILBOX_PRESENT
 extern struct xreg_info qdma_config_regs[MAX_QDMA_CFG_REGS];
+#else
+#define NUM_MAILBOX_REGISTERS (9)
+extern struct xreg_info qdma_config_regs[MAX_QDMA_CFG_REGS -
+			NUM_MAILBOX_REGISTERS];
+#endif //QDMA_MAILBOX_PRESENT
 extern struct xreg_info qdma_cpm_config_regs[MAX_QDMA_CFG_REGS];
 extern struct qctx_entry sw_ctxt_entries[MAX_QDMA_SW_CTX_ENTRIES];
 extern struct qctx_entry hw_ctxt_entries[MAX_QDMA_HW_CTX_ENTRIES];

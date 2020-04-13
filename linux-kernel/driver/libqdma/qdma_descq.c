@@ -23,6 +23,9 @@
 
 #include <linux/kernel.h>
 #include <linux/delay.h>
+#ifdef CONFIG_HIGH_RES_TIMERS
+#include <linux/ktime.h>
+#endif
 
 #include "qdma_device.h"
 #include "qdma_intr.h"
@@ -118,15 +121,17 @@ void qdma_update_request(void *q_hndl, struct qdma_request *req,
 	}
 }
 
-static int descq_mm_n_h2c_cmpl_status(struct qdma_descq *descq);
+static int descq_mm_n_h2c_cmpl_status(struct qdma_descq *descq,
+				      unsigned char ack_pkts);
 
-static int descq_poll_mm_n_h2c_cmpl_status(struct qdma_descq *descq)
+static int descq_poll_mm_n_h2c_cmpl_status(struct qdma_descq *descq,
+					   unsigned char ack_pkts)
 {
 	enum qdma_drv_mode drv_mode = descq->xdev->conf.qdma_drv_mode;
 
 	if ((drv_mode == POLL_MODE) || (drv_mode == AUTO_MODE)) {
 		descq->proc_req_running = 1;
-		return descq_mm_n_h2c_cmpl_status(descq);
+		return descq_mm_n_h2c_cmpl_status(descq, ack_pkts);
 	} else
 		return 0;
 }
@@ -139,6 +144,108 @@ static inline unsigned int incr_pidx(unsigned int pidx, unsigned int incr_val,
 		pidx -= ring_sz;
 
 	return pidx;
+}
+
+#ifdef CONFIG_HIGH_RES_TIMERS
+enum hrtimer_restart qdma_descq_pidx_upd_timer_cb(
+		struct hrtimer *pidx_upd_timer )
+{
+	struct qdma_descq *descq = container_of(pidx_upd_timer,
+						struct qdma_descq,
+						pidx_upd_timer);
+	if (!descq)
+		return HRTIMER_NORESTART;
+	/* push to process context */
+	schedule_work(&descq->pidx_upd_work);
+
+	return HRTIMER_NORESTART;
+}
+#endif
+
+void qdma_descq_pidx_update_handler(struct work_struct *work)
+{
+	int rv;
+#ifdef CONFIG_HIGH_RES_TIMERS
+	struct qdma_descq *descq =
+			container_of(work, struct qdma_descq, pidx_upd_work);
+#else
+	struct delayed_work *pidx_upd_work =
+			container_of(work, struct delayed_work, work);
+	struct qdma_descq *descq;
+
+	if (!pidx_upd_work)
+		return;
+	descq = container_of(pidx_upd_work, struct qdma_descq, pidx_upd_work);
+#endif
+	if (!descq)
+		return;
+
+	pr_debug("%s - batch %u descs", __func__, descq->desc_pend);
+	lock_descq(descq);
+	if (!descq->desc_pend)
+		goto exit_hndlr;
+	rv = queue_pidx_update(descq->xdev, descq->conf.qidx,
+			descq->conf.q_type, &descq->pidx_info);
+	if (rv < 0) {
+		pr_err("%s: Failed to update pidx\n",
+				descq->conf.name);
+		goto exit_hndlr;
+	}
+
+	descq->desc_pend = 0;
+exit_hndlr:
+	unlock_descq(descq);
+}
+
+static int qdma_pidx_update(struct qdma_descq *descq, unsigned char force)
+{
+	int ret = 0;
+	unsigned int desc_avail_max = descq->conf.rngsz - 1;
+
+	/* interrupt for last update came, now submit descs that are setup */
+	if (force) /* re-arm interrupt with pidx update */
+		goto update;
+	/* q is idle, go ahead and submit */
+	if (descq->desc_pend && (desc_avail_max ==
+			(descq->avail + descq->desc_pend)))
+		goto update;
+	/* some descs are still under proess by HW */
+	if (descq->desc_pend < descq->conf.pidx_acc) {
+		/* accumulating descs to be submitted */
+		unsigned int delay_us = descq->conf.pidx_upd_timeout_usecs;
+#ifdef CONFIG_HIGH_RES_TIMERS
+		ktime_t exec_time;
+
+		if (!hrtimer_active(&descq->pidx_upd_timer)) {
+			exec_time = ktime_set(0, (delay_us * 1000));
+			hrtimer_start(&descq->pidx_upd_timer, exec_time,
+				      HRTIMER_MODE_REL);
+		}
+#else
+		if (!delayed_work_pending(&descq->pidx_upd_work))
+			schedule_delayed_work(&descq->pidx_upd_work,
+				      usecs_to_jiffies(delay_us));
+#endif
+		goto exit_update;
+	}
+update:
+#ifdef CONFIG_HIGH_RES_TIMERS
+	hrtimer_try_to_cancel(&descq->pidx_upd_timer);
+#else
+	if (delayed_work_pending(&descq->pidx_upd_work))
+		cancel_delayed_work(&descq->pidx_upd_work);
+#endif
+	ret = queue_pidx_update(descq->xdev, descq->conf.qidx,
+			descq->conf.q_type, &descq->pidx_info);
+	if (ret < 0) {
+		pr_err("%s: Failed to update pidx\n",
+				descq->conf.name);
+		return -EINVAL;
+	}
+	descq->desc_pend = 0;
+
+exit_update:
+	return ret;
 }
 
 static ssize_t descq_mm_proc_request(struct qdma_descq *descq)
@@ -155,7 +262,7 @@ static ssize_t descq_mm_proc_request(struct qdma_descq *descq)
 	lock_descq(descq);
 	/* process completion of submitted requests */
 	if (descq->q_stop_wait) {
-		descq_mm_n_h2c_cmpl_status(descq);
+		descq_mm_n_h2c_cmpl_status(descq, 1);
 		unlock_descq(descq);
 		return 0;
 	}
@@ -172,7 +279,7 @@ static ssize_t descq_mm_proc_request(struct qdma_descq *descq)
 	pidx = descq->pidx;
 	desc = (struct qdma_mm_desc *)descq->desc + pidx;
 
-	descq_poll_mm_n_h2c_cmpl_status(descq);
+	descq_poll_mm_n_h2c_cmpl_status(descq, 1);
 
 	while (!list_empty(&descq->work_list)) {
 		struct qdma_sgt_req_cb *cb = list_first_entry(&descq->work_list,
@@ -192,7 +299,7 @@ static ssize_t descq_mm_proc_request(struct qdma_descq *descq)
 		int rv;
 
 		if (!desc_max) {
-			descq_poll_mm_n_h2c_cmpl_status(descq);
+			descq_poll_mm_n_h2c_cmpl_status(descq, 0);
 			desc_max = descq->avail;
 		}
 
@@ -209,7 +316,7 @@ static ssize_t descq_mm_proc_request(struct qdma_descq *descq)
 						   req);
 			if (desc_consumed > 0)
 				desc_cnt += desc_consumed;
-			goto update_pidx;
+			goto update_cnt;
 		}
 		rv = qdma_sgl_find_offset(req, &sg, &sg_offset);
 		if (rv < 0) {
@@ -302,7 +409,7 @@ static ssize_t descq_mm_proc_request(struct qdma_descq *descq)
 				    sg);
 		descq->pidx = pidx;
 		descq->avail -= desc_cnt;
-update_pidx:
+update_cnt:
 
 		desc_written += desc_cnt;
 
@@ -316,15 +423,15 @@ update_pidx:
 	if (desc_written) {
 		descq->pend_list_empty = 0;
 		descq->pidx_info.pidx = descq->pidx;
-		rv = queue_pidx_update(descq->xdev, descq->conf.qidx,
-				descq->conf.q_type, &descq->pidx_info);
+		descq->desc_pend += desc_written;
+		rv = qdma_pidx_update(descq, 0);
 		if (unlikely(rv < 0)) {
 			pr_err("%s: Failed to update pidx\n",
 					descq->conf.name);
 			unlock_descq(descq);
 			return -EINVAL;
 		}
-		descq_poll_mm_n_h2c_cmpl_status(descq);
+		descq_poll_mm_n_h2c_cmpl_status(descq, 0);
 	}
 
 	descq->proc_req_running = 0;
@@ -350,7 +457,7 @@ static ssize_t descq_proc_st_h2c_request(struct qdma_descq *descq)
 	lock_descq(descq);
 	/* process completion of submitted requests */
 	if (descq->q_stop_wait) {
-		descq_mm_n_h2c_cmpl_status(descq);
+		descq_mm_n_h2c_cmpl_status(descq, 1);
 		unlock_descq(descq);
 		return 0;
 	}
@@ -365,7 +472,7 @@ static ssize_t descq_proc_st_h2c_request(struct qdma_descq *descq)
 	}
 
 	/* service completion first */
-	descq_poll_mm_n_h2c_cmpl_status(descq);
+	descq_poll_mm_n_h2c_cmpl_status(descq, 1);
 
 	pidx = descq->pidx;
 	desc = (struct qdma_h2c_desc *)descq->desc + pidx;
@@ -386,7 +493,7 @@ static ssize_t descq_proc_st_h2c_request(struct qdma_descq *descq)
 		int rv;
 
 		if (!desc_max) {
-			descq_poll_mm_n_h2c_cmpl_status(descq);
+			descq_poll_mm_n_h2c_cmpl_status(descq, 0);
 			desc_max = descq->avail;
 		}
 
@@ -506,15 +613,15 @@ update_pidx:
 	if (desc_written) {
 		descq->pend_list_empty = 0;
 		descq->pidx_info.pidx = descq->pidx;
-		ret = queue_pidx_update(descq->xdev, descq->conf.qidx,
-				descq->conf.q_type, &descq->pidx_info);
+		descq->desc_pend += desc_written;
+		ret = qdma_pidx_update(descq, 0);
 		if (ret < 0) {
 			pr_err("%s: Failed to update pidx\n",
 					descq->conf.name);
 			unlock_descq(descq);
 			return -EINVAL;
 		}
-		descq_poll_mm_n_h2c_cmpl_status(descq);
+		descq_poll_mm_n_h2c_cmpl_status(descq, 0);
 	}
 
 	descq->proc_req_running = 0;
@@ -630,16 +737,22 @@ static void desc_alloc_irq(struct qdma_descq *descq)
 /*
  * writeback handling
  */
-static int descq_mm_n_h2c_cmpl_status(struct qdma_descq *descq)
+static int descq_mm_n_h2c_cmpl_status(struct qdma_descq *descq,
+				      unsigned char ack_pkts)
 {
 	int rv = 0;
 	unsigned int cidx, cidx_hw;
 	unsigned int cr;
+	unsigned char upd_pidx = 1;
 
 	pr_debug("descq 0x%p, %s, pidx %u, cidx %u.\n",
 		descq, descq->conf.name, descq->pidx, descq->cidx);
 
 	if (descq->pidx == descq->cidx) { /* queue empty? */
+		upd_pidx = 0;
+		if (descq->credit && ack_pkts)
+			goto ack_reqs; /* interrupt came, and some packets need
+			 	 	to be acked */
 		pr_debug("descq %s empty, return.\n", descq->conf.name);
 		return 0;
 	}
@@ -654,8 +767,12 @@ static int descq_mm_n_h2c_cmpl_status(struct qdma_descq *descq)
 	dma_rmb();
 #endif
 
-	if (cidx_hw == cidx) /* no new writeback? */
+	if (cidx_hw == cidx) {/* no new writeback? */
+		upd_pidx = 0;
+		if (descq->credit && ack_pkts)
+			goto ack_reqs;
 		return 0;
+	}
 
 	/* completion credits */
 	cr = (cidx_hw < cidx) ? (descq->conf.rngsz - cidx) + cidx_hw :
@@ -664,17 +781,19 @@ static int descq_mm_n_h2c_cmpl_status(struct qdma_descq *descq)
 	pr_debug("%s descq %s, cidx 0x%x -> 0x%x, avail 0x%x + 0x%x.\n",
 			__func__, descq->conf.name, cidx,
 			cidx_hw, descq->avail, cr);
-
 	descq->cidx = cidx_hw;
 	descq->avail += cr;
 	descq->credit += cr;
 
 	incr_cmpl_desc_cnt(descq, cr);
+	if (ack_pkts == 0)
+		return 0;
 
 	/* completes requests */
 	pr_debug("%s %s, 0x%p, credit %u + %u.\n",
 			__func__, descq->conf.name, descq, cr, descq->credit);
 
+ack_reqs:
 	cr = descq->credit;
 
 	while (!list_empty(&descq->pend_list)) {
@@ -699,25 +818,19 @@ static int descq_mm_n_h2c_cmpl_status(struct qdma_descq *descq)
 		if (!cr)
 			break;
 	}
+	if (!upd_pidx)
+		return 0;
 
 	descq->credit = cr;
 	pr_debug("%s, 0x%p, credit %u.\n",
 		descq->conf.name, descq, descq->credit);
-	rv = queue_pidx_update(descq->xdev, descq->conf.qidx,
-			descq->conf.q_type, &descq->pidx_info);
+	rv = qdma_pidx_update(descq, 1);
 	if  (unlikely(rv < 0)) {
 		pr_err("%s: Failed to update pidx\n", descq->conf.name);
 		return -EINVAL;
 	}
 
-	/* Request thread may have only setup a fraction of the transfer (e.g.
-	 * there wasn't enough space in desc ring). We now have more space
-	 * available again so we can continue programming the
-	 * dma transfer by resuming the thread here.
-	 */
-
-
-	return 1;
+	return 0;
 }
 
 /* ************** public function definitions ******************************* */
@@ -748,9 +861,15 @@ int qdma_q_desc_get(void *q_hndl, const unsigned int desc_cnt,
 	struct qdma_descq *descq = (struct qdma_descq *)q_hndl;
 
 	if (desc_cnt >= descq->conf.rngsz) {
-		pr_err("Invalid desc queue index");
+		pr_err("Number of descriptors required > ring size");
 		return -EINVAL; /* not possible to give so many desc */
 	}
+	/* it is very unlikely that below condition hits in MM or ST H2C as
+	 * one packet is submitted at once. But It is ibserved that HW is not
+	 * giving writeback and sometimes its corresponding interrupt. For this
+	 * reason a polling logic is introduced as below */
+	if (descq->avail < desc_cnt)
+		descq_mm_n_h2c_cmpl_status(descq, 0);
 	if (descq->avail < desc_cnt) {
 		pr_debug("No entries available to read");
 		return -EBUSY; /* curently not available */
@@ -808,22 +927,30 @@ int qdma_q_init_pointers(void *q_hndl)
 	return 0;
 }
 
-void qdma_queue_update_pointers(unsigned long dev_hndl, unsigned long qhndl)
+int qdma_queue_update_pointers(unsigned long dev_hndl, unsigned long qhndl)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
 	struct qdma_descq *descq = qdma_device_get_descq_by_id(xdev, qhndl,
 							NULL, 0, 0);
-	int ret;
+	int ret = 0;
 
-	if (descq) {
-		if (descq->conf.st && (descq->conf.q_type == Q_C2H)) {
+	if (!descq) {
+		pr_err("%s descq is null\n", __func__);
+		return -EINVAL;
+	}
+
+	if (descq->conf.st && (descq->conf.q_type == Q_C2H)) {
+		lock_descq(descq);
+		if (descq->q_state == Q_STATE_ONLINE) {
 			ret = queue_cmpt_cidx_update(descq->xdev,
 					descq->conf.qidx,
 					&descq->cmpt_cidx_info);
 			if (ret < 0) {
 				pr_err("%s: Failed to update cmpt cidx\n",
 						descq->conf.name);
-				return;
+
+				ret = -EBUSY;
+				goto func_exit;
 			}
 			ret = queue_pidx_update(descq->xdev,
 					descq->conf.qidx,
@@ -832,10 +959,24 @@ void qdma_queue_update_pointers(unsigned long dev_hndl, unsigned long qhndl)
 			if (ret < 0) {
 				pr_err("%s: Failed to update pidx\n",
 						descq->conf.name);
-				return;
+				ret = -EBUSY;
+				goto func_exit;
 			}
+			wmb();
+		} else {
+			pr_debug("Pointer update for offline queue for %s",
+					descq->conf.name);
+			ret =  -ENODEV;
 		}
+	} else {
+		pr_err("Pointer update for invalid queue for %s",
+					descq->conf.name);
+		ret =  -EINVAL;
 	}
+
+func_exit:
+	unlock_descq(descq);
+	return ret;
 
 }
 int qdma_descq_alloc_resource(struct qdma_descq *descq)
@@ -1047,6 +1188,7 @@ void qdma_descq_config(struct qdma_descq *descq, struct qdma_queue_conf *qconf,
 		descq->conf.sw_desc_sz = qconf->sw_desc_sz;
 		descq->conf.cmpl_ovf_chk_dis = qconf->cmpl_ovf_chk_dis;
 		descq->conf.adaptive_rx = qconf->adaptive_rx;
+		descq->conf.pidx_acc = qconf->pidx_acc;
 	}
 }
 
@@ -1191,29 +1333,40 @@ int qdma_descq_prog_hw(struct qdma_descq *descq)
 	return rv;
 }
 
-void qdma_descq_service_cmpl_update(struct qdma_descq *descq, int budget,
+int qdma_descq_service_cmpl_update(struct qdma_descq *descq, int budget,
 				bool c2h_upd_cmpl)
 {
+	int rv = 0;
+
 	if (descq->conf.st && (descq->conf.q_type == Q_C2H)) {
 		lock_descq(descq);
-		if (descq->q_state == Q_STATE_ONLINE)
-			descq_process_completion_st_c2h(descq, budget,
+		if (descq->q_state == Q_STATE_ONLINE) {
+			rv = descq_process_completion_st_c2h(descq, budget,
 						c2h_upd_cmpl);
+			if (rv && (rv != -ENODATA))
+				pr_err("Error dectected in %s",
+				       descq->conf.name);
+		} else {
+			pr_debug("Invalid q state of %s ", descq->conf.name);
+			rv = -EINVAL;
+		}
 		unlock_descq(descq);
 	} else if ((descq->xdev->conf.qdma_drv_mode == POLL_MODE) ||
 			(descq->xdev->conf.qdma_drv_mode == AUTO_MODE)) {
 		if (!descq->proc_req_running)
-			qdma_descq_proc_sgt_request(descq);
+			rv = qdma_descq_proc_sgt_request(descq);
 	} else {
 		lock_descq(descq);
-		descq_mm_n_h2c_cmpl_status(descq);
+		descq_mm_n_h2c_cmpl_status(descq, 1);
 		if (descq->pend_req_desc) {
 			unlock_descq(descq);
-			qdma_descq_proc_sgt_request(descq);
-			return;
+			rv = qdma_descq_proc_sgt_request(descq);
+			return rv;
 		}
 		unlock_descq(descq);
 	}
+
+	return rv;
 }
 
 ssize_t qdma_descq_proc_sgt_request(struct qdma_descq *descq)

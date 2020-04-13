@@ -91,7 +91,7 @@ static int qep_flow_parse_rss(struct rte_eth_dev *dev,
 {
 	const struct rte_flow_action_rss *action_rss;
 	struct qdma_pci_dev *dma_priv;
-	struct rte_flow *flow_ptr;
+	struct rte_flow *flow_ptr = NULL;
 	unsigned int nb_queues;
 	uint32_t nrxq = 0;
 	uint32_t i;
@@ -399,7 +399,7 @@ qep_flow_destroy(struct rte_eth_dev *dev,
 		 struct rte_flow *flow,
 		 struct rte_flow_error *error)
 {
-	struct rte_flow *flow_ptr;
+	struct rte_flow *flow_ptr = NULL;
 	struct qdma_pci_dev *dma_priv;
 	int rc = EINVAL;
 

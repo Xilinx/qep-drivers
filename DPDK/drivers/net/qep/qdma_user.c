@@ -40,6 +40,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+/* IPv4 header length in data word without optional header */
+#define IPV4_HEADER_DW_LEN_DEFAULT (5)
+
 /**
  * Extract the fields of given completion entry in the completion ring.
  *
@@ -62,7 +65,7 @@ int qdma_ul_extract_st_cmpt_info(void *ul_cmpt_entry,
 	if (unlikely(cmpt_desc->err || cmpt_desc->data_frmt))
 		return -1;
 
-	memcpy(cmpt_data, cmpt_desc, cmpt_desc_len);
+	rte_memcpy(cmpt_data, cmpt_desc, cmpt_desc_len);
 	if (unlikely(!cmpt_desc->desc_used))
 		cmpt_data->length = 0;
 
@@ -118,8 +121,13 @@ void qdma_update_st_c2h_mbuf_flags(void *qhndl,
 
 	PMD_DRV_LOG(DEBUG, "%s: C2H metadata flags set = 0x%lx",
 			__func__, (uint64_t)metadata->user);
-	if (metadata->is_ipv4)
-		mb->packet_type |= RTE_PTYPE_L3_IPV4;
+
+	if (metadata->is_ipv4) {
+		if (metadata->l3_hdr_dw > IPV4_HEADER_DW_LEN_DEFAULT)
+			mb->packet_type |= RTE_PTYPE_L3_IPV4_EXT;
+		else
+			mb->packet_type |= RTE_PTYPE_L3_IPV4;
+	}
 	if (metadata->is_ipv6)
 		mb->packet_type |= RTE_PTYPE_L3_IPV6;
 	if (metadata->is_udp)
@@ -262,7 +270,8 @@ static void update_offloads_tx_desc(void *qhndl, uint64_t q_offloads,
 		desc->metadata.l3_cksum_gen = 1;
 		desc->metadata.l3_hdr_off = mb->l2_len;
 		if ((mb->ol_flags & PKT_TX_IPV4) == PKT_TX_IPV4)
-			desc->metadata.l3_opt_dw = (mb->l3_len >> 4) - 5;
+			desc->metadata.l3_opt_dw =
+				(mb->l3_len >> 4) - IPV4_HEADER_DW_LEN_DEFAULT;
 		else
 			desc->metadata.l3_opt_dw = 0;
 	}
@@ -279,6 +288,7 @@ static void update_offloads_tx_desc(void *qhndl, uint64_t q_offloads,
 		desc->metadata.l4_hdr_off = mb->l2_len + mb->l3_len;
 		desc->metadata.udp = 1;
 	}
+
 	PMD_DRV_LOG(DEBUG, "%s: H2C metadata flags set = 0x%x",
 			__func__, desc->metadata.user);
 }

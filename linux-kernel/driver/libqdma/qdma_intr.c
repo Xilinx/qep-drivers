@@ -913,7 +913,7 @@ void intr_work(struct work_struct *work)
  * @dev_hndl: hndl retured from qdma_device_open()
  * @qhndl: hndl retured from qdma_queue_add()
  */
-void qdma_queue_service(unsigned long dev_hndl, unsigned long id, int budget,
+int qdma_queue_service(unsigned long dev_hndl, unsigned long id, int budget,
 			bool c2h_upd_cmpl)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
@@ -922,17 +922,19 @@ void qdma_queue_service(unsigned long dev_hndl, unsigned long id, int budget,
 	/** make sure that the dev_hndl passed is Valid */
 	if (!xdev) {
 		pr_err("dev_hndl is NULL");
-		return;
+		return -EINVAL;
 	}
 
 	if (xdev_check_hndl(__func__, xdev->conf.pdev, dev_hndl) < 0) {
 		pr_err("Invalid dev_hndl passed");
-		return;
+		return -EINVAL;
 	}
 
 	descq = qdma_device_get_descq_by_id(xdev, id, NULL, 0, 0);
 	if (descq)
-		qdma_descq_service_cmpl_update(descq, budget, c2h_upd_cmpl);
+		return qdma_descq_service_cmpl_update(descq, budget, c2h_upd_cmpl);
+
+	return -EINVAL;
 }
 
 static u8 get_intr_vec_index(struct xlnx_dma_dev *xdev, u8 intr_type)

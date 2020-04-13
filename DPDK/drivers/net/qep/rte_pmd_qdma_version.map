@@ -6,6 +6,7 @@ DPDK_17.11 {
 	rte_pmd_qep_dbg_qinfo;
 	rte_pmd_qep_dbg_qdesc;
 	rte_pmd_qep_dbg_stmninfo;
+	rte_pmd_qep_dbg_lbusinfo;
 	rte_pmd_qep_addr_read;
 	rte_pmd_qep_addr_write;
 

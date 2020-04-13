@@ -319,7 +319,7 @@ static int qdma_c2h_context_dump(uint8_t port_id, uint16_t queue)
 
 	xdebug_info(qdma_dev,
 		"\n ***** C2H Queue Contexts on port_id: %d for queue_id: %d *****\n",
-		port_id, qid);
+		port_id, queue);
 
 	st_mode = qdma_dev->q_info[qid].queue_mode;
 	if (st_mode && dir)
@@ -378,7 +378,7 @@ static int qdma_h2c_context_dump(uint8_t port_id, uint16_t queue)
 
 	xdebug_info(qdma_dev,
 		"\n ***** H2C Queue Contexts on port_id: %d for queue_id: %d *****\n",
-		port_id, qid);
+		port_id, queue);
 
 	st_mode = qdma_dev->q_info[qid].queue_mode;
 	if (!st_mode && qdma_dev->dev_cap.mm_cmpt_en)

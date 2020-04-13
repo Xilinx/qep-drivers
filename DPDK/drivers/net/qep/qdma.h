@@ -51,6 +51,7 @@
 #include "qdma_log.h"
 #include "stmn.h"
 #include "qep_user_regs.h"
+#include "qep_cmac.h"
 
 #define QDMA_NUM_BARS          (6)
 #define DEFAULT_PF_CONFIG_BAR  (0)
@@ -65,7 +66,7 @@
 #define DEFAULT_QUEUE_BASE	(256)
 #define QDMA_QUEUES_NUM_MAX (2048)
 #define QEP_MAX_STMN_QUEUES (256)
-#define QDMA_MAX_BURST_SIZE (256)
+#define QDMA_MAX_BURST_SIZE (128)
 #define QDMA_MIN_RXBUFF_SIZE	(256)
 
 /* Descriptor Rings aligned to 4KB boundaries - only supported value */
@@ -149,6 +150,9 @@ struct __attribute__ ((packed)) wb_status
 struct qdma_pkt_stats {
 	uint64_t pkts;
 	uint64_t bytes;
+#ifdef QEP_DEBUG_DESC_USAGE
+	uint16_t max_desc_used; /*For tx in_use, For Rx nb_pkts_avail*/
+#endif
 };
 
 /*
@@ -225,6 +229,8 @@ struct qdma_rx_queue {
 	const struct rte_memzone *rx_mz;
 	/* C2H stream mode, completion descriptor result */
 	const struct rte_memzone *rx_cmpt_mz;
+
+	struct qdma_ul_st_cmpt_ring cmpt_data[QDMA_MAX_BURST_SIZE];
 };
 
 /**
@@ -333,14 +339,19 @@ struct qdma_pci_dev {
 
 	struct xcmac  cmac_instance;
 	struct qep_flow_list flow_list;
+	int16_t tx_qid_statid_map[RTE_ETHDEV_QUEUE_STAT_CNTRS];
+	int16_t rx_qid_statid_map[RTE_ETHDEV_QUEUE_STAT_CNTRS];
 };
 
 void qdma_dev_ops_init(struct rte_eth_dev *dev);
-uint32_t qdma_read_reg(uint64_t addr);
-void qdma_write_reg(uint64_t addr, uint32_t val);
+uint32_t qdma_read_reg(uint64_t reg_addr);
+void qdma_write_reg(uint64_t reg_addr, uint32_t val);
 void qdma_txq_pidx_update(void *arg);
 int qdma_pf_csr_read(struct rte_eth_dev *dev);
 int qdma_vf_csr_read(struct rte_eth_dev *dev);
+
+int qdma_eth_dev_init(struct rte_eth_dev *dev);
+int qdma_eth_dev_uninit(struct rte_eth_dev *dev);
 
 void qdma_dev_close(struct rte_eth_dev *dev);
 int qdma_dev_stats_get(struct rte_eth_dev *dev,
@@ -355,14 +366,14 @@ int qdma_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 void qdma_dev_rx_queue_release(void *rqueue);
 void qdma_dev_tx_queue_release(void *tqueue);
 uint8_t qmda_get_desc_sz_idx(enum rte_pmd_qdma_bypass_desc_len);
-int qdma_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
-int qdma_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
-int qdma_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
-int qdma_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
-int qdma_vf_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
-int qdma_vf_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
-int qdma_vf_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
-int qdma_vf_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+int qdma_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t qid);
+int qdma_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t qid);
+int qdma_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t qid);
+int qdma_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t qid);
+int qdma_vf_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t qid);
+int qdma_vf_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t qid);
+int qdma_vf_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t qid);
+int qdma_vf_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t qid);
 int qdma_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 
 int qdma_init_rx_queue(struct qdma_rx_queue *rxq);
@@ -384,6 +395,8 @@ uint16_t qdma_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				uint16_t nb_pkts);
 uint16_t qdma_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				uint16_t nb_pkts);
+uint32_t qdma_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+int qdma_dev_rx_descriptor_status(void *rx_queue, uint16_t offset);
 int qdma_dev_rx_descriptor_done(void *rx_queue, uint16_t exp_count);
 
 uint16_t qdma_recv_pkts_st(struct qdma_rx_queue *rxq, struct rte_mbuf **rx_pkts,
@@ -391,6 +404,8 @@ uint16_t qdma_recv_pkts_st(struct qdma_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 uint16_t qdma_recv_pkts_mm(struct qdma_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 				uint16_t nb_pkts);
 
+int qdma_dev_tx_done_cleanup(void *tx_queue, uint32_t free_cnt);
+int qdma_dev_tx_descriptor_status(void *tx_queue, uint16_t offset);
 uint16_t qdma_xmit_pkts_st(struct qdma_tx_queue *txq, struct rte_mbuf **tx_pkts,
 				uint16_t nb_pkts);
 uint16_t qdma_xmit_pkts_mm(struct qdma_tx_queue *txq, struct rte_mbuf **tx_pkts,
@@ -421,7 +436,7 @@ struct rte_memzone *qdma_zone_reserve(struct rte_eth_dev *dev,
 					int socket_id)
 {
 	char z_name[RTE_MEMZONE_NAMESIZE];
-	snprintf(z_name, sizeof(z_name), "%s%s%d_%d",
+	snprintf(z_name, sizeof(z_name), "%s%s%d_%u",
 			dev->device->driver->name, ring_name,
 			dev->data->port_id, queue_id);
 	return rte_memzone_reserve_aligned(z_name, (uint64_t)ring_size,

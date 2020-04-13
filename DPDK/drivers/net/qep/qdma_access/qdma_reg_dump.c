@@ -206,7 +206,7 @@ struct xreg_info qdma_config_regs[] = {
 	{"H2C_MM_PERF_MON_DATA_CNT", 0x12CC, 2, 0, 0, 0, QDMA_MM_MODE },
 	{"H2C_MM_DBG_INFO", 0x12E8, 1, 0, 0, 0, QDMA_MM_MODE },
 	{"H2C_MM_REQ_THROT", 0x12EC, 1, 0, 0, 0, QDMA_MM_MODE },
-
+#ifdef QDMA_MAILBOX_PRESENT
 	/* QDMA_PF_MAILBOX (0x2400) */
 	{"FUNC_STATUS", 0x2400, 1, 0, 0, 0, QDMA_MAILBOX },
 	{"FUNC_CMD",  0x2404, 1, 0, 0, 0, QDMA_MAILBOX },
@@ -217,7 +217,7 @@ struct xreg_info qdma_config_regs[] = {
 	{"FLR_CTRL_STATUS",  0x2500, 1, 0, 0, 0, QDMA_MAILBOX },
 	{"MSG_IN",  0x2800, 32, 0, 0, 0, QDMA_MAILBOX },
 	{"MSG_OUT",  0x2C00, 32, 0, 0, 0, QDMA_MAILBOX },
-
+#endif //QDMA_MAILBOX_PRESENT
 	{"", 0, 0, 0, 0, 0, 0 }
 };
 

@@ -3782,13 +3782,13 @@ static int qdma_get_version(void *dev_hndl, uint8_t is_vf,
 	uint32_t rtl_version, vivado_release_id, versal_ip_type;
 	uint32_t device_type;
 	uint32_t reg_val = 0;
-#ifdef QDMA_VERSION_REGISTER
+#ifdef QDMA_MAILBOX_PRESENT
 	uint32_t reg_addr = (is_vf) ? QDMA_OFFSET_VF_VERSION :
 			QDMA_OFFSET_PF_VERSION;
 #else
 	uint32_t reg_addr = (is_vf) ? QDMA_OFFSET_VF_VERSION :
 			QDMA_OFFSET_GLBL2_MISC_CAP;
-#endif // QDMA_VERSION_REGISTER
+#endif // QDMA_MAILBOX_PRESENT
 	const char *version_str;
 
 	if (!dev_hndl) {
@@ -3798,7 +3798,7 @@ static int qdma_get_version(void *dev_hndl, uint8_t is_vf,
 	}
 
 	reg_val = qdma_reg_read(dev_hndl, reg_addr);
-#ifdef QDMA_VERSION_REGISTER
+#ifdef QDMA_MAILBOX_PRESENT
 	rtl_version =
 		FIELD_GET(QDMA_GLBL2_RTL_VERSION_MASK, reg_val);
 	vivado_release_id =
@@ -3825,7 +3825,7 @@ static int qdma_get_version(void *dev_hndl, uint8_t is_vf,
 		//everest_ip =
 		//FIELD_GET(QDMA_GLBL2_VF_EVEREST_IP_MASK, reg_val);
 	}
-#endif //QDMA_VERSION_REGISTER
+#endif //QDMA_MAILBOX_PRESENT
 
 	switch (rtl_version) {
 	case RTL_PATCH_VERSION:

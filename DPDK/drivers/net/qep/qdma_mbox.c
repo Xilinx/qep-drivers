@@ -208,7 +208,7 @@ static void qdma_mbox_process_rsp_from_pf(void *arg)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)arg;
 	struct qdma_pci_dev *qdma_dev = dev->data->dev_private;
-	struct qdma_list_head *entry, *tmp;
+	struct qdma_list_head *entry = NULL, *tmp = NULL;
 
 	if (!qdma_dev)
 		return;
@@ -270,7 +270,7 @@ static void qdma_mbox_send_task(void *arg)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)arg;
 	struct qdma_pci_dev *qdma_dev = dev->data->dev_private;
-	struct qdma_list_head *entry, *tmp;
+	struct qdma_list_head *entry = NULL, *tmp = NULL;
 	int rv;
 
 	rte_spinlock_lock(&qdma_dev->mbox.list_lock);

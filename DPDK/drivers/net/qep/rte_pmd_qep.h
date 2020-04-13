@@ -136,6 +136,19 @@ int rte_pmd_qep_dbg_stmninfo(uint8_t portid);
 
 /******************************************************************************/
 /**
+ * Function Name:	rte_pmd_qep_dbg_lbusinfo
+ * Description:		Dumps the STM-N status and statistics
+ *
+ * @param	portid : Port ID
+ *
+ * @return	'0' on success and "< 0" on failure.
+ *
+ * @note	None.
+ ******************************************************************************/
+int rte_pmd_qep_dbg_lbusinfo(uint8_t portid);
+
+/******************************************************************************/
+/**
  * Function Name:	rte_pmd_qep_addr_read
  * Description:		Returns the value at the given BAR offset
  *

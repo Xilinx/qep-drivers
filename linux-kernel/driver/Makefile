@@ -1,5 +1,5 @@
 #/*
-# * Copyright (c) 2017-2018,  Xilinx, Inc.
+# * Copyright (c) 2017-2020,  Xilinx, Inc.
 # * All rights reserved.
 # *
 # *  This source code is free software; you can redistribute it and/or modify it
@@ -67,7 +67,7 @@ $(MOD_NAME)-objs += $(QEP_LIBQDMA_OBJS)
 
 #ccflags-y := -Wno-format -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-strict-aliasing  -Wno-sign-compare -Wno-unused-function -Wno-comment
 
-ccflags-y := -Wall -Wno-format
+ccflags-y := -Wall
 
 # linux <= 3.13 pci_msix_vec_count is not defined.
 #
