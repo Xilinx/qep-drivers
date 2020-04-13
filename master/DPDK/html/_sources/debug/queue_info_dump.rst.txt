@@ -1,0 +1,156 @@
+
+::
+
+	EAL: Detected 24 lcore(s)
+	EAL: Detected 1 NUMA nodes
+	EAL: Multi-process socket /var/run/dpdk/rte/mp_socket_5847_6947546087f38
+	EAL: Probing VFIO support...
+	EAL: PCI device 0000:05:00.0 on NUMA socket 0
+	EAL:   probe driver: 8086:1533 net_e1000_igb
+	EAL: PCI device 0000:06:00.0 on NUMA socket 0
+	EAL:   probe driver: 1d6a:7b1 net_atlantic
+	EAL: PCI device 0000:1a:00.2 on NUMA socket 0
+	EAL:   probe driver: 10ee:5016 net_qep
+	
+	 ***** C2H Queue Contexts on port_id: 0 for queue_id: 15 *****
+	
+	----------------------------------------------------------------------------
+	                              SW Context
+	----------------------------------------------------------------------------
+	PIDX                                            0x7ff      2047
+	IRQ Arm                                         0          0
+	Function Id                                     0x2        2
+	Queue Enable                                    0x1        1
+	Fetch Credit Enable                             0x1        1
+	Write back/Intr Check                           0          0
+	Write back/Intr Interval                        0          0
+	Address Translation                             0          0
+	Fetch Max                                       0          0
+	Ring Size                                       0          0
+	Descriptor Size                                 0          0
+	Bypass Enable                                   0x1        1
+	MM Channel                                      0          0
+	Writeback Enable                                0x1        1
+	Interrupt Enable                                0          0
+	Port Id                                         0          0
+	Interrupt No Last                               0          0
+	Error                                           0          0
+	Writeback Error Sent                            0          0
+	IRQ Request                                     0          0
+	Marker Disable                                  0          0
+	Is Memory Mapped                                0          0
+	Descriptor Ring Base Addr (Low)                 0x9d3b7000 2637918208
+	Descriptor Ring Base Addr (High)                0xf        15
+	Interrupt Vector/Ring Index                     0          0
+	Interrupt Aggregation                           0          0
+	
+	----------------------------------------------------------------------------
+	                              HW Context
+	----------------------------------------------------------------------------
+	CIDX                                            0x80       128
+	Credits Consumed                                0x80       128
+	Descriptors Pending                             0x1        1
+	Queue Invalid No Desc Pending                   0x1        1
+	Eviction Pending                                0          0
+	Fetch Pending                                   0          0
+	
+	----------------------------------------------------------------------------
+	                          Credit Context
+	----------------------------------------------------------------------------
+	Credit                                          0x80       128
+	
+	
+	
+	 ***********RX Queue struct**********
+	
+	                 wb_pidx             :0
+	                 wb_cidx             :0
+	                 rx_tail (ST)        :0
+	                 c2h_pidx            :7ff
+	                 rx_cmpt_cidx        :0
+	                 cmpt_desc_len       :8
+	                 rx_buff_size        :1000
+	                 nb_rx_desc          :801
+	                 nb_rx_cmpt_desc     :1001
+	                 ep_addr             :0
+	                 st_mode             :1
+	                 rx_deferred_start   :0
+	                 en_prefetch         :0
+	                 en_bypass           :1
+	                 dump_immediate_data :0
+	                 en_bypass_prefetch  :1
+	                 dis_overflow_check  :0
+	                 bypass_desc_sz      :0
+	                 ringszidx           :0
+	                 cmpt_ringszidx      :b
+	                 buffszidx           :0
+	                 threshidx           :0
+	                 timeridx            :3
+	                 triggermode         :4
+	
+	 ***** H2C Queue Contexts on port_id: 0 for queue_id: 15 *****
+	
+	----------------------------------------------------------------------------
+	                              SW Context
+	----------------------------------------------------------------------------
+	PIDX                                            0          0
+	IRQ Arm                                         0          0
+	Function Id                                     0x2        2
+	Queue Enable                                    0x1        1
+	Fetch Credit Enable                             0x1        1
+	Write back/Intr Check                           0x1        1
+	Write back/Intr Interval                        0x1        1
+	Address Translation                             0          0
+	Fetch Max                                       0          0
+	Ring Size                                       0          0
+	Descriptor Size                                 0x1        1
+	Bypass Enable                                   0x1        1
+	MM Channel                                      0          0
+	Writeback Enable                                0x1        1
+	Interrupt Enable                                0          0
+	Port Id                                         0          0
+	Interrupt No Last                               0          0
+	Error                                           0          0
+	Writeback Error Sent                            0          0
+	IRQ Request                                     0          0
+	Marker Disable                                  0          0
+	Is Memory Mapped                                0          0
+	Descriptor Ring Base Addr (Low)                 0x9d4ce000 2639060992
+	Descriptor Ring Base Addr (High)                0xf        15
+	Interrupt Vector/Ring Index                     0          0
+	Interrupt Aggregation                           0          0
+	
+	----------------------------------------------------------------------------
+	                              HW Context
+	----------------------------------------------------------------------------
+	CIDX                                            0          0
+	Credits Consumed                                0          0
+	Descriptors Pending                             0          0
+	Queue Invalid No Desc Pending                   0x1        1
+	Eviction Pending                                0          0
+	Fetch Pending                                   0          0
+	
+	----------------------------------------------------------------------------
+	                          Credit Context
+	----------------------------------------------------------------------------
+	Credit                                          0          0
+	
+	
+	
+	***********TX Queue struct************
+	
+	                 wb_pidx             :0
+	                 wb_cidx             :0
+	                 h2c_pidx            :0
+	                 tx_fl_tail          :0
+	                 tx_desc_pend        :0
+	                 nb_tx_desc          :801
+	                 st_mode             :1
+	                 tx_deferred_start   :0
+	                 en_bypass           :1
+	                 bypass_desc_sz      :0
+	                 func_id             :2
+	                 port_id             :0
+	                 ringszidx           :0
+	                 ep_addr             :0
+	

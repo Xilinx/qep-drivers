@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Index &mdash; QEP DPDK Driver 1.2.0 documentation</title>
+  <title>Index &mdash; QEP DPDK Driver 1.3.0 documentation</title>
   
 
   
@@ -36,7 +36,7 @@
         <link rel="index" title="Index"
               href="#"/>
         <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="QEP DPDK Driver 1.2.0 documentation" href="index.html"/> 
+    <link rel="top" title="QEP DPDK Driver 1.3.0 documentation" href="index.html"/> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -64,7 +64,7 @@
             
             
               <div class="version">
-                1.2.0
+                1.3.0
               </div>
             
           
@@ -163,11 +163,21 @@
 </li>
       <li><a href="dpdk-callbacks.html#c.qdma_dev_configure">qdma_dev_configure (C function)</a>
 </li>
+      <li><a href="dpdk-callbacks.html#c.qdma_dev_get_regs">qdma_dev_get_regs (C function)</a>
+</li>
       <li><a href="dpdk-callbacks.html#c.qdma_dev_infos_get">qdma_dev_infos_get (C function)</a>
 </li>
       <li><a href="dpdk-callbacks.html#c.qdma_dev_link_update">qdma_dev_link_update (C function)</a>
 </li>
       <li><a href="dpdk-callbacks.html#c.qdma_dev_mtu_set">qdma_dev_mtu_set (C function)</a>
+</li>
+      <li><a href="dpdk-callbacks.html#c.qdma_dev_queue_stats_mapping">qdma_dev_queue_stats_mapping (C function)</a>
+</li>
+      <li><a href="dpdk-callbacks.html#c.qdma_dev_reset">qdma_dev_reset (C function)</a>
+</li>
+      <li><a href="dpdk-callbacks.html#c.qdma_dev_rx_descriptor_status">qdma_dev_rx_descriptor_status (C function)</a>
+</li>
+      <li><a href="dpdk-callbacks.html#c.qdma_dev_rx_queue_count">qdma_dev_rx_queue_count (C function)</a>
 </li>
       <li><a href="dpdk-callbacks.html#c.qdma_dev_rx_queue_release">qdma_dev_rx_queue_release (C function)</a>
 </li>
@@ -181,25 +191,27 @@
 </li>
       <li><a href="dpdk-callbacks.html#c.qdma_dev_stats_get">qdma_dev_stats_get (C function)</a>
 </li>
+      <li><a href="dpdk-callbacks.html#c.qdma_dev_stats_reset">qdma_dev_stats_reset (C function)</a>
+</li>
       <li><a href="dpdk-callbacks.html#c.qdma_dev_stop">qdma_dev_stop (C function)</a>
+</li>
+      <li><a href="dpdk-callbacks.html#c.qdma_dev_tx_descriptor_status">qdma_dev_tx_descriptor_status (C function)</a>
+</li>
+      <li><a href="dpdk-callbacks.html#c.qdma_dev_tx_done_cleanup">qdma_dev_tx_done_cleanup (C function)</a>
 </li>
       <li><a href="dpdk-callbacks.html#c.qdma_dev_tx_queue_release">qdma_dev_tx_queue_release (C function)</a>
 </li>
       <li><a href="dpdk-callbacks.html#c.qdma_dev_tx_queue_setup">qdma_dev_tx_queue_setup (C function)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="dpdk-callbacks.html#c.qdma_dev_tx_queue_start">qdma_dev_tx_queue_start (C function)</a>
 </li>
       <li><a href="dpdk-callbacks.html#c.qdma_dev_tx_queue_stop">qdma_dev_tx_queue_stop (C function)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="dpdk-callbacks.html#c.qdma_recv_pkts">qdma_recv_pkts (C function)</a>
 </li>
       <li><a href="dpdk-callbacks.html#c.qdma_xmit_pkts">qdma_xmit_pkts (C function)</a>
-</li>
-      <li><a href="dpdk-callbacks.html#c.qdma_xstats_get">qdma_xstats_get (C function)</a>
-</li>
-      <li><a href="dpdk-callbacks.html#c.qdma_xstats_get_names">qdma_xstats_get_names (C function)</a>
 </li>
       <li><a href="dpdk-callbacks.html#c.qep_dev_rss_conf_get">qep_dev_rss_conf_get (C function)</a>
 </li>
@@ -213,7 +225,19 @@
 </li>
       <li><a href="dpdk-callbacks.html#c.qep_dev_set_link_up">qep_dev_set_link_up (C function)</a>
 </li>
+      <li><a href="dpdk-callbacks.html#c.qep_dev_supported_ptypes_get">qep_dev_supported_ptypes_get (C function)</a>
+</li>
       <li><a href="dpdk-callbacks.html#c.qep_dev_txq_info_get">qep_dev_txq_info_get (C function)</a>
+</li>
+      <li><a href="dpdk-callbacks.html#c.qep_dev_xstats_get">qep_dev_xstats_get (C function)</a>
+</li>
+      <li><a href="dpdk-callbacks.html#c.qep_dev_xstats_get_by_id">qep_dev_xstats_get_by_id (C function)</a>
+</li>
+      <li><a href="dpdk-callbacks.html#c.qep_dev_xstats_get_names">qep_dev_xstats_get_names (C function)</a>
+</li>
+      <li><a href="dpdk-callbacks.html#c.qep_dev_xstats_get_names_by_id">qep_dev_xstats_get_names_by_id (C function)</a>
+</li>
+      <li><a href="dpdk-callbacks.html#c.qep_dev_xstats_reset">qep_dev_xstats_reset (C function)</a>
 </li>
       <li><a href="dpdk-callbacks.html#c.qep_filter_ctrl">qep_filter_ctrl (C function)</a>
 </li>
@@ -287,7 +311,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'1.2.0',
+            VERSION:'1.3.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true

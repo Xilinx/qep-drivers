@@ -52,8 +52,11 @@ Guest System(VM)          Configuration Details
 ========================= ==================================
 Operating System          Ubuntu 18.04 LTS
 Linux Kernel              4.15.1-20-generic
-RAM 					  24GB
-Cores              		  16
+RAM 				24GB
+Cores              		16
+kernel boot arguments		default_hugepagesz=1GB
+				hugepagesz=1G
+				hugepages=6 
 ========================= ==================================
 
 

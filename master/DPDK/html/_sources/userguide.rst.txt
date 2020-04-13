@@ -78,13 +78,16 @@ Xilinx QEP DPDK Software database structure
 Below Table describes the DPDK software database structure and its contents
 on the Xilinx GitHub https://github.com/Xilinx/qep-drivers .
 
-+--------------------------+-------------------------------------------------------------+
-| Directory                | Description                                                 |
-+==========================+=============================================================+
-| DPDK/drivers/net/qep     | Xilinx QEP DPDK poll mode driver                            |
-+--------------------------+-------------------------------------------------------------+
-| DPDK/RELEASE.txt         | DPDK driver Release Notes                                   |
-+--------------------------+-------------------------------------------------------------+
++---------------------------+-------------------------------------------------------------+
+| Directory                 | Description                                                 |
++===========================+=============================================================+
+| DPDK/drivers/net/qep      | Xilinx QEP DPDK poll mode driver                            |
++---------------------------+-------------------------------------------------------------+
+| DPDK/RELEASE.txt          | DPDK driver Release Notes                                   |
++---------------------------+-------------------------------------------------------------+
+| DPDK/tools/procinfo.patch | Patch to dpdk proc-info application for additional debug    |
+|                           | information.                                                |
++---------------------------+-------------------------------------------------------------+
 
 Setup: Download and modifications
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -107,6 +110,7 @@ is installed and move to this directory.
 	cd dpdk-stable
 	git checkout v18.11
 	cp -r <dpdk_sw_database>/DPDK/drivers/net/qep ./drivers/net/
+	cp -r <dpdk_sw_database>/DPDK/tools/procinfo.patch .
 
 Additionally, make below changes to the DPDK 18.11 tree to build QEP driver,
 and populate Xilinx devices for binding.
@@ -153,6 +157,12 @@ and populate Xilinx devices for binding.
 	::
 
 		network_devices = [network_class, cavium_pkx, avp_vnic, xilinx_qep_pf]
+
+	3. To patch dpdk-procinfo Application.
+
+	::
+
+		patch -p1 < procinfo.patch
 
 
 Setup: Host system
@@ -229,7 +239,7 @@ Configure the Ethernet MAC address of the device from Management PF using qep-ct
 
 		./qep-ctl config  -d 81:00.0 -m 00:5D:03:00:00:02
 
-	| This command just sets the MAC address of the network device but doesn’t enable MAC and VLAN filtering. Refer to readme.txt in qep-ctl application for usage details.
+	| This command just sets the MAC address of the network device but doesn't enable MAC and VLAN filtering. Refer to readme.txt in qep-ctl application for usage details.
 	|
 
 Execute the below command to verify that the MAC address is set
@@ -252,7 +262,7 @@ The below steps describe the procedure to run the DPDK testpmd application on QE
 
 	cd <host_dir>/<dpdk_test_area>/dpdk-stable/
 
-2.	Run the ‘lspci’ command on the console and verify that the PFs are detected as shown below. Here, ‘81’ is the PCIe bus number on which Xilinx device is installed.
+2.	Run the 'lspci' command on the console and verify that the PFs are detected as shown below. Here, '81' is the PCIe bus number on which Xilinx device is installed.
 
 ::
 
@@ -294,7 +304,7 @@ Configuring the driver
 Supported Device arguments (module parameters)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Device specific parameters can be passed to a device by using the ‘-w’ EAL option.
+Device specific parameters can be passed to a device by using the '-w' EAL option.
 Xilinx supports following device arguments to configure QEP DPDK Driver.
 
 1. **rsfec**
@@ -316,17 +326,24 @@ Virtual Machine (VM) execution and test
 ---------------------------------------
 Assuming that the VM image has been created with the settings outlined in Table :ref:`guest_system_cfg`, follow below steps to execute testpmd on VM.
 
-1. 	Update ``/etc/default/grub`` file as below to enable IOMMU.
+1. 	Update ``/etc/default/grub`` file on Host system as below to enable IOMMU.
 
 	::
 
-		GRUB_CMDLINE_LINUX="default_hugepagesz=1GB hugepagesz=1G hugepages=6 iommu=on intel_iommu=pt"
+		GRUB_CMDLINE_LINUX="default_hugepagesz=1GB hugepagesz=1G hugepages=9 iommu=on intel_iommu=pt"
 
 	Execute the following command to modify the ``/boot/grub/grub.cfg`` with the configuration set in the above step and permanently add them to the kernel command line.
 
 	::
 
 		update-grub
+
+	Update following kernel parameters in /etc/sysctl.conf file to set shared memory for VM
+
+	::
+
+		kernel.shmmax = 9663676416 # 9GB huge page memory in bytes
+		vm.hugetlb_shm_group = 0
 
 	Reboot host system after making the above modifications.
 
@@ -347,19 +364,26 @@ Add the Vendor Id and Device Id to vfio-pci configuration file ``/etc/modprobe.d
 
 4. On the host system, configure MAC address of the device from Management PF using qep-ctl application as outlined in section :ref:`config_mac`
 
-5. Start the VM using below command by attaching the network PF (81:00.2 in this example) to VM
+5. On Host, mount huge page with below command.
 
 	::
 
-		qemu-system-x86_64 -cpu host -enable-kvm -m 24576 -smp sockets=1,cores=32 -hda vm_image.qcow2 -device vfio-pci,host=81:00.2 -vnc :1
+		mkdir /mnt/huge
+		mount -t hugetlbfs nodev /mnt/huge
 
-6. Copy the DPDK source code in VM by executing below command from VM.
+6. Start the VM with host backed hugepage memory using below command by attaching the network PF (81:00.2 in this example) to VM
+
+	::
+
+		qemu-system-x86_64 -cpu host -enable-kvm -m 8192 -mem-prealloc -mem-path /mnt/huge  -smp sockets=1,cores=32 -hda vm_image.qcow2 -device vfio-pci,host=81:00.2 -vnc :1
+
+7. Copy the DPDK source code in VM by executing below command from VM.
 
 	::
 
 		scp -r <username>@<host_ip>:<dpdk_sources> <dpdk_copy_path_in_vm>
 
-7. Execute steps as outlined in section :ref:`build_dpdk` to build DPDK on VM
+8. Execute steps as outlined in section :ref:`build_dpdk` to build DPDK on VM
 
-8. Bind the network function in VM to igb_uio driver and execute testpmd in VM as outlined in section :ref:`run_dpdk`.
+9. Bind the network function in VM to igb_uio driver and execute testpmd in VM as outlined in section :ref:`run_dpdk`.
 

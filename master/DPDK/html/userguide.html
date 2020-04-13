@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>User Guide &mdash; QEP DPDK Driver 1.2.0 documentation</title>
+  <title>User Guide &mdash; QEP DPDK Driver 1.3.0 documentation</title>
   
 
   
@@ -35,7 +35,7 @@
         <link rel="index" title="Index"
               href="genindex.html"/>
         <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="QEP DPDK Driver 1.2.0 documentation" href="index.html"/>
+    <link rel="top" title="QEP DPDK Driver 1.3.0 documentation" href="index.html"/>
         <link rel="next" title="Developers Guide" href="dev-guide.html"/>
         <link rel="prev" title="System Requirements" href="system-requirements.html"/> 
 
@@ -65,7 +65,7 @@
             
             
               <div class="version">
-                1.2.0
+                1.3.0
               </div>
             
           
@@ -224,8 +224,8 @@ For example:</p>
 on the Xilinx GitHub <a class="reference external" href="https://github.com/Xilinx/qep-drivers">https://github.com/Xilinx/qep-drivers</a> .</p>
 <table border="1" class="docutils">
 <colgroup>
-<col width="30%" />
-<col width="70%" />
+<col width="31%" />
+<col width="69%" />
 </colgroup>
 <thead valign="bottom">
 <tr class="row-odd"><th class="head">Directory</th>
@@ -238,6 +238,10 @@ on the Xilinx GitHub <a class="reference external" href="https://github.com/Xili
 </tr>
 <tr class="row-odd"><td>DPDK/RELEASE.txt</td>
 <td>DPDK driver Release Notes</td>
+</tr>
+<tr class="row-even"><td>DPDK/tools/procinfo.patch</td>
+<td>Patch to dpdk proc-info application for additional debug
+information.</td>
 </tr>
 </tbody>
 </table>
@@ -257,6 +261,7 @@ git clone http://dpdk.org/git/dpdk-stable
 cd dpdk-stable
 git checkout v18.11
 cp -r &lt;dpdk_sw_database&gt;/DPDK/drivers/net/qep ./drivers/net/
+cp -r &lt;dpdk_sw_database&gt;/DPDK/tools/procinfo.patch .
 </pre></div>
 </div>
 <p>Additionally, make below changes to the DPDK 18.11 tree to build QEP driver,
@@ -300,6 +305,12 @@ CONFIG_RTE_LIBRTE_QDMA_DEBUG_DRIVER=n
 </div>
 <p>Update entries in network devices class in <code class="docutils literal notranslate"><span class="pre">./usertools/dpdk-devbind.py</span></code> to add Xilinx devices</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre>network_devices = [network_class, cavium_pkx, avp_vnic, xilinx_qep_pf]
+</pre></div>
+</div>
+<ol class="arabic simple" start="3">
+<li>To patch dpdk-procinfo Application.</li>
+</ol>
+<div class="highlight-none notranslate"><div class="highlight"><pre>patch -p1 &lt; procinfo.patch
 </pre></div>
 </div>
 </div></blockquote>
@@ -459,12 +470,17 @@ Default is set to 1 i.e. enable in the driver.</p>
 <h2>Virtual Machine (VM) execution and test<a class="headerlink" href="#virtual-machine-vm-execution-and-test" title="Permalink to this headline">¶</a></h2>
 <p>Assuming that the VM image has been created with the settings outlined in Table <a class="reference internal" href="system-requirements.html#guest-system-cfg"><span class="std std-ref">Guest System Configuration</span></a>, follow below steps to execute testpmd on VM.</p>
 <ol class="arabic">
-<li><p class="first">Update <code class="docutils literal notranslate"><span class="pre">/etc/default/grub</span></code> file as below to enable IOMMU.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre>GRUB_CMDLINE_LINUX=&quot;default_hugepagesz=1GB hugepagesz=1G hugepages=6 iommu=on intel_iommu=pt&quot;
+<li><p class="first">Update <code class="docutils literal notranslate"><span class="pre">/etc/default/grub</span></code> file on Host system as below to enable IOMMU.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>GRUB_CMDLINE_LINUX=&quot;default_hugepagesz=1GB hugepagesz=1G hugepages=9 iommu=on intel_iommu=pt&quot;
 </pre></div>
 </div>
 <p>Execute the following command to modify the <code class="docutils literal notranslate"><span class="pre">/boot/grub/grub.cfg</span></code> with the configuration set in the above step and permanently add them to the kernel command line.</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre>update-grub
+</pre></div>
+</div>
+<p>Update following kernel parameters in /etc/sysctl.conf file to set shared memory for VM</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>kernel.shmmax = 9663676416 # 9GB huge page memory in bytes
+vm.hugetlb_shm_group = 0
 </pre></div>
 </div>
 <p>Reboot host system after making the above modifications.</p>
@@ -488,9 +504,17 @@ Add the Vendor Id and Device Id to vfio-pci configuration file <code class="docu
 </li>
 <li><p class="first">On the host system, configure MAC address of the device from Management PF using qep-ctl application as outlined in section <a class="reference internal" href="#config-mac"><span class="std std-ref">Configure Ethernet MAC address for device</span></a></p>
 </li>
-<li><p class="first">Start the VM using below command by attaching the network PF (81:00.2 in this example) to VM</p>
+<li><p class="first">On Host, mount huge page with below command.</p>
 <blockquote>
-<div><div class="highlight-none notranslate"><div class="highlight"><pre>qemu-system-x86_64 -cpu host -enable-kvm -m 24576 -smp sockets=1,cores=32 -hda vm_image.qcow2 -device vfio-pci,host=81:00.2 -vnc :1
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>mkdir /mnt/huge
+mount -t hugetlbfs nodev /mnt/huge
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p class="first">Start the VM with host backed hugepage memory using below command by attaching the network PF (81:00.2 in this example) to VM</p>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>qemu-system-x86_64 -cpu host -enable-kvm -m 8192 -mem-prealloc -mem-path /mnt/huge  -smp sockets=1,cores=32 -hda vm_image.qcow2 -device vfio-pci,host=81:00.2 -vnc :1
 </pre></div>
 </div>
 </div></blockquote>
@@ -551,7 +575,7 @@ Add the Vendor Id and Device Id to vfio-pci configuration file <code class="docu
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'1.2.0',
+            VERSION:'1.3.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true
