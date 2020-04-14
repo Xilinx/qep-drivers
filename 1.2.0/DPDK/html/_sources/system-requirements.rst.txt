@@ -1,0 +1,62 @@
+.. _sys_req:
+
+System Requirements
+===================
+
+Xilinx Accelerator Card
+-----------------------
+
+1. U250
+
+
+Host System Configuration
+-------------------------
+
+QEP DPDK driver release is verified on following host system configuration
+
++--------------------------+-------------------------------------------------------------+
+|                          | Configuration Details                                       |
++==========================+=============================================================+
+| Host System              | Supermicro SYS-7049GP-TRT                                   |
++--------------------------+-------------------------------------------------------------+
+| Processor                |  Intel Xeon Platinum 8180 Processor                         |
++--------------------------+-------------------------------------------------------------+
+| PCIe                     | Gen 3 x16, Full height, Full Length, dual width slot        |
++--------------------------+-------------------------------------------------------------+
+| Operating System         | Ubuntu 18.04.1 LTS                                          |
++--------------------------+-------------------------------------------------------------+
+| Linux Kernel             | 4.15.0-65-generic                                           |
++--------------------------+-------------------------------------------------------------+
+| CPU Cores                | 56                                                          |
++--------------------------+-------------------------------------------------------------+
+| RAM                      | 64GB on local NUMA node                                     |
++--------------------------+-------------------------------------------------------------+
+| Hypervisor               | KVM                                                         |
++--------------------------+-------------------------------------------------------------+
+| Qemu Version             | QEMU emulator version 2.11.1(Debian 1:2.11+dfsg-1ubuntu7.3) |
++--------------------------+-------------------------------------------------------------+
+| Vivado Version           | 2019.1                                                      |
++--------------------------+-------------------------------------------------------------+
+
+
+.. _guest_system_cfg:
+
+Guest System Configuration
+--------------------------
+
+QEP DPDK driver latest release is verified on the following guest system configuration
+by attaching network PF to the guest VM
+
+========================= ==================================
+Guest System(VM)          Configuration Details
+========================= ==================================
+Operating System          Ubuntu 18.04 LTS
+Linux Kernel              4.15.1-20-generic
+RAM 					  24GB
+Cores              		  16
+========================= ==================================
+
+
+A 100G NIC card from a different vendor is also required for checking connectivity with a peer NIC.
+The release is verified using Mellanox ConnectX-5 as the peer NIC.
+

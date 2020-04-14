@@ -5,11 +5,13 @@ QEP has three PCIe physical functions - PF0 for device management, PF1 for compu
 and PF2 for Network acceleration. The Ethernet subsystem added to the static region
 of the shell is accessible to the host via PF2.
 
-For details on Hardware Features refer to Hardware documentation on the QEP Lounge. 
+For details on Hardware Features refer to Hardware documentation on the QEP Lounge_.
+
+.. _Lounge: https://www.xilinx.com/member/qep-platform.html
 
 The high level system overview with Linux network driver for packet processing is shown below:
 
-  .. image:: /images/system_overview.png
+  .. image:: /images/qep-linux-arch.png
    :align: center
    
 QEP Linux kernel network driver supports the following list of features:
@@ -36,7 +38,6 @@ Software Features
 	* NETIF_F_RXHASH (Support Receive hashing offload)
 	* NETIF_F_SG (Support Scatter Gather)
 	* NETIF_F_HIGHDMA (Support SKBs located in high memory)
-	* NETIF_F_GRO (Support Generic Receive Offload)
 	* IFF_PROMISC (Support Promiscuous mode)
 * DebugFS Support
 * SW Versioning

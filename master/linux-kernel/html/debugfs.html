@@ -8,11 +8,9 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>DebugFS Support &mdash; QEP Linux Kernel Network Driver 1.2.0 documentation</title>
+  <title>DebugFS Support &mdash; QEP Linux Kernel Network Driver 1.3.0 documentation</title>
   
 
-  
-  
   
   
 
@@ -30,12 +28,14 @@
   
 
   
+    <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+  
 
   
         <link rel="index" title="Index"
               href="genindex.html"/>
         <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="QEP Linux Kernel Network Driver 1.2.0 documentation" href="index.html"/>
+    <link rel="top" title="QEP Linux Kernel Network Driver 1.3.0 documentation" href="index.html"/>
         <link rel="up" title="Developer Guide" href="dev-guide.html"/>
         <link rel="next" title="Terms and Acronyms" href="acronyms.html"/>
         <link rel="prev" title="QEP Linux Driver APIs" href="qep-callback-apis.html"/> 
@@ -47,7 +47,6 @@
 
 <body class="wy-body-for-nav" role="document">
 
-   
   <div class="wy-grid-for-nav">
 
     
@@ -67,7 +66,7 @@
             
             
               <div class="version">
-                1.2.0
+                1.3.0
               </div>
             
           
@@ -88,10 +87,7 @@
           
             
             
-              
-            
-            
-              <p class="caption"><span class="caption-text">Table of Contents</span></p>
+                <p class="caption"><span class="caption-text">Table of Contents</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="system-overview.html">System Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system-requirements.html">System Requirements</a></li>
@@ -123,10 +119,8 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        
-          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">QEP Linux Kernel Network Driver</a>
-        
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">QEP Linux Kernel Network Driver</a>
       </nav>
 
 
@@ -135,42 +129,25 @@
         <div class="rst-content">
           
 
-
-
-
-
-
-
-
-
-
-
-
+ 
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
-
   <ul class="wy-breadcrumbs">
-    
-      <li><a href="index.html">Docs</a> &raquo;</li>
-        
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
           <li><a href="dev-guide.html">Developer Guide</a> &raquo;</li>
-        
-      <li>DebugFS Support</li>
-    
-    
+      
+    <li>DebugFS Support</li>
       <li class="wy-breadcrumbs-aside">
         
-            
+          
             <a href="_sources/debugfs.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -181,48 +158,464 @@
 <p>The QEP Linux Kernel Driver provides rich debugfs support. Along with configuration, status, and statistics,
 debug related information is also provided through the read-only interface. Debug information is provided for
 CMAC, QDMA, QEP and STM-N. The debugfs files are located at  /sys/kernel/debug/qep_dev/ in the host filesystem.
-For every QEP ethernet device detected, a filesystem tree is populated with directory name as its &lt;BDF&gt;</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span># sudo tree /sys/kernel/debug/qep_dev/
+For every QEP ethernet device detected, a filesystem tree is populated with directory name as its &lt;Bus:Device:Function&gt;,
+herein after referred to as &lt;BDF&gt; in short.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre># sudo tree /sys/kernel/debug/qep_dev/
 </pre></div>
 </div>
 <p>The DebugFS filesystem tree is as shown below:</p>
 <blockquote>
 <div><img alt="_images/debugfs.png" class="align-center" src="_images/debugfs.png" />
 </div></blockquote>
+<p>Commands, along with sample output of the commands, to dump the debug info is shown below:</p>
+<ul class="simple">
+<li><a class="reference internal" href="#cmac"><span class="std std-ref">CMAC</span></a></li>
+<li><a class="reference internal" href="#qdma-info"><span class="std std-ref">QDMA Info</span></a></li>
+<li><a class="reference internal" href="#qdma-regs"><span class="std std-ref">QDMA Register Dump</span></a></li>
+<li><a class="reference internal" href="#qep-config"><span class="std std-ref">QEP Config</span></a></li>
+<li><a class="reference internal" href="#queues"><span class="std std-ref">Queues</span></a></li>
+<li><a class="reference internal" href="#stmn"><span class="std std-ref">STM-N</span></a></li>
+</ul>
 <div class="section" id="cmac">
-<h2>CMAC<a class="headerlink" href="#cmac" title="Permalink to this headline">¶</a></h2>
+<span id="id1"></span><h2>CMAC<a class="headerlink" href="#cmac" title="Permalink to this headline">¶</a></h2>
 <p>This file contains a snapshot of error, status and statistics registers of CMAC IP. For details refer to CMAC user guide.</p>
 <p>Command:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/cmac
+<div class="highlight-none notranslate"><div class="highlight"><pre># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/cmac
+</pre></div>
+</div>
+<p>Sample Output:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>rx_bytes                         = 0
+rx_mac_bytes                     = 91
+rx_good_bytes                    = 91
+rx_packets                       = 0
+rx_mac_packets                   = 1
+rx_good_pkts                     = 1
+rx_unicast_pkts                  = 0
+rx_multicast_pkts                = 0
+rx_broadcast_pkts                = 0
+rx_pause_pkts                    = 0
+rx_vlan_tagged_pkts              = 0
+rx_priority_pause_pkts           = 0
+rx_bad_fcs_pkts                  = 0
+rx_bad_code_pkts                 = 221559
+rx_too_long_pkts                 = 0
+rx_oversized_pkts                = 0
+rx_jabber_pkts                   = 0
+rx_undersized_pkts               = 0
+rx_frag_pkts                     = 0
+rx_stomped_fcs_pkts              = 0
+rx_range_error_pkts              = 0
+rx_truncated_pkts                = 0
+rx_hist_less_64_pkts             = 0
+rx_hist_64_pkts                  = 0
+rx_hist_65_127_pkts              = 1
+rx_hist_128_255_pkts             = 0
+rx_hist_256_511_pkts             = 0
+rx_hist_512_1023_pkts            = 0
+rx_hist_1024_1518_pkts           = 0
+rx_hist_1519_1522_pkts           = 0
+rx_hist_1523_1548_pkts           = 0
+rx_hist_1549_2047_pkts           = 0
+rx_hist_2048_4095_pkts           = 0
+rx_hist_4096_8191_pkts           = 0
+rx_hist_8192_9215_pkts           = 0
+rx_hist_greter_eq_9216_pkts      = 0
+tx_bytes                         = 1298
+tx_mac_bytes                     = 0
+tx_good_bytes                    = 0
+tx_packets                       = 14
+tx_mac_packets                   = 0
+tx_good_pkts                     = 0
+tx_unicast_pkts                  = 0
+tx_multicast_pkts                = 0
+tx_broadcast_pkts                = 0
+tx_pause_pkts                    = 0
+tx_vlan_tagged_pkts              = 0
+tx_priority_pause_pkts           = 0
+tx_bad_fcs_pkts                  = 0
+tx_frame_error_pkts              = 0
+tx_hist_less_64_pkts             = 0
+tx_hist_64_pkts                  = 0
+tx_hist_65_127_pkts              = 0
+tx_hist_128_255_pkts             = 0
+tx_hist_256_511_pkts             = 0
+tx_hist_512_1023_pkts            = 0
+tx_hist_1024_1518_pkts           = 0
+tx_hist_1519_1522_pkts           = 0
+tx_hist_1523_1548_pkts           = 0
+tx_hist_1549_2047_pkts           = 0
+tx_hist_2048_4095_pkts           = 0
+tx_hist_4096_8191_pkts           = 0
+tx_hist_8192_9215_pkts           = 0
+tx_hist_greter_eq_9216_pkts      = 0
+rx_pkt_l3_chksum_valid           = 0
+rx_pkt_l4_chksum_valid           = 0
+tx_pkt_l3_chksumed               = 14
+tx_pkt_l4_chksumed               = 14
+PCS Status=0x1 Aligned=0x1 Misaligned=0x0 Aligned error=0x0
+HiBer=0x0 Bad Preamble=0x0 Bad Sfd=0x0 Got Signal OS=0x0
+Remote Fault=0x0 Local Fault=0x0 Internal Local Fault=0x0 Received Local Fault=0x0
+Local Fault=0x0 PTP FIFO Read Error=0x0 PTP FIFO Write Error=0x0
+Rx BIP Override Value=0x6f Valid=0x0
+Lane:           0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19
+Block Lock    0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1
+Synced Err    0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0
+LM Err        0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0
+LM len Err    0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0
+LM Repeat Err 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0
+VlDemuxed     0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1 0x1
+VlNumber      0x0 0x0 0x1 0x0 0x2 0x0 0x6 0x0 0x7 0x0 0x8 0x0 0xc 0x0 0xd 0x0 0xe 0x0 0x12 0x0
+QID TX RX
+0 1 0
+1 1 0
+2 1 0
+3 1 0
+4 1 0
+5 1 0
+6 1 0
+7 1 0
+8 1 0
+9 1 0
+10 1 0
+11 1 0
+12 1 0
+13 1 0
+14 0 0
+15 0 0
+16 0 0
+17 0 0
+18 0 0
+19 0 0
+20 0 0
+21 0 0
+22 0 0
+23 0 0
+24 0 0
+25 0 0
+26 0 0
+27 0 0
+28 0 0
+29 0 0
+30 0 0
+31 0 0
 </pre></div>
 </div>
 </div>
 <div class="section" id="qdma-info">
-<h2>QDMA Info<a class="headerlink" href="#qdma-info" title="Permalink to this headline">¶</a></h2>
+<span id="id2"></span><h2>QDMA Info<a class="headerlink" href="#qdma-info" title="Permalink to this headline">¶</a></h2>
 <p>This file provides information about configuration mode of QDMA.</p>
 <p>Command:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/qdma_info
+<div class="highlight-none notranslate"><div class="highlight"><pre># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/qdma_info
+</pre></div>
+</div>
+<p>Sample Output:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>Master PF                           : False
+QBase                               : 256
+Max Qsets                           : 256
+Number of VFs                       : 0
+Max number of VFs                   : 0
+Driver Mode                         : direct interrupt mode
 </pre></div>
 </div>
 </div>
 <div class="section" id="qdma-register-dump">
-<h2>QDMA Register Dump<a class="headerlink" href="#qdma-register-dump" title="Permalink to this headline">¶</a></h2>
+<span id="qdma-regs"></span><h2>QDMA Register Dump<a class="headerlink" href="#qdma-register-dump" title="Permalink to this headline">¶</a></h2>
 <p>This file provides a snapshot of QDMA registers. For details of the registers, please refer to QDMA IP user guide <a class="reference external" href="https://www.xilinx.com/support/documentation/ip_documentation/qdma/v3_0/pg302-qdma.pdf">UG302</a></p>
 <p>Command:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/qdma_regs
+<div class="highlight-none notranslate"><div class="highlight"><pre># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/qdma_regs
+</pre></div>
+</div>
+<p>Sample Output:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>################################################################################
+###             qdma&lt;BDF&gt;, reg dump
+################################################################################
+[    0x0] CFG_BLOCK_ID_0                                  0x1fd30000 533921792
+[    0x4] CFG_BUSDEV_0                                    0x0        0
+[    0x8] CFG_PCIE_MAX_PL_SZ_0                            0x51       81
+[    0xc] CFG_PCIE_MAX_RDRQ_SZ_0                          0x52       82
+[   0x10] CFG_SYS_ID_0                                    0x1234     4660
+[   0x14] CFG_MSI_EN_0                                    0x20000    131072
+[   0x18] CFG_PCIE_DATA_WIDTH_0                           0x3        3
+[   0x1c] CFG_PCIE_CTRL_0                                 0x1        1
+[   0x40] CFG_AXI_USR_MAX_PL_SZ_0                         0x55       85
+[   0x44] CFG_AXI_USR_MAX_RDRQ_SZ_0                       0x55       85
+[   0x4c] CFG_MISC_CTRL_0                                 0x10009    65545
+[   0x80] CFG_SCRATCH_REG_0                               0x0        0
+[   0x84] CFG_SCRATCH_REG_1                               0x0        0
+[   0x88] CFG_SCRATCH_REG_2                               0x0        0
+[   0x8c] CFG_SCRATCH_REG_3                               0x0        0
+[   0x90] CFG_SCRATCH_REG_4                               0x0        0
+[   0x94] CFG_SCRATCH_REG_5                               0x0        0
+[   0x98] CFG_SCRATCH_REG_6                               0x0        0
+[   0x9c] CFG_SCRATCH_REG_7                               0x0        0
+[   0xf0] QDMA_RAM_SBE_MSK_A_0                            0x0        0
+[   0xf4] QDMA_RAM_SBE_STS_A_0                            0x0        0
+[   0xf8] QDMA_RAM_DBE_MSK_A_0                            0x0        0
+[   0xfc] QDMA_RAM_DBE_STS_A_0                            0x0        0
+[  0x100] GLBL2_ID_0                                      0x1fd70000 534183936
+[  0x104] GLBL2_PF_BL_INT_0                               0x1101     4353
+[  0x108] GLBL2_PF_VF_BL_INT_0                            0x0        0
+[  0x10c] GLBL2_PF_BL_EXT_0                               0x4044     16452
+[  0x110] GLBL2_PF_VF_BL_EXT_0                            0x0        0
+[  0x114] GLBL2_CHNL_INST_0                               0x30101    196865
+[  0x118] GLBL2_CHNL_QDMA_0                               0x30f0f    200463
+[  0x11c] GLBL2_CHNL_STRM_0                               0x30000    196608
+[  0x120] GLBL2_QDMA_CAP_0                                0x800      2048
+[  0x128] GLBL2_PASID_CAP_0                               0x0        0
+[  0x12c] GLBL2_FUNC_RET_0                                0x2        2
+[  0x130] GLBL2_SYS_ID_0                                  0x0        0
+[  0x134] GLBL2_MISC_CAP_0                                0x1000000  16777216
+[  0x1b8] GLBL2_DBG_PCIE_RQ_0                             0x9350003  154468355
+[  0x1bc] GLBL2_DBG_PCIE_RQ_1                             0x6024     24612
+[  0x1c0] GLBL2_DBG_AXIMM_WR_0                            0x600021   6291489
+[  0x1c4] GLBL2_DBG_AXIMM_WR_1                            0x0        0
+[  0x1c8] GLBL2_DBG_AXIMM_RD_0                            0x1        1
+[  0x1cc] GLBL2_DBG_AXIMM_RD_1                            0x0        0
+[  0x204] GLBL_RNGSZ_0                                    0x1ff      511
+[  0x208] GLBL_RNGSZ_1                                    0x1ff      511
+[  0x20c] GLBL_RNGSZ_2                                    0x1ff      511
+[  0x210] GLBL_RNGSZ_3                                    0x1ff      511
+[  0x214] GLBL_RNGSZ_4                                    0x1ff      511
+[  0x218] GLBL_RNGSZ_5                                    0x1ff      511
+[  0x21c] GLBL_RNGSZ_6                                    0x1ff      511
+[  0x220] GLBL_RNGSZ_7                                    0x1ff      511
+[  0x224] GLBL_RNGSZ_8                                    0x1ff      511
+[  0x228] GLBL_RNGSZ_9                                    0x1ff      511
+[  0x22c] GLBL_RNGSZ_10                                   0x1ff      511
+[  0x230] GLBL_RNGSZ_11                                   0x1ff      511
+[  0x234] GLBL_RNGSZ_12                                   0x1ff      511
+[  0x238] GLBL_RNGSZ_13                                   0x1ff      511
+[  0x23c] GLBL_RNGSZ_14                                   0x1ff      511
+[  0x240] GLBL_RNGSZ_15                                   0x1ff      511
+[  0x248] GLBL_ERR_STAT_0                                 0x0        0
+[  0x24c] GLBL_ERR_MASK_0                                 0x0        0
+[  0x250] GLBL_DSC_CFG_0                                  0x30       48
+[  0x254] GLBL_DSC_ERR_STS_0                              0x0        0
+[  0x258] GLBL_DSC_ERR_MSK_0                              0x0        0
+[  0x25c] GLBL_DSC_ERR_LOG_0                              0x0        0
+[  0x260] GLBL_DSC_ERR_LOG_1                              0x0        0
+[  0x264] GLBL_TRQ_ERR_STS_0                              0x2        2
+[  0x268] GLBL_TRQ_ERR_MSK_0                              0x0        0
+[  0x26c] GLBL_TRQ_ERR_LOG_0                              0xd028084  218267780
+[  0x270] GLBL_DSC_DBG_DAT_0                              0x0        0
+[  0x274] GLBL_DSC_DBG_DAT_1                              0x8080     32896
+[  0x27c] GLBL_DSC_ERR_LOG2_0                             0x0        0
+[  0x288] GLBL_INTERRUPT_CFG_0                            0x0        0
+[  0x400] TRQ_SEL_FMAP_0                                  0x0        0
+[  0x404] TRQ_SEL_FMAP_1                                  0x0        0
+[  0x408] TRQ_SEL_FMAP_2                                  0x0        0
+[  0x40c] TRQ_SEL_FMAP_3                                  0x0        0
+[  0x804] IND_CTXT_DATA_0                                 0x7a600057 2053111895
+[  0x808] IND_CTXT_DATA_1                                 0x3faeb00  66775808
+[  0x80c] IND_CTXT_DATA_2                                 0x0        0
+[  0x810] IND_CTXT_DATA_3                                 0x10000000 268435456
+[  0x814] IND_CTXT_DATA_4                                 0x2        2
+[  0x818] IND_CTXT_DATA_5                                 0x0        0
+[  0x81c] IND_CTXT_DATA_6                                 0x0        0
+[  0x820] IND_CTXT_DATA_7                                 0x0        0
+[  0x824] IND_CTXT_MASK_0                                 0xffffffff 4294967295
+[  0x828] IND_CTXT_MASK_1                                 0xffffffff 4294967295
+[  0x82c] IND_CTXT_MASK_2                                 0xffffffff 4294967295
+[  0x830] IND_CTXT_MASK_3                                 0xffffffff 4294967295
+[  0x834] IND_CTXT_MASK_4                                 0xffffffff 4294967295
+[  0x838] IND_CTXT_MASK_5                                 0xffffffff 4294967295
+[  0x83c] IND_CTXT_MASK_6                                 0xffffffff 4294967295
+[  0x840] IND_CTXT_MASK_7                                 0xffffffff 4294967295
+[  0x844] IND_CTXT_CMD_0                                  0x804c     32844
+[  0xa00] C2H_TIMER_CNT_0                                 0x1        1
+[  0xa04] C2H_TIMER_CNT_1                                 0x2        2
+[  0xa08] C2H_TIMER_CNT_2                                 0x4        4
+[  0xa0c] C2H_TIMER_CNT_3                                 0x5        5
+[  0xa10] C2H_TIMER_CNT_4                                 0x8        8
+[  0xa14] C2H_TIMER_CNT_5                                 0xa        10
+[  0xa18] C2H_TIMER_CNT_6                                 0xf        15
+[  0xa1c] C2H_TIMER_CNT_7                                 0x14       20
+[  0xa20] C2H_TIMER_CNT_8                                 0x19       25
+[  0xa24] C2H_TIMER_CNT_9                                 0x1e       30
+[  0xa28] C2H_TIMER_CNT_10                                0x32       50
+[  0xa2c] C2H_TIMER_CNT_11                                0x4b       75
+[  0xa30] C2H_TIMER_CNT_12                                0x64       100
+[  0xa34] C2H_TIMER_CNT_13                                0x7d       125
+[  0xa38] C2H_TIMER_CNT_14                                0x96       150
+[  0xa3c] C2H_TIMER_CNT_15                                0xc8       200
+[  0xa40] C2H_CNT_THRESH_0                                0x40       64
+[  0xa44] C2H_CNT_THRESH_1                                0x2        2
+[  0xa48] C2H_CNT_THRESH_2                                0x4        4
+[  0xa4c] C2H_CNT_THRESH_3                                0x8        8
+[  0xa50] C2H_CNT_THRESH_4                                0x10       16
+[  0xa54] C2H_CNT_THRESH_5                                0x18       24
+[  0xa58] C2H_CNT_THRESH_6                                0x20       32
+[  0xa5c] C2H_CNT_THRESH_7                                0x30       48
+[  0xa60] C2H_CNT_THRESH_8                                0x50       80
+[  0xa64] C2H_CNT_THRESH_9                                0x60       96
+[  0xa68] C2H_CNT_THRESH_10                               0x70       112
+[  0xa6c] C2H_CNT_THRESH_11                               0x80       128
+[  0xa70] C2H_CNT_THRESH_12                               0x90       144
+[  0xa74] C2H_CNT_THRESH_13                               0xa0       160
+[  0xa78] C2H_CNT_THRESH_14                               0xb0       176
+[  0xa7c] C2H_CNT_THRESH_15                               0xc0       192
+[  0xa88] C2H_STAT_S_AXIS_C2H_ACCEPTED_0                  0x0        0
+[  0xa8c] C2H_STAT_S_AXIS_CMPT_ACCEPTED_0                 0x0        0
+[  0xa90] C2H_STAT_DESC_RSP_PKT_ACCEPTED_0                0x0        0
+[  0xa94] C2H_STAT_AXIS_PKG_CMP_0                         0x0        0
+[  0xa98] C2H_STAT_DESC_RSP_ACCEPTED_0                    0x0        0
+[  0xa9c] C2H_STAT_DESC_RSP_CMP_0                         0x0        0
+[  0xaa0] C2H_STAT_WRQ_OUT_0                              0x0        0
+[  0xaa4] C2H_STAT_WPL_REN_ACCEPTED_0                     0x0        0
+[  0xaa8] C2H_STAT_TOTAL_WRQ_LEN_0                        0x0        0
+[  0xaac] C2H_STAT_TOTAL_WPL_LEN_0                        0x0        0
+[  0xab0] C2H_BUF_SZ_0                                    0x0        0
+[  0xab4] C2H_BUF_SZ_1                                    0x0        0
+[  0xab8] C2H_BUF_SZ_2                                    0x0        0
+[  0xabc] C2H_BUF_SZ_3                                    0x0        0
+[  0xac0] C2H_BUF_SZ_4                                    0x0        0
+[  0xac4] C2H_BUF_SZ_5                                    0x0        0
+[  0xac8] C2H_BUF_SZ_6                                    0x0        0
+[  0xacc] C2H_BUF_SZ_7                                    0x0        0
+[  0xad0] C2H_BUF_SZ_8                                    0x0        0
+[  0xad4] C2H_BUF_SZ_9                                    0x0        0
+[  0xad8] C2H_BUF_SZ_10                                   0x0        0
+[  0xadc] C2H_BUF_SZ_11                                   0x0        0
+[  0xae0] C2H_BUF_SZ_12                                   0x0        0
+[  0xae4] C2H_BUF_SZ_13                                   0x0        0
+[  0xae8] C2H_BUF_SZ_14                                   0x0        0
+[  0xaec] C2H_BUF_SZ_15                                   0x0        0
+[  0xaf0] C2H_ERR_STAT_0                                  0x0        0
+[  0xaf4] C2H_ERR_MASK_0                                  0x0        0
+[  0xaf8] C2H_FATAL_ERR_STAT_0                            0x0        0
+[  0xafc] C2H_FATAL_ERR_MASK_0                            0x0        0
+[  0xb00] C2H_FATAL_ERR_ENABLE_0                          0x0        0
+[  0xb04] GLBL_ERR_INT_0                                  0x0        0
+[  0xb08] C2H_PFCH_CFG_0                                  0x70f02010 1894785040
+[  0xb0c] C2H_INT_TIMER_TICK_0                            0x0        0
+[  0xb10] C2H_STAT_DESC_RSP_DROP_ACCEPTED_0               0x0        0
+[  0xb14] C2H_STAT_DESC_RSP_ERR_ACCEPTED_0                0x0        0
+[  0xb18] C2H_STAT_DESC_REQ_0                             0x0        0
+[  0xb1c] C2H_STAT_DEBUG_DMA_ENG_0                        0x0        0
+[  0xb20] C2H_STAT_DEBUG_DMA_ENG_1                        0x80000000 2147483648
+[  0xb24] C2H_STAT_DEBUG_DMA_ENG_2                        0xc0000000 3221225472
+[  0xb28] C2H_STAT_DEBUG_DMA_ENG_3                        0x0        0
+[  0xb2c] C2H_DBG_PFCH_ERR_CTXT_0                         0x0        0
+[  0xb30] C2H_FIRST_ERR_QID_0                             0x0        0
+[  0xb34] STAT_NUM_CMPT_IN_0                              0x0        0
+[  0xb38] STAT_NUM_CMPT_OUT_0                             0x0        0
+[  0xb3c] STAT_NUM_CMPT_DRP_0                             0x0        0
+[  0xb40] STAT_NUM_STAT_DESC_OUT_0                        0x0        0
+[  0xb44] STAT_NUM_DSC_CRDT_SENT_0                        0x0        0
+[  0xb48] STAT_NUM_FCH_DSC_RCVD_0                         0x0        0
+[  0xb4c] STAT_NUM_BYP_DSC_RCVD_0                         0x0        0
+[  0xb50] C2H_CMPT_COAL_CFG_0                             0x80050010 2147811344
+[  0xb54] C2H_INTR_H2C_REQ_0                              0x0        0
+[  0xb58] C2H_INTR_C2H_MM_REQ_0                           0x0        0
+[  0xb5c] C2H_INTR_ERR_INT_REQ_0                          0x0        0
+[  0xb60] C2H_INTR_C2H_ST_REQ_0                           0x0        0
+[  0xb64] C2H_INTR_H2C_ERR_MM_MSIX_ACK_0                  0x0        0
+[  0xb68] C2H_INTR_H2C_ERR_MM_MSIX_FAIL_0                 0x0        0
+[  0xb6c] C2H_INTR_H2C_ERR_MM_NO_MSIX_0                   0x0        0
+[  0xb70] C2H_INTR_H2C_ERR_MM_CTXT_INVAL_0                0x0        0
+[  0xb74] C2H_INTR_C2H_ST_MSIX_ACK_0                      0x0        0
+[  0xb78] C2H_INTR_C2H_ST_MSIX_FAIL_0                     0x0        0
+[  0xb7c] C2H_INTR_C2H_ST_NO_MSIX_0                       0x0        0
+[  0xb80] C2H_INTR_C2H_ST_CTXT_INVAL_0                    0x0        0
+[  0xb84] C2H_STAT_WR_CMP_0                               0x0        0
+[  0xb88] C2H_STAT_DEBUG_DMA_ENG_4_0                      0x40000000 1073741824
+[  0xb8c] C2H_STAT_DEBUG_DMA_ENG_5_0                      0x0        0
+[  0xb90] C2H_DBG_PFCH_QID_0                              0x0        0
+[  0xb94] C2H_DBG_PFCH_0                                  0x0        0
+[  0xb98] C2H_INT_DEBUG_0                                 0x0        0
+[  0xb9c] C2H_STAT_IMM_ACCEPTED_0                         0x0        0
+[  0xba0] C2H_STAT_MARKER_ACCEPTED_0                      0x0        0
+[  0xba4] C2H_STAT_DISABLE_CMP_ACCEPTED_0                 0x0        0
+[  0xba8] C2H_C2H_PAYLOAD_FIFO_CRDT_CNT_0                 0x0        0
+[  0xbac] C2H_INTR_DYN_REQ_0                              0x0        0
+[  0xbb0] C2H_INTR_DYN_MSIX_0                             0x0        0
+[  0xbb4] C2H_DROP_LEN_MISMATCH_0                         0x0        0
+[  0xbb8] C2H_DROP_DESC_RSP_LEN_0                         0x0        0
+[  0xbbc] C2H_DROP_QID_FIFO_LEN_0                         0x0        0
+[  0xbc0] C2H_DROP_PAYLOAD_CNT_0                          0x0        0
+[  0xbc4] QDMA_C2H_CMPT_FORMAT_0                          0x20001    131073
+[  0xbc8] QDMA_C2H_CMPT_FORMAT_1                          0x0        0
+[  0xbcc] QDMA_C2H_CMPT_FORMAT_2                          0x0        0
+[  0xbd0] QDMA_C2H_CMPT_FORMAT_3                          0x0        0
+[  0xbd4] QDMA_C2H_CMPT_FORMAT_4                          0x0        0
+[  0xbd8] QDMA_C2H_CMPT_FORMAT_5                          0x0        0
+[  0xbdc] QDMA_C2H_CMPT_FORMAT_6                          0x0        0
+[  0xbe0] C2H_PFCH_CACHE_DEPTH_0                          0x10       16
+[  0xbe4] C2H_CMPT_COAL_BUF_DEPTH_0                       0x20       32
+[  0xbe8] C2H_PFCH_CRDT_0                                 0x0        0
+[  0xe00] H2C_ERR_STAT_0                                  0x0        0
+[  0xe04] H2C_ERR_MASK_0                                  0x0        0
+[  0xe08] H2C_FIRST_ERR_QID_0                             0x0        0
+[  0xe0c] H2C_DBG_REG_0                                   0x0        0
+[  0xe10] H2C_DBG_REG_1                                   0x0        0
+[  0xe14] H2C_DBG_REG_2                                   0x0        0
+[  0xe18] H2C_DBG_REG_3                                   0x44008025 1140883493
+[  0xe1c] H2C_DBG_REG_4                                   0x0        0
+[  0xe20] H2C_FATAL_ERR_EN_0                              0x0        0
+[  0xe24] H2C_REQ_THROT_0                                 0x2008000  33587200
+[  0xe28] H2C_ALN_DBG_REG0_0                              0x0        0
+[ 0x1004] C2H_MM_CONTROL_0                                0x0        0
+[ 0x1008] C2H_MM_CONTROL_1                                0x0        0
+[ 0x100c] C2H_MM_CONTROL_2                                0x0        0
+[ 0x1040] C2H_MM_STATUS_0                                 0x0        0
+[ 0x1044] C2H_MM_STATUS_1                                 0x0        0
+[ 0x1048] C2H_MM_CMPL_DSC_CNT_0                           0x0        0
+[ 0x1054] C2H_MM_ERR_CODE_EN_MASK_0                       0x0        0
+[ 0x1058] C2H_MM_ERR_CODE_0                               0x0        0
+[ 0x105c] C2H_MM_ERR_INFO_0                               0x0        0
+[ 0x10c0] C2H_MM_PERF_MON_CTRL_0                          0x0        0
+[ 0x10c4] C2H_MM_PERF_MON_CY_CNT_0                        0x0        0
+[ 0x10c8] C2H_MM_PERF_MON_CY_CNT_1                        0x0        0
+[ 0x10cc] C2H_MM_PERF_MON_DATA_CNT_0                      0x0        0
+[ 0x10d0] C2H_MM_PERF_MON_DATA_CNT_1                      0x0        0
+[ 0x10e8] C2H_MM_DBG_INFO_0                               0x10002    65538
+[ 0x10ec] C2H_MM_DBG_INFO_1                               0x0        0
+[ 0x1204] H2C_MM_CONTROL_0                                0x0        0
+[ 0x1208] H2C_MM_CONTROL_1                                0x0        0
+[ 0x120c] H2C_MM_CONTROL_2                                0x0        0
+[ 0x1240] H2C_MM_STATUS_0                                 0x0        0
+[ 0x1248] H2C_MM_CMPL_DSC_CNT_0                           0x0        0
+[ 0x1254] H2C_MM_ERR_CODE_EN_MASK_0                       0x0        0
+[ 0x1258] H2C_MM_ERR_CODE_0                               0x0        0
+[ 0x125c] H2C_MM_ERR_INFO_0                               0x0        0
+[ 0x12c0] H2C_MM_PERF_MON_CTRL_0                          0x0        0
+[ 0x12c4] H2C_MM_PERF_MON_CY_CNT_0                        0x0        0
+[ 0x12c8] H2C_MM_PERF_MON_CY_CNT_1                        0x0        0
+[ 0x12cc] H2C_MM_PERF_MON_DATA_CNT_0                      0x0        0
+[ 0x12d0] H2C_MM_PERF_MON_DATA_CNT_1                      0x0        0
+[ 0x12e8] H2C_MM_DBG_INFO_0                               0x10002    65538
+[ 0x12ec] H2C_MM_REQ_THROT_0                              0x8000     32768
 </pre></div>
 </div>
 </div>
 <div class="section" id="qep-config">
-<h2>QEP Config<a class="headerlink" href="#qep-config" title="Permalink to this headline">¶</a></h2>
+<span id="id3"></span><h2>QEP Config<a class="headerlink" href="#qep-config" title="Permalink to this headline">¶</a></h2>
 <p>This file provides information of QEP driver configuration modes.</p>
 <p>Command:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/qep_config
+<div class="highlight-none notranslate"><div class="highlight"><pre># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/qep_config
+</pre></div>
+</div>
+<p>Sample Output:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>rs_fec_en           = 1
+num_rx_queues       = 32
+num_tx_queues       = 32
+num_msix            = 32
+rx_desc_rng_sz_idx  = 6
+rx_desc_rng_sz      = 512
+tx_desc_rng_sz_idx  = 6
+tx_desc_rng_sz      = 512
+rx_buf_sz_idx       = 0
+rx_buf_sz           = 4096
+cmpl_rng_sz_idx     = 6
+cmpl_rng_sz         = 512
+rx_int_cnt          = 7
+tx_int_cnt          = 8
+rx_napi_cnt         = 1
 </pre></div>
 </div>
 </div>
 <div class="section" id="queues">
-<h2>Queues<a class="headerlink" href="#queues" title="Permalink to this headline">¶</a></h2>
+<span id="id4"></span><h2>Queues<a class="headerlink" href="#queues" title="Permalink to this headline">¶</a></h2>
 <p>This directory tree is dynamic and populates following files corresponding to C2H, H2C and CMPT queue, up to max number of configured queues.</p>
 <ul class="simple">
 <li>cntxt: Software and Hardware Context of queue</li>
@@ -230,34 +623,910 @@ For every QEP ethernet device detected, a filesystem tree is populated with dire
 <li>info: Queue info</li>
 </ul>
 <p>Command:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/queues/0/c2h/info
+<div class="highlight-none notranslate"><div class="highlight"><pre># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/queues/0/c2h/cntxt
+</pre></div>
+</div>
+<p>Sample Output:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>SOFTWARE CTXT:
+    Interrupt Aggregation                           0x0        0
+    Interrupt Vector                                0x0        0
+    Descriptor Ring Base Addr (High)                0x0        0
+    Descriptor Ring Base Addr (Low)                 0x0        0
+    Is Memory Mapped                                0x0        0
+    Marker Disable                                  0x0        0
+    IRQ Request                                     0x0        0
+    Writeback Error Sent                            0x0        0
+    Error                                           0x0        0
+    Interrupt No Last                               0x0        0
+    Port Id                                         0x0        0
+    Interrupt Enable                                0x0        0
+    Writeback Enable                                0x0        0
+    MM Channel                                      0x0        0
+    Bypass Enable                                   0x0        0
+    Descriptor Size                                 0x0        0
+    Ring Size                                       0x0        0
+    Fetch Max                                       0x0        0
+    Address Translation                             0x0        0
+    Write back/Intr Interval                        0x0        0
+    Write back/Intr Check                           0x0        0
+    Fetch Credit Enable                             0x0        0
+    Queue Enable                                    0x0        0
+    Function Id                                     0x0        0
+    IRQ Arm                                         0x0        0
+    PIDX                                            0x0        0
+
+HARDWARE CTXT:
+    Fetch Pending                                   0x0        0
+    Eviction Pending                                0x0        0
+    Queue Invalid No Desc Pending                   0x0        0
+    Descriptors Pending                             0x0        0
+    Credits Consumed                                0x0        0
+    CIDX                                            0x0        0
+
+CREDIT CTXT:
+    Credit                                          0x0        0
+
+PREFETCH CTXT:
+    Valid                                           0x1        1
+    Software Credit                                 0x0        0
+    In Prefetch                                     0x0        0
+    Prefetch Enable                                 0x0        0
+    Error                                           0x0        0
+    Port Id                                         0x0        0
+    Buffer Size Index                               0x0        0
+    Bypass                                          0x1        1
+</pre></div>
+</div>
+<p>Command:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/queues/0/c2h/desc
+</pre></div>
+</div>
+<p>Sample Output:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>qdma&lt;BDF&gt; C2H online
+0: 0x000000006aa1f187 fd6a8000 00000000 fl pg 0x0000000071455f1a, 0xfd6a8000.
+1: 0x00000000b7d618da febb1000 00000000 fl pg 0x0000000028483ae2, 0xfebb1000.
+2: 0x00000000a0f9bf20 febb2000 00000000 fl pg 0x00000000d5e084cf, 0xfebb2000.
+3: 0x000000008918eec6 febb3000 00000000 fl pg 0x00000000caf8e96b, 0xfebb3000.
+4: 0x00000000741948e4 febb4000 00000000 fl pg 0x00000000b31af22d, 0xfebb4000.
+5: 0x000000004d1b5523 febb5000 00000000 fl pg 0x00000000356c6bbc, 0xfebb5000.
+6: 0x000000008788ce59 febb6000 00000000 fl pg 0x00000000a50cfdc1, 0xfebb6000.
+7: 0x00000000b2aa835a febb7000 00000000 fl pg 0x00000000404dcc75, 0xfebb7000.
+8: 0x00000000d129951d febb8000 00000000 fl pg 0x000000006173829b, 0xfebb8000.
+9: 0x00000000232b0fd2 febb9000 00000000 fl pg 0x0000000075f482f7, 0xfebb9000.
+10: 0x0000000071e37a26 febba000 00000000 fl pg 0x00000000fdaf0e1d, 0xfebba000.
+11: 0x0000000057c39ec0 febbb000 00000000 fl pg 0x000000008d30a629, 0xfebbb000.
+12: 0x00000000510527e1 febbc000 00000000 fl pg 0x000000008b2579c9, 0xfebbc000.
+13: 0x00000000173256c3 febbd000 00000000 fl pg 0x00000000e74d9680, 0xfebbd000.
+14: 0x000000000bfc6f23 febbe000 00000000 fl pg 0x00000000043175f7, 0xfebbe000.
+15: 0x0000000011d89b1f febbf000 00000000 fl pg 0x00000000cf880570, 0xfebbf000.
+16: 0x00000000468878c6 febc0000 00000000 fl pg 0x00000000705ca1b3, 0xfebc0000.
+17: 0x000000003d18c38d febc1000 00000000 fl pg 0x0000000026c30f03, 0xfebc1000.
+18: 0x0000000071fa88d6 febc2000 00000000 fl pg 0x000000007ce83fbb, 0xfebc2000.
+19: 0x000000007e310128 febc3000 00000000 fl pg 0x00000000dc135311, 0xfebc3000.
+20: 0x00000000e9e0a082 febc4000 00000000 fl pg 0x00000000154daf72, 0xfebc4000.
+21: 0x000000002861bb6a febc5000 00000000 fl pg 0x00000000f0d1d24b, 0xfebc5000.
+22: 0x0000000023ecf4ad febc6000 00000000 fl pg 0x00000000ed52f163, 0xfebc6000.
+23: 0x000000006f9f9fc5 febc7000 00000000 fl pg 0x00000000dcbe0a81, 0xfebc7000.
+24: 0x00000000486aee6b febc8000 00000000 fl pg 0x0000000029b2b828, 0xfebc8000.
+25: 0x0000000061d63939 febc9000 00000000 fl pg 0x000000006e1c0974, 0xfebc9000.
+26: 0x00000000c3fd73b0 febca000 00000000 fl pg 0x00000000132d889e, 0xfebca000.
+27: 0x000000006b3991a5 febcb000 00000000 fl pg 0x000000001a393d1f, 0xfebcb000.
+28: 0x00000000af9e465f febcc000 00000000 fl pg 0x00000000248a76b4, 0xfebcc000.
+29: 0x00000000a21b2950 febcd000 00000000 fl pg 0x00000000f472b488, 0xfebcd000.
+30: 0x0000000033684e7c fec74000 00000000 fl pg 0x000000002b1f23ae, 0xfec74000.
+31: 0x00000000e92fe51c fed1a000 00000000 fl pg 0x00000000973ff4b5, 0xfed1a000.
+32: 0x00000000a397aa82 fef5e000 00000000 fl pg 0x000000007cbac437, 0xfef5e000.
+33: 0x000000009c596917 ffefe000 00000000 fl pg 0x000000003ea2a6c1, 0xffefe000.
+34: 0x00000000cf6e9280 ffeff000 00000000 fl pg 0x00000000eafa20c1, 0xffeff000.
+35: 0x0000000076a2580f fff00000 00000000 fl pg 0x00000000781c7b8c, 0xfff00000.
+36: 0x00000000867fd055 fff01000 00000000 fl pg 0x0000000029c1c738, 0xfff01000.
+37: 0x000000003bf610a8 fff02000 00000000 fl pg 0x00000000c1749cb3, 0xfff02000.
+38: 0x0000000036926e55 fff03000 00000000 fl pg 0x0000000023aaf292, 0xfff03000.
+39: 0x00000000035de23a fff04000 00000000 fl pg 0x00000000e50a6602, 0xfff04000.
+40: 0x00000000cab86967 fff05000 00000000 fl pg 0x000000009b1f0eb7, 0xfff05000.
+41: 0x000000005a199f9b fff06000 00000000 fl pg 0x000000006061dea5, 0xfff06000.
+42: 0x00000000da8e43d1 fff07000 00000000 fl pg 0x000000008f3a9169, 0xfff07000.
+43: 0x00000000bac48ba0 fff08000 00000000 fl pg 0x0000000088e74184, 0xfff08000.
+44: 0x00000000dc4e11de fff09000 00000000 fl pg 0x0000000060215acf, 0xfff09000.
+45: 0x000000009d1ff27b fff0a000 00000000 fl pg 0x00000000d300d0d6, 0xfff0a000.
+46: 0x00000000fbcd1956 fff0b000 00000000 fl pg 0x00000000de232461, 0xfff0b000.
+47: 0x000000004044ad81 fff0c000 00000000 fl pg 0x000000004edaae89, 0xfff0c000.
+48: 0x00000000acebdd16 fff0d000 00000000 fl pg 0x00000000b348b0a6, 0xfff0d000.
+49: 0x0000000043754f12 fff0e000 00000000 fl pg 0x00000000422249ae, 0xfff0e000.
+50: 0x00000000c4de7a69 fff0f000 00000000 fl pg 0x0000000037e81e66, 0xfff0f000.
+51: 0x0000000007036988 fff10000 00000000 fl pg 0x00000000e3e51208, 0xfff10000.
+52: 0x00000000aaaed1b5 fff11000 00000000 fl pg 0x000000002e9348dc, 0xfff11000.
+53: 0x00000000e3554df9 fff12000 00000000 fl pg 0x00000000258912ad, 0xfff12000.
+54: 0x00000000f51eeccd fff13000 00000000 fl pg 0x00000000f88209b5, 0xfff13000.
+55: 0x00000000fb2ee4f6 fff14000 00000000 fl pg 0x00000000d741a392, 0xfff14000.
+56: 0x00000000f023891e fff15000 00000000 fl pg 0x000000007f416543, 0xfff15000.
+57: 0x000000002edb61da fff16000 00000000 fl pg 0x0000000034eae13e, 0xfff16000.
+58: 0x000000006bba4b41 fff17000 00000000 fl pg 0x00000000c67f2751, 0xfff17000.
+59: 0x00000000c5f32af6 fff18000 00000000 fl pg 0x00000000ee0b1f61, 0xfff18000.
+60: 0x000000004a84f72d fff19000 00000000 fl pg 0x000000007ba5234c, 0xfff19000.
+61: 0x00000000a2f5f16f fff1a000 00000000 fl pg 0x00000000b472b88f, 0xfff1a000.
+62: 0x00000000bf95d2d1 fff1b000 00000000 fl pg 0x00000000022e6c38, 0xfff1b000.
+63: 0x000000003fee78c0 fff1c000 00000000 fl pg 0x00000000fda1005d, 0xfff1c000.
+64: 0x000000005b0328b2 fff1d000 00000000 fl pg 0x00000000adc12620, 0xfff1d000.
+65: 0x000000008fbb7e62 fff1e000 00000000 fl pg 0x00000000ddcb4d12, 0xfff1e000.
+66: 0x00000000989804ae fff1f000 00000000 fl pg 0x0000000046695846, 0xfff1f000.
+67: 0x00000000f5112c09 fff20000 00000000 fl pg 0x00000000e4bda50e, 0xfff20000.
+68: 0x0000000065c2c93c fff21000 00000000 fl pg 0x00000000adfd647e, 0xfff21000.
+69: 0x000000008ae36288 fff22000 00000000 fl pg 0x000000000aecec83, 0xfff22000.
+70: 0x000000004145b1dc fff23000 00000000 fl pg 0x00000000bb5e6c61, 0xfff23000.
+71: 0x000000007893e92e fff24000 00000000 fl pg 0x00000000d57cfd5e, 0xfff24000.
+72: 0x00000000551df4ec fff25000 00000000 fl pg 0x00000000bb5490dd, 0xfff25000.
+73: 0x000000004ea255fc fff26000 00000000 fl pg 0x00000000fd1571f6, 0xfff26000.
+74: 0x00000000ebf399d2 fff27000 00000000 fl pg 0x00000000c4a92d2c, 0xfff27000.
+75: 0x0000000008d4d451 fff28000 00000000 fl pg 0x000000000cfdca51, 0xfff28000.
+76: 0x000000000479a516 fff29000 00000000 fl pg 0x0000000091fd540d, 0xfff29000.
+77: 0x00000000f6ab14f1 fff2a000 00000000 fl pg 0x000000008db0b0f0, 0xfff2a000.
+78: 0x000000009d0dab41 fff2b000 00000000 fl pg 0x000000003ed08887, 0xfff2b000.
+79: 0x000000001fb712d3 fff2c000 00000000 fl pg 0x00000000ee528bea, 0xfff2c000.
+80: 0x000000007f017761 fff2d000 00000000 fl pg 0x00000000e869edbb, 0xfff2d000.
+81: 0x000000000208e883 fff2e000 00000000 fl pg 0x000000004595663f, 0xfff2e000.
+82: 0x0000000074068f87 fff2f000 00000000 fl pg 0x000000009ff48fc9, 0xfff2f000.
+83: 0x000000003871b663 fff30000 00000000 fl pg 0x00000000bfaedac4, 0xfff30000.
+84: 0x000000000e348245 fff31000 00000000 fl pg 0x000000000abeab86, 0xfff31000.
+85: 0x00000000fac3cea8 fff32000 00000000 fl pg 0x00000000221dc88f, 0xfff32000.
+86: 0x00000000f7ce9dc8 fff33000 00000000 fl pg 0x00000000592edf92, 0xfff33000.
+87: 0x000000005abfedb3 fff34000 00000000 fl pg 0x000000001a3ef255, 0xfff34000.
+88: 0x000000000906b006 fff35000 00000000 fl pg 0x0000000053c47172, 0xfff35000.
+89: 0x0000000037ba01d5 fff36000 00000000 fl pg 0x000000009d69968e, 0xfff36000.
+90: 0x00000000d3d6a458 fff37000 00000000 fl pg 0x0000000025207cd0, 0xfff37000.
+91: 0x0000000036c177f3 fff38000 00000000 fl pg 0x00000000a52b2172, 0xfff38000.
+92: 0x000000009c951621 fff39000 00000000 fl pg 0x0000000041501f5e, 0xfff39000.
+93: 0x00000000a35a7edc fff3a000 00000000 fl pg 0x00000000edb2d272, 0xfff3a000.
+94: 0x000000001e09c6f1 fff3b000 00000000 fl pg 0x00000000bfd503c8, 0xfff3b000.
+95: 0x00000000e2ef2d95 fff3c000 00000000 fl pg 0x00000000f4a81278, 0xfff3c000.
+96: 0x000000000816697e fff3d000 00000000 fl pg 0x00000000642ee081, 0xfff3d000.
+97: 0x00000000d33f977d fff3e000 00000000 fl pg 0x00000000bf934ead, 0xfff3e000.
+98: 0x00000000087ccbcd fff3f000 00000000 fl pg 0x000000006831547b, 0xfff3f000.
+99: 0x0000000045f44140 fff40000 00000000 fl pg 0x00000000d2d25992, 0xfff40000.
+100: 0x0000000050271f34 fff41000 00000000 fl pg 0x00000000af409bd4, 0xfff41000.
+101: 0x00000000d07db9bc fff42000 00000000 fl pg 0x00000000327c99a2, 0xfff42000.
+102: 0x00000000a3b929ed fff43000 00000000 fl pg 0x000000007b85f24c, 0xfff43000.
+103: 0x000000009ea2b450 fff44000 00000000 fl pg 0x00000000ee4a39ee, 0xfff44000.
+104: 0x00000000b69b29d0 fff45000 00000000 fl pg 0x000000005cbe4c0f, 0xfff45000.
+105: 0x0000000009e9ef65 fff46000 00000000 fl pg 0x000000006abf75ec, 0xfff46000.
+106: 0x0000000083927409 fff47000 00000000 fl pg 0x00000000262afe2e, 0xfff47000.
+107: 0x00000000010f6680 fff48000 00000000 fl pg 0x0000000079608f1d, 0xfff48000.
+108: 0x0000000095bcf7ec fff49000 00000000 fl pg 0x000000007c0e4deb, 0xfff49000.
+109: 0x0000000074cde63c fff4a000 00000000 fl pg 0x00000000c24e26ef, 0xfff4a000.
+110: 0x000000001a4bc2ce fff4b000 00000000 fl pg 0x00000000c8cb76c3, 0xfff4b000.
+111: 0x00000000a1b2de10 fff4c000 00000000 fl pg 0x00000000389e56ed, 0xfff4c000.
+112: 0x000000008a6b2623 fff4d000 00000000 fl pg 0x000000007f3b2e7d, 0xfff4d000.
+113: 0x00000000f58f1a09 fff4e000 00000000 fl pg 0x00000000d38b722c, 0xfff4e000.
+114: 0x000000009cd5971e fff4f000 00000000 fl pg 0x0000000009164fc5, 0xfff4f000.
+115: 0x00000000b5e08387 fff50000 00000000 fl pg 0x000000003e1d9ef0, 0xfff50000.
+116: 0x000000004ef66b48 fff51000 00000000 fl pg 0x000000008e6d003e, 0xfff51000.
+117: 0x00000000d40f4180 fff52000 00000000 fl pg 0x000000004b38cf50, 0xfff52000.
+118: 0x000000002d7168b4 fff53000 00000000 fl pg 0x000000002d3f0e7f, 0xfff53000.
+119: 0x0000000092330a30 fff54000 00000000 fl pg 0x000000006541fc71, 0xfff54000.
+120: 0x0000000089fdfe56 fff55000 00000000 fl pg 0x0000000079178c2d, 0xfff55000.
+121: 0x000000003a9c6fb2 fff56000 00000000 fl pg 0x00000000f5a3bf80, 0xfff56000.
+122: 0x00000000cc18f5f5 fff57000 00000000 fl pg 0x0000000061eec35c, 0xfff57000.
+123: 0x00000000e3581293 fff58000 00000000 fl pg 0x00000000547c04d1, 0xfff58000.
+124: 0x00000000642da53e fff59000 00000000 fl pg 0x000000008304295a, 0xfff59000.
+125: 0x000000002d65f709 fff5a000 00000000 fl pg 0x0000000023edaf82, 0xfff5a000.
+126: 0x000000004e98fb7e fff5b000 00000000 fl pg 0x0000000067909d3c, 0xfff5b000.
+127: 0x00000000cbabb291 fbd73000 00000000 fl pg 0x000000001c8a090f, 0xfbd73000.
+128: 0x00000000459c8935 fefe2000 00000000 fl pg 0x000000008b699f2e, 0xfefe2000.
+129: 0x000000008e5f15e0 fefdd000 00000000 fl pg 0x00000000cda946ac, 0xfefdd000.
+130: 0x000000004011d957 fefdc000 00000000 fl pg 0x0000000076f16fdb, 0xfefdc000.
+131: 0x00000000922ee251 fefdb000 00000000 fl pg 0x000000007a0b1648, 0xfefdb000.
+132: 0x000000004a356395 fefda000 00000000 fl pg 0x00000000d0053b87, 0xfefda000.
+133: 0x0000000056821382 fefd9000 00000000 fl pg 0x00000000e0ec958d, 0xfefd9000.
+134: 0x00000000577372b6 fefd8000 00000000 fl pg 0x00000000dd7f997e, 0xfefd8000.
+135: 0x00000000b2689929 fefd7000 00000000 fl pg 0x0000000085e1c070, 0xfefd7000.
+136: 0x000000005b837793 fefd6000 00000000 fl pg 0x000000005dc7406a, 0xfefd6000.
+137: 0x0000000007ebc1b0 fefd5000 00000000 fl pg 0x00000000291d4108, 0xfefd5000.
+138: 0x0000000075fabeb4 fefd4000 00000000 fl pg 0x00000000ea78f332, 0xfefd4000.
+139: 0x000000002a815696 fefd3000 00000000 fl pg 0x00000000f2dc6daa, 0xfefd3000.
+140: 0x000000003c537573 fefd2000 00000000 fl pg 0x000000001786fb40, 0xfefd2000.
+141: 0x0000000034e14392 fefd1000 00000000 fl pg 0x0000000002de665d, 0xfefd1000.
+142: 0x000000005745d53d fefd0000 00000000 fl pg 0x0000000026600f82, 0xfefd0000.
+143: 0x000000000be87243 fefcf000 00000000 fl pg 0x000000008d0631c7, 0xfefcf000.
+144: 0x00000000bf5ef83c fefce000 00000000 fl pg 0x00000000249d38d5, 0xfefce000.
+145: 0x00000000f76cdb60 fefcd000 00000000 fl pg 0x000000007c2103a5, 0xfefcd000.
+146: 0x000000003e985285 fefcc000 00000000 fl pg 0x000000003e14beed, 0xfefcc000.
+147: 0x000000007e2ea469 fefcb000 00000000 fl pg 0x00000000d5d919b4, 0xfefcb000.
+148: 0x000000001c7cd2d4 fefca000 00000000 fl pg 0x00000000b909497c, 0xfefca000.
+149: 0x000000009e1dcb23 fefc9000 00000000 fl pg 0x000000008965a177, 0xfefc9000.
+150: 0x00000000efbf001e fefc8000 00000000 fl pg 0x000000008907f011, 0xfefc8000.
+151: 0x00000000c1de3d8f fefc7000 00000000 fl pg 0x00000000336775ae, 0xfefc7000.
+152: 0x0000000095b7bd41 fefc6000 00000000 fl pg 0x00000000f41c9bfd, 0xfefc6000.
+153: 0x000000009d0f8583 fefc5000 00000000 fl pg 0x0000000003abeb3d, 0xfefc5000.
+154: 0x000000008fb77c91 fefc4000 00000000 fl pg 0x00000000b9803ec3, 0xfefc4000.
+155: 0x00000000b77494c6 fefc3000 00000000 fl pg 0x000000006398a580, 0xfefc3000.
+156: 0x000000008476ed24 fefc2000 00000000 fl pg 0x00000000ab6d1241, 0xfefc2000.
+157: 0x00000000f6fdba4e fefc1000 00000000 fl pg 0x000000005e9e7565, 0xfefc1000.
+158: 0x00000000a4f94945 fefc0000 00000000 fl pg 0x00000000c25a7d53, 0xfefc0000.
+159: 0x00000000e6c9c254 fefbf000 00000000 fl pg 0x00000000c8261f15, 0xfefbf000.
+160: 0x000000008417abc2 fefbe000 00000000 fl pg 0x00000000c03fb7df, 0xfefbe000.
+161: 0x000000000d1fd371 fefbd000 00000000 fl pg 0x00000000d0905a78, 0xfefbd000.
+162: 0x000000004eeb8353 fefbc000 00000000 fl pg 0x00000000d2722ac9, 0xfefbc000.
+163: 0x00000000ad6c7a3a fefbb000 00000000 fl pg 0x000000004636ee0b, 0xfefbb000.
+164: 0x000000003b5dce1d fefba000 00000000 fl pg 0x00000000cdc2d8ee, 0xfefba000.
+165: 0x00000000eedc01d4 fefb9000 00000000 fl pg 0x00000000bebbfa9a, 0xfefb9000.
+166: 0x00000000462335c9 fefb8000 00000000 fl pg 0x00000000b5e75a59, 0xfefb8000.
+167: 0x00000000c0bc5496 fefb7000 00000000 fl pg 0x00000000b7e2704d, 0xfefb7000.
+168: 0x00000000e8650713 fefb6000 00000000 fl pg 0x000000005f02c49f, 0xfefb6000.
+169: 0x000000003701c63c fefb5000 00000000 fl pg 0x000000005daab0a2, 0xfefb5000.
+170: 0x00000000a346194a fefb4000 00000000 fl pg 0x00000000cdcd7cd1, 0xfefb4000.
+171: 0x00000000a56af157 fefb3000 00000000 fl pg 0x0000000032b3a2f3, 0xfefb3000.
+172: 0x00000000f401ca68 fefb2000 00000000 fl pg 0x000000002961eca0, 0xfefb2000.
+173: 0x000000001ee0469a fefb1000 00000000 fl pg 0x0000000056b56253, 0xfefb1000.
+174: 0x00000000bcd5ddc1 fefb0000 00000000 fl pg 0x0000000025ec4c4f, 0xfefb0000.
+175: 0x000000001845f474 fefaf000 00000000 fl pg 0x0000000068867bd6, 0xfefaf000.
+176: 0x000000004dfd3162 fefae000 00000000 fl pg 0x000000003ae2cd59, 0xfefae000.
+177: 0x00000000033ec682 fefad000 00000000 fl pg 0x00000000321d81be, 0xfefad000.
+178: 0x000000004c1122c3 fefac000 00000000 fl pg 0x0000000052d718dd, 0xfefac000.
+179: 0x00000000f278cef8 fefab000 00000000 fl pg 0x00000000caf24191, 0xfefab000.
+180: 0x0000000096999c57 fefaa000 00000000 fl pg 0x0000000030e7e5c4, 0xfefaa000.
+181: 0x00000000d16d68ef fefa9000 00000000 fl pg 0x0000000073624514, 0xfefa9000.
+182: 0x00000000519cc4cb fefa8000 00000000 fl pg 0x000000003cb905b4, 0xfefa8000.
+183: 0x00000000c8e93f24 fefa7000 00000000 fl pg 0x00000000fd1f73e2, 0xfefa7000.
+184: 0x000000000db79799 fefa6000 00000000 fl pg 0x000000005c953d1f, 0xfefa6000.
+185: 0x000000008bbfc774 fefa5000 00000000 fl pg 0x00000000fe499e8c, 0xfefa5000.
+186: 0x000000009f6e14fb fefa4000 00000000 fl pg 0x00000000a18d17f8, 0xfefa4000.
+187: 0x000000001eaf2bd1 fefa3000 00000000 fl pg 0x000000000b64d9ce, 0xfefa3000.
+188: 0x00000000d6056110 fefa2000 00000000 fl pg 0x0000000054d2e261, 0xfefa2000.
+189: 0x0000000028e5276c fefa1000 00000000 fl pg 0x000000008d53b30f, 0xfefa1000.
+190: 0x00000000d3b6ded9 fefa0000 00000000 fl pg 0x00000000313b02ca, 0xfefa0000.
+191: 0x00000000f79a40df fef9f000 00000000 fl pg 0x00000000ae276382, 0xfef9f000.
+192: 0x000000004a8bdc42 fef9e000 00000000 fl pg 0x000000000b0b58a7, 0xfef9e000.
+193: 0x00000000a3b564d2 fef9d000 00000000 fl pg 0x000000009f4b3c3d, 0xfef9d000.
+194: 0x00000000a3b6d9de fef9c000 00000000 fl pg 0x0000000085537bd5, 0xfef9c000.
+195: 0x00000000151e9de7 fef9b000 00000000 fl pg 0x00000000683e76d7, 0xfef9b000.
+196: 0x00000000b92070df fef9a000 00000000 fl pg 0x00000000b1aa0334, 0xfef9a000.
+197: 0x000000009afbdc17 fef99000 00000000 fl pg 0x0000000019befe40, 0xfef99000.
+198: 0x000000005e5fa87a fef98000 00000000 fl pg 0x00000000423f859b, 0xfef98000.
+199: 0x00000000d23f2107 fef97000 00000000 fl pg 0x00000000e00a58f0, 0xfef97000.
+200: 0x0000000062098e48 fef96000 00000000 fl pg 0x000000001248bf05, 0xfef96000.
+201: 0x00000000378a3162 fef95000 00000000 fl pg 0x0000000010b223e0, 0xfef95000.
+202: 0x000000003f7db279 fef94000 00000000 fl pg 0x0000000040d512ed, 0xfef94000.
+203: 0x00000000c6a4ad52 fef93000 00000000 fl pg 0x000000000e4a0bc4, 0xfef93000.
+204: 0x000000008b03ab96 fef92000 00000000 fl pg 0x000000001071ef96, 0xfef92000.
+205: 0x0000000038268294 fef91000 00000000 fl pg 0x00000000c54cb066, 0xfef91000.
+206: 0x0000000072da0dd2 fef90000 00000000 fl pg 0x00000000c7a4b78e, 0xfef90000.
+207: 0x00000000a22b2826 fef8f000 00000000 fl pg 0x00000000218c3d30, 0xfef8f000.
+208: 0x00000000272cf153 fef8e000 00000000 fl pg 0x000000009872caa1, 0xfef8e000.
+209: 0x0000000011474a45 fef8d000 00000000 fl pg 0x00000000cf81392a, 0xfef8d000.
+210: 0x0000000012a6d1aa fef8c000 00000000 fl pg 0x0000000050c35a32, 0xfef8c000.
+211: 0x000000009f2f9926 fef8b000 00000000 fl pg 0x0000000013a14adc, 0xfef8b000.
+212: 0x000000004ffdf93c fef8a000 00000000 fl pg 0x00000000dfeafb34, 0xfef8a000.
+213: 0x0000000042879d6d fef89000 00000000 fl pg 0x000000004833376b, 0xfef89000.
+214: 0x0000000004cfd9c2 fef88000 00000000 fl pg 0x00000000cda1ef4a, 0xfef88000.
+215: 0x000000004b4391d0 fef87000 00000000 fl pg 0x00000000ad93cb98, 0xfef87000.
+216: 0x00000000ea6c7040 fef86000 00000000 fl pg 0x000000009ab25b95, 0xfef86000.
+217: 0x00000000015c62f9 fef85000 00000000 fl pg 0x0000000066a4b0ff, 0xfef85000.
+218: 0x000000006c07b5a0 fef84000 00000000 fl pg 0x00000000638e2f79, 0xfef84000.
+219: 0x00000000b8bf8f84 fef83000 00000000 fl pg 0x00000000d7a9ac2b, 0xfef83000.
+220: 0x0000000020db9179 fef82000 00000000 fl pg 0x00000000bbb27430, 0xfef82000.
+221: 0x00000000397f8e23 fef81000 00000000 fl pg 0x0000000052d87b72, 0xfef81000.
+222: 0x00000000f8087f74 fef80000 00000000 fl pg 0x0000000060ca3983, 0xfef80000.
+223: 0x00000000776fcf37 fef7f000 00000000 fl pg 0x00000000b026abbc, 0xfef7f000.
+224: 0x000000002e6393f4 fef7e000 00000000 fl pg 0x00000000951a2811, 0xfef7e000.
+225: 0x0000000048b6e062 fef7d000 00000000 fl pg 0x00000000b5ea442f, 0xfef7d000.
+226: 0x0000000026499a36 fef7c000 00000000 fl pg 0x00000000354f0317, 0xfef7c000.
+227: 0x000000005f968ddc fef7b000 00000000 fl pg 0x0000000097e15fdb, 0xfef7b000.
+228: 0x000000004e20a040 fef7a000 00000000 fl pg 0x00000000abcdb337, 0xfef7a000.
+229: 0x0000000023995422 fef79000 00000000 fl pg 0x0000000023318420, 0xfef79000.
+230: 0x00000000a7d10dbc fef78000 00000000 fl pg 0x00000000d519faeb, 0xfef78000.
+231: 0x000000007a4a2ffe fef77000 00000000 fl pg 0x00000000b469f9b7, 0xfef77000.
+232: 0x00000000afcf0c8f fef76000 00000000 fl pg 0x0000000024a32e0d, 0xfef76000.
+233: 0x00000000709610e5 fef75000 00000000 fl pg 0x000000001e411836, 0xfef75000.
+234: 0x0000000055e69ea0 fef74000 00000000 fl pg 0x00000000a3927249, 0xfef74000.
+235: 0x0000000034ba757f fef73000 00000000 fl pg 0x00000000edb22b17, 0xfef73000.
+236: 0x00000000bed2703b fef72000 00000000 fl pg 0x0000000024217615, 0xfef72000.
+237: 0x000000005c84f74d fef71000 00000000 fl pg 0x0000000002c68aff, 0xfef71000.
+238: 0x0000000058c62a0e fef70000 00000000 fl pg 0x00000000dfb6a039, 0xfef70000.
+239: 0x00000000aaf4cdfd fef6f000 00000000 fl pg 0x000000008fa5633b, 0xfef6f000.
+240: 0x000000000e32ed84 fef6e000 00000000 fl pg 0x00000000b3b69bab, 0xfef6e000.
+241: 0x000000004d8698a1 fef6d000 00000000 fl pg 0x00000000620f094f, 0xfef6d000.
+242: 0x00000000a9a1008b fef6c000 00000000 fl pg 0x000000002311efef, 0xfef6c000.
+243: 0x0000000031730af9 fef6b000 00000000 fl pg 0x00000000cf1844bc, 0xfef6b000.
+244: 0x000000004dbf02fc fef6a000 00000000 fl pg 0x000000005e7d1138, 0xfef6a000.
+245: 0x000000009507010e fef69000 00000000 fl pg 0x00000000cf510927, 0xfef69000.
+246: 0x0000000036b160db fef68000 00000000 fl pg 0x000000002f00920c, 0xfef68000.
+247: 0x0000000070438635 fef67000 00000000 fl pg 0x0000000046162ff7, 0xfef67000.
+248: 0x00000000ac43ac83 fef66000 00000000 fl pg 0x00000000f2f9d994, 0xfef66000.
+249: 0x000000001b9801ad fef65000 00000000 fl pg 0x000000000ecc35ff, 0xfef65000.
+250: 0x00000000ae015209 fef64000 00000000 fl pg 0x00000000568ff027, 0xfef64000.
+251: 0x00000000fe0abafb fef63000 00000000 fl pg 0x0000000059baa8de, 0xfef63000.
+252: 0x0000000010034aaf fef62000 00000000 fl pg 0x00000000d5de51c9, 0xfef62000.
+253: 0x000000000b1630f0 fef61000 00000000 fl pg 0x000000001f22e466, 0xfef61000.
+254: 0x000000008ce332a1 fef60000 00000000 fl pg 0x00000000714b8a6e, 0xfef60000.
+255: 0x00000000a1561d62 fef5f000 00000000 fl pg 0x00000000964db961, 0xfef5f000.
+256: 0x00000000dc863162 febce000 00000000 fl pg 0x000000005cf8af61, 0xfebce000.
+257: 0x00000000baa6d09a febcf000 00000000 fl pg 0x0000000070ceaaaa, 0xfebcf000.
+258: 0x00000000a3589a9a febd0000 00000000 fl pg 0x0000000047b853c6, 0xfebd0000.
+259: 0x000000001ceb3344 febd1000 00000000 fl pg 0x0000000036abfe52, 0xfebd1000.
+260: 0x00000000db5755ab febd2000 00000000 fl pg 0x00000000219694af, 0xfebd2000.
+261: 0x00000000887f56a9 febd3000 00000000 fl pg 0x000000008d1543bf, 0xfebd3000.
+262: 0x00000000b2f8348c febd4000 00000000 fl pg 0x0000000033dd2025, 0xfebd4000.
+263: 0x0000000026a7f2ba febd5000 00000000 fl pg 0x00000000edb74ae1, 0xfebd5000.
+264: 0x000000000f9bfb97 febd6000 00000000 fl pg 0x000000007ac55594, 0xfebd6000.
+265: 0x0000000011b23739 febd7000 00000000 fl pg 0x000000006ae392e2, 0xfebd7000.
+266: 0x00000000545c0ba3 febd8000 00000000 fl pg 0x00000000885fd524, 0xfebd8000.
+267: 0x00000000ce4a967c febd9000 00000000 fl pg 0x00000000a920d330, 0xfebd9000.
+268: 0x0000000001898ec2 febda000 00000000 fl pg 0x00000000ab6b8f30, 0xfebda000.
+269: 0x000000000666a4d1 febdb000 00000000 fl pg 0x00000000eb09a379, 0xfebdb000.
+270: 0x00000000f7272eb1 febdc000 00000000 fl pg 0x00000000a0b616df, 0xfebdc000.
+271: 0x000000003e6b83ce febdd000 00000000 fl pg 0x00000000dedcc323, 0xfebdd000.
+272: 0x0000000048d32794 febde000 00000000 fl pg 0x00000000a29911d1, 0xfebde000.
+273: 0x0000000078f2b658 febdf000 00000000 fl pg 0x0000000098f944d2, 0xfebdf000.
+274: 0x00000000a8b239ce febe0000 00000000 fl pg 0x00000000038e8bea, 0xfebe0000.
+275: 0x000000002a876ebd febe1000 00000000 fl pg 0x00000000312fd9cf, 0xfebe1000.
+276: 0x00000000c3b2edc6 febe2000 00000000 fl pg 0x000000003c698426, 0xfebe2000.
+277: 0x00000000cbd127a7 febe3000 00000000 fl pg 0x00000000254dc77c, 0xfebe3000.
+278: 0x000000001696dd5a febe4000 00000000 fl pg 0x00000000265d5389, 0xfebe4000.
+279: 0x00000000728a83f3 febe5000 00000000 fl pg 0x00000000efa682d8, 0xfebe5000.
+280: 0x0000000097a251d4 febe6000 00000000 fl pg 0x0000000058bc7982, 0xfebe6000.
+281: 0x000000008b7f2f8e febe7000 00000000 fl pg 0x0000000010eb4f56, 0xfebe7000.
+282: 0x00000000cdd77361 febe8000 00000000 fl pg 0x00000000da277518, 0xfebe8000.
+283: 0x00000000a06f0bdb febe9000 00000000 fl pg 0x00000000515fc237, 0xfebe9000.
+284: 0x00000000996d2833 febea000 00000000 fl pg 0x0000000067c7fbf5, 0xfebea000.
+285: 0x000000004e40705c febeb000 00000000 fl pg 0x00000000b96f7976, 0xfebeb000.
+286: 0x00000000bcbbb5c9 febec000 00000000 fl pg 0x000000003e4c3f7a, 0xfebec000.
+287: 0x00000000279b1327 febed000 00000000 fl pg 0x000000009eabdd59, 0xfebed000.
+288: 0x0000000084a6ae47 febee000 00000000 fl pg 0x000000004e3667d7, 0xfebee000.
+289: 0x00000000ea3e5790 febef000 00000000 fl pg 0x0000000017921f02, 0xfebef000.
+290: 0x000000007386a79e febf0000 00000000 fl pg 0x000000001cafe9e9, 0xfebf0000.
+291: 0x000000009b0eab2f febf1000 00000000 fl pg 0x0000000089eb87a2, 0xfebf1000.
+292: 0x00000000cc55b94e febf2000 00000000 fl pg 0x000000001b00e4e5, 0xfebf2000.
+293: 0x00000000d5a4ad6e febf3000 00000000 fl pg 0x00000000d3859a10, 0xfebf3000.
+294: 0x0000000015e0e19f febf4000 00000000 fl pg 0x0000000051b7c441, 0xfebf4000.
+295: 0x00000000968e2a23 febf5000 00000000 fl pg 0x00000000f4116536, 0xfebf5000.
+296: 0x00000000246f418a febf6000 00000000 fl pg 0x00000000cb8d6c40, 0xfebf6000.
+297: 0x00000000ef0f7aa9 febf7000 00000000 fl pg 0x00000000bed66e92, 0xfebf7000.
+298: 0x000000008bb0f81b febf8000 00000000 fl pg 0x0000000040620b6f, 0xfebf8000.
+299: 0x00000000b81f03d6 febf9000 00000000 fl pg 0x00000000fe785379, 0xfebf9000.
+300: 0x0000000018f3da32 febfa000 00000000 fl pg 0x0000000048f99050, 0xfebfa000.
+301: 0x00000000c27ae1b4 febfb000 00000000 fl pg 0x000000001f40f6bc, 0xfebfb000.
+302: 0x00000000a2e36035 febfc000 00000000 fl pg 0x0000000075052a23, 0xfebfc000.
+303: 0x000000003ac6f7ba febfd000 00000000 fl pg 0x000000009443d940, 0xfebfd000.
+304: 0x00000000b67bd23d febfe000 00000000 fl pg 0x0000000025ddd7c8, 0xfebfe000.
+305: 0x0000000018faf57d febff000 00000000 fl pg 0x00000000cdb6907c, 0xfebff000.
+306: 0x00000000688f5926 fec00000 00000000 fl pg 0x0000000027e14e45, 0xfec00000.
+307: 0x000000000f7c8e9f fec01000 00000000 fl pg 0x00000000d549c1c4, 0xfec01000.
+308: 0x000000001d648b69 fec02000 00000000 fl pg 0x0000000081e21207, 0xfec02000.
+309: 0x00000000c7a45d4f fec03000 00000000 fl pg 0x00000000b4a42f5d, 0xfec03000.
+310: 0x0000000051651ee1 fec04000 00000000 fl pg 0x00000000dde07497, 0xfec04000.
+311: 0x0000000086116c8b fec05000 00000000 fl pg 0x000000004b26cadf, 0xfec05000.
+312: 0x000000008b465277 fec06000 00000000 fl pg 0x00000000ebaba84c, 0xfec06000.
+313: 0x00000000b28d72d9 fec07000 00000000 fl pg 0x00000000bd17514a, 0xfec07000.
+314: 0x000000004b7b855c fec08000 00000000 fl pg 0x000000007e0519ed, 0xfec08000.
+315: 0x0000000078e31052 fec09000 00000000 fl pg 0x000000002794f721, 0xfec09000.
+316: 0x0000000014299778 fec0a000 00000000 fl pg 0x00000000cebb231d, 0xfec0a000.
+317: 0x00000000f9f86866 fec0b000 00000000 fl pg 0x00000000ac6a8726, 0xfec0b000.
+318: 0x00000000cb5d45fa fec0c000 00000000 fl pg 0x00000000bd455917, 0xfec0c000.
+319: 0x000000008f853190 fec0d000 00000000 fl pg 0x00000000fff91b3d, 0xfec0d000.
+320: 0x000000009943daed fec0e000 00000000 fl pg 0x00000000228ee22e, 0xfec0e000.
+321: 0x00000000e40a72c5 fec0f000 00000000 fl pg 0x000000006174532a, 0xfec0f000.
+322: 0x00000000aa538bcd fec10000 00000000 fl pg 0x0000000051c40789, 0xfec10000.
+323: 0x0000000031ec01a5 fec11000 00000000 fl pg 0x00000000bd1bc9e7, 0xfec11000.
+324: 0x000000003eca721f fec12000 00000000 fl pg 0x00000000aa3ffe27, 0xfec12000.
+325: 0x000000000f4ae385 fec13000 00000000 fl pg 0x000000006525b735, 0xfec13000.
+326: 0x000000008af58b3a fec14000 00000000 fl pg 0x00000000fcfa29c6, 0xfec14000.
+327: 0x000000008deb2ccc fec15000 00000000 fl pg 0x00000000ab3e40a8, 0xfec15000.
+328: 0x0000000083457b74 fec16000 00000000 fl pg 0x00000000c1c3a03e, 0xfec16000.
+329: 0x00000000010080af fec17000 00000000 fl pg 0x000000001a3e20d5, 0xfec17000.
+330: 0x00000000185aea85 fec18000 00000000 fl pg 0x00000000110acbf6, 0xfec18000.
+331: 0x000000000e268864 fec19000 00000000 fl pg 0x00000000b8f670ff, 0xfec19000.
+332: 0x0000000069e06a54 fec1a000 00000000 fl pg 0x000000000b111102, 0xfec1a000.
+333: 0x000000008e58a4cc fec1b000 00000000 fl pg 0x000000002de92791, 0xfec1b000.
+334: 0x00000000c0902646 fec1c000 00000000 fl pg 0x00000000ccb7389e, 0xfec1c000.
+335: 0x000000006c8295e2 fec1d000 00000000 fl pg 0x000000005fea4797, 0xfec1d000.
+336: 0x00000000613daffc fec1e000 00000000 fl pg 0x000000001faa6587, 0xfec1e000.
+337: 0x000000009621c34b fec1f000 00000000 fl pg 0x000000000b95472d, 0xfec1f000.
+338: 0x00000000d902eac1 fec20000 00000000 fl pg 0x000000001fb4d381, 0xfec20000.
+339: 0x000000005da55a84 fec21000 00000000 fl pg 0x00000000bd0d82cc, 0xfec21000.
+340: 0x00000000a4f61b5d fec22000 00000000 fl pg 0x0000000086c5bb00, 0xfec22000.
+341: 0x000000005cec53ed fec23000 00000000 fl pg 0x0000000022978727, 0xfec23000.
+342: 0x00000000bf7f2731 fec24000 00000000 fl pg 0x00000000a36139dd, 0xfec24000.
+343: 0x00000000825ec465 fec25000 00000000 fl pg 0x000000002c56d7e3, 0xfec25000.
+344: 0x000000002b94ca37 fec26000 00000000 fl pg 0x00000000c2a6fc54, 0xfec26000.
+345: 0x000000007f3325d6 fec27000 00000000 fl pg 0x0000000085fe79a7, 0xfec27000.
+346: 0x000000003280f360 fec28000 00000000 fl pg 0x00000000f6074d48, 0xfec28000.
+347: 0x000000001268a4d8 fec29000 00000000 fl pg 0x00000000fc5474d5, 0xfec29000.
+348: 0x00000000fe70e37b fec2a000 00000000 fl pg 0x000000005524c5d1, 0xfec2a000.
+349: 0x000000004d5a7249 fec2b000 00000000 fl pg 0x00000000a806a567, 0xfec2b000.
+350: 0x0000000060388f08 fec2c000 00000000 fl pg 0x00000000cfe40233, 0xfec2c000.
+351: 0x0000000007cdd136 fec2d000 00000000 fl pg 0x000000008d4f0c41, 0xfec2d000.
+352: 0x00000000b3525d57 fec2e000 00000000 fl pg 0x000000002f7458d3, 0xfec2e000.
+353: 0x00000000517206f3 fec2f000 00000000 fl pg 0x00000000f5977389, 0xfec2f000.
+354: 0x0000000072d778b2 fec30000 00000000 fl pg 0x00000000693f8d1c, 0xfec30000.
+355: 0x0000000017931852 fec31000 00000000 fl pg 0x00000000a0874cce, 0xfec31000.
+356: 0x00000000ffd3a45b fec32000 00000000 fl pg 0x0000000094325c8d, 0xfec32000.
+357: 0x00000000195efe85 fec33000 00000000 fl pg 0x00000000dd0833a2, 0xfec33000.
+358: 0x00000000fc3102f1 fec38000 00000000 fl pg 0x00000000ca6003e2, 0xfec38000.
+359: 0x00000000d4ed50b9 fec39000 00000000 fl pg 0x0000000073be6a43, 0xfec39000.
+360: 0x00000000f7d2842d fec3a000 00000000 fl pg 0x000000001fb20b26, 0xfec3a000.
+361: 0x00000000fb782804 fec3b000 00000000 fl pg 0x00000000b2017665, 0xfec3b000.
+362: 0x000000007781d858 fec3c000 00000000 fl pg 0x000000000f3b819d, 0xfec3c000.
+363: 0x0000000034de1ea7 fec3d000 00000000 fl pg 0x00000000bded3bf0, 0xfec3d000.
+364: 0x00000000f5999d0a fec3e000 00000000 fl pg 0x0000000070a28853, 0xfec3e000.
+365: 0x00000000d224cce2 fec3f000 00000000 fl pg 0x00000000ec544dc6, 0xfec3f000.
+366: 0x0000000055ebf8ae fec40000 00000000 fl pg 0x000000003840acfd, 0xfec40000.
+367: 0x00000000571e5231 fec41000 00000000 fl pg 0x00000000f406320f, 0xfec41000.
+368: 0x00000000bc40cbba fec42000 00000000 fl pg 0x00000000fdb5eff8, 0xfec42000.
+369: 0x000000007f2971ca fec43000 00000000 fl pg 0x00000000d8a92c8d, 0xfec43000.
+370: 0x000000001e756e4c fec44000 00000000 fl pg 0x00000000f6999a9d, 0xfec44000.
+371: 0x00000000a30a91c3 fec45000 00000000 fl pg 0x0000000026fadcd4, 0xfec45000.
+372: 0x00000000fd661361 fec46000 00000000 fl pg 0x000000006394be41, 0xfec46000.
+373: 0x00000000219a84bc fec47000 00000000 fl pg 0x00000000c08a5c6d, 0xfec47000.
+374: 0x000000004686f23f fec48000 00000000 fl pg 0x000000003d70a400, 0xfec48000.
+375: 0x00000000065c1cb7 fec49000 00000000 fl pg 0x000000008f88a848, 0xfec49000.
+376: 0x00000000e6476c6e fec4a000 00000000 fl pg 0x00000000b950ab85, 0xfec4a000.
+377: 0x000000002255bdab fec4b000 00000000 fl pg 0x000000009c8ea342, 0xfec4b000.
+378: 0x000000007102e24a fec4c000 00000000 fl pg 0x00000000694bab12, 0xfec4c000.
+379: 0x00000000bcf6a2fd fec4d000 00000000 fl pg 0x00000000a4a16789, 0xfec4d000.
+380: 0x00000000d943f58a fec4e000 00000000 fl pg 0x000000003e3bb969, 0xfec4e000.
+381: 0x00000000784eb60e fec4f000 00000000 fl pg 0x000000006a3f2656, 0xfec4f000.
+382: 0x00000000aa65159d fec50000 00000000 fl pg 0x00000000da77a274, 0xfec50000.
+383: 0x00000000cea2b1ea fec51000 00000000 fl pg 0x00000000c4fd7917, 0xfec51000.
+384: 0x00000000aa715a27 fefe3000 00000000 fl pg 0x00000000fe3fdd21, 0xfefe3000.
+385: 0x0000000095881b79 fefe4000 00000000 fl pg 0x000000004fdf7fa5, 0xfefe4000.
+386: 0x00000000174b42aa fefe5000 00000000 fl pg 0x00000000ad052ba4, 0xfefe5000.
+387: 0x0000000078984f6a fefe6000 00000000 fl pg 0x000000006b335952, 0xfefe6000.
+388: 0x000000004b0a92dd fefe7000 00000000 fl pg 0x00000000ea87b9f9, 0xfefe7000.
+389: 0x00000000630cf3b9 fefe8000 00000000 fl pg 0x00000000df43ef6f, 0xfefe8000.
+390: 0x00000000800b26f9 fefe9000 00000000 fl pg 0x0000000082f30ec9, 0xfefe9000.
+391: 0x000000001dd7d375 fefea000 00000000 fl pg 0x000000002103b244, 0xfefea000.
+392: 0x00000000963c137f fefeb000 00000000 fl pg 0x0000000017d5ac87, 0xfefeb000.
+393: 0x00000000682e1be0 fefec000 00000000 fl pg 0x000000004ac0dd64, 0xfefec000.
+394: 0x000000000d7b5583 fefed000 00000000 fl pg 0x000000009f0f6e20, 0xfefed000.
+395: 0x0000000085a1c2e8 fefee000 00000000 fl pg 0x0000000026c403db, 0xfefee000.
+396: 0x0000000093d3e5fb fefef000 00000000 fl pg 0x00000000720c92ae, 0xfefef000.
+397: 0x000000005932236c feff0000 00000000 fl pg 0x000000009b1be99d, 0xfeff0000.
+398: 0x00000000d4e1551d feff1000 00000000 fl pg 0x00000000cd8236bb, 0xfeff1000.
+399: 0x00000000bec1773d feff2000 00000000 fl pg 0x000000004a30573a, 0xfeff2000.
+400: 0x00000000c4d1ce78 feff3000 00000000 fl pg 0x00000000a52fd821, 0xfeff3000.
+401: 0x00000000186803f4 feff4000 00000000 fl pg 0x000000009d0f3eee, 0xfeff4000.
+402: 0x000000007621b63d feff5000 00000000 fl pg 0x000000003cb5b88a, 0xfeff5000.
+403: 0x0000000043138ad9 feff6000 00000000 fl pg 0x00000000f8125846, 0xfeff6000.
+404: 0x00000000cc2ef726 feff7000 00000000 fl pg 0x000000006a71a472, 0xfeff7000.
+405: 0x00000000cebd2c2a feff8000 00000000 fl pg 0x000000003992f3ea, 0xfeff8000.
+406: 0x00000000d962c864 feff9000 00000000 fl pg 0x00000000b9581ec2, 0xfeff9000.
+407: 0x000000001b8c3fb0 feffa000 00000000 fl pg 0x00000000cc5a8fe4, 0xfeffa000.
+408: 0x00000000268618aa feffb000 00000000 fl pg 0x000000002cadfc0d, 0xfeffb000.
+409: 0x00000000779cb521 feffc000 00000000 fl pg 0x0000000023518d97, 0xfeffc000.
+410: 0x00000000b4492a41 feffd000 00000000 fl pg 0x000000006ee42171, 0xfeffd000.
+411: 0x000000003eb8d488 feffe000 00000000 fl pg 0x0000000009be1ea5, 0xfeffe000.
+412: 0x000000002954aa87 fefff000 00000000 fl pg 0x000000007e48a4c6, 0xfefff000.
+413: 0x00000000ec94d1c8 ff000000 00000000 fl pg 0x00000000411df489, 0xff000000.
+414: 0x00000000ad870a41 ff001000 00000000 fl pg 0x000000004932d999, 0xff001000.
+415: 0x000000008402ac3a ff002000 00000000 fl pg 0x00000000312041ee, 0xff002000.
+416: 0x0000000059123403 ff003000 00000000 fl pg 0x0000000086c267ec, 0xff003000.
+417: 0x000000008998df9d ff004000 00000000 fl pg 0x000000006a173008, 0xff004000.
+418: 0x0000000045430712 ff005000 00000000 fl pg 0x000000009a9b6a59, 0xff005000.
+419: 0x000000001ce8cb0c ff006000 00000000 fl pg 0x00000000210b0264, 0xff006000.
+420: 0x000000000364c907 ff007000 00000000 fl pg 0x00000000ad77d75f, 0xff007000.
+421: 0x00000000c7195eed ff008000 00000000 fl pg 0x00000000d5e93bfe, 0xff008000.
+422: 0x00000000b936d087 ff009000 00000000 fl pg 0x00000000f36a51cd, 0xff009000.
+423: 0x00000000d4f3cb5a ff00a000 00000000 fl pg 0x00000000656936e8, 0xff00a000.
+424: 0x000000001e723c13 ff00b000 00000000 fl pg 0x00000000e01cc819, 0xff00b000.
+425: 0x000000008968157a ff00c000 00000000 fl pg 0x00000000103608e6, 0xff00c000.
+426: 0x00000000de097134 ff00d000 00000000 fl pg 0x000000009c4f3ecd, 0xff00d000.
+427: 0x00000000baf85466 ff00e000 00000000 fl pg 0x000000001ab0721c, 0xff00e000.
+428: 0x000000009a166113 ff00f000 00000000 fl pg 0x000000005aab9f4a, 0xff00f000.
+429: 0x0000000090fe1238 ff010000 00000000 fl pg 0x000000002b5313df, 0xff010000.
+430: 0x000000002f70b324 ff011000 00000000 fl pg 0x00000000a4559cb2, 0xff011000.
+431: 0x00000000c1d3cce0 ff012000 00000000 fl pg 0x000000009e886e43, 0xff012000.
+432: 0x000000009f9dc11b ff013000 00000000 fl pg 0x00000000d320018d, 0xff013000.
+433: 0x00000000d1b5049a ff014000 00000000 fl pg 0x000000008d5141a7, 0xff014000.
+434: 0x000000001dda1d6f ff015000 00000000 fl pg 0x00000000054bae34, 0xff015000.
+435: 0x0000000000427111 ff016000 00000000 fl pg 0x000000006c2ecf50, 0xff016000.
+436: 0x000000008ccb45e2 ff017000 00000000 fl pg 0x000000009f12364f, 0xff017000.
+437: 0x000000005cc39ecc ff018000 00000000 fl pg 0x0000000087c30f11, 0xff018000.
+438: 0x0000000037eab932 ff019000 00000000 fl pg 0x00000000eb96d7c1, 0xff019000.
+439: 0x000000006f275fe9 ff01a000 00000000 fl pg 0x00000000e1e1a7be, 0xff01a000.
+440: 0x000000000dfc9b08 ff01b000 00000000 fl pg 0x00000000cc0c80fa, 0xff01b000.
+441: 0x00000000c0bd1041 ff01c000 00000000 fl pg 0x00000000048965e0, 0xff01c000.
+442: 0x000000005d329948 ff01d000 00000000 fl pg 0x0000000083fecb3f, 0xff01d000.
+443: 0x00000000209cf7e4 ff01e000 00000000 fl pg 0x000000002d559591, 0xff01e000.
+444: 0x0000000060d4fe43 ff01f000 00000000 fl pg 0x00000000200f54f2, 0xff01f000.
+445: 0x00000000335b526e ff020000 00000000 fl pg 0x00000000fea6c564, 0xff020000.
+446: 0x0000000063ebe5b0 ff021000 00000000 fl pg 0x00000000b7edd2ab, 0xff021000.
+447: 0x00000000d6744e7e ff022000 00000000 fl pg 0x00000000f02efea6, 0xff022000.
+448: 0x00000000bca2be88 ff023000 00000000 fl pg 0x00000000591b5873, 0xff023000.
+449: 0x00000000be3cc258 ff024000 00000000 fl pg 0x0000000048f61a57, 0xff024000.
+450: 0x0000000016808fc5 ff025000 00000000 fl pg 0x00000000fa38c25b, 0xff025000.
+451: 0x000000005b7610f3 ff026000 00000000 fl pg 0x00000000f20e67ef, 0xff026000.
+452: 0x00000000b1ff3031 ff027000 00000000 fl pg 0x000000002df6f5b0, 0xff027000.
+453: 0x00000000e00e6488 ff028000 00000000 fl pg 0x00000000bef4ac5c, 0xff028000.
+454: 0x0000000080ecead5 ff029000 00000000 fl pg 0x0000000017de0cbe, 0xff029000.
+455: 0x00000000abd422e7 ff02a000 00000000 fl pg 0x0000000069643fcb, 0xff02a000.
+456: 0x000000009cbe5589 ff02b000 00000000 fl pg 0x00000000e4f68310, 0xff02b000.
+457: 0x0000000026cd40db ff02c000 00000000 fl pg 0x000000004a7d5df8, 0xff02c000.
+458: 0x00000000e2381b67 ff02d000 00000000 fl pg 0x000000009eb6b8fe, 0xff02d000.
+459: 0x000000009be26a41 ff02e000 00000000 fl pg 0x000000004070044b, 0xff02e000.
+460: 0x0000000008d52bff ff02f000 00000000 fl pg 0x000000001f231197, 0xff02f000.
+461: 0x0000000004681733 ff030000 00000000 fl pg 0x000000005b576acb, 0xff030000.
+462: 0x00000000ea3e3cff ff031000 00000000 fl pg 0x0000000017324c44, 0xff031000.
+463: 0x00000000dee6d804 ff032000 00000000 fl pg 0x00000000c3b51e6a, 0xff032000.
+464: 0x0000000032d4ad32 ff033000 00000000 fl pg 0x000000004f4f4ef2, 0xff033000.
+465: 0x000000005f3b4758 ff034000 00000000 fl pg 0x00000000f4184c42, 0xff034000.
+466: 0x00000000459e8c72 ff035000 00000000 fl pg 0x00000000b0264556, 0xff035000.
+467: 0x000000001c979548 ff036000 00000000 fl pg 0x00000000983cd154, 0xff036000.
+468: 0x00000000c29d474c ff037000 00000000 fl pg 0x0000000062887229, 0xff037000.
+469: 0x00000000514f1089 ff038000 00000000 fl pg 0x000000007765ddc0, 0xff038000.
+470: 0x000000005ff883fa ff039000 00000000 fl pg 0x00000000d7bf82a4, 0xff039000.
+471: 0x000000004d549d43 ff03a000 00000000 fl pg 0x00000000d0930a2a, 0xff03a000.
+472: 0x0000000052f33bd1 ff03b000 00000000 fl pg 0x000000007c8dec8a, 0xff03b000.
+473: 0x00000000d20e3191 ff03c000 00000000 fl pg 0x0000000096fb1413, 0xff03c000.
+474: 0x00000000ae52e37f ff03d000 00000000 fl pg 0x00000000bfd744bc, 0xff03d000.
+475: 0x00000000b18537ac ff03e000 00000000 fl pg 0x00000000258b6cb8, 0xff03e000.
+476: 0x00000000e12899f7 ff03f000 00000000 fl pg 0x000000003c747a35, 0xff03f000.
+477: 0x000000008e2e6f52 ff040000 00000000 fl pg 0x0000000079abb688, 0xff040000.
+478: 0x000000009b97efa7 ff041000 00000000 fl pg 0x00000000fedb05c7, 0xff041000.
+479: 0x000000005b4be6e1 ff042000 00000000 fl pg 0x00000000dc6465d2, 0xff042000.
+480: 0x000000003d6c2c66 ff043000 00000000 fl pg 0x000000005a1ab090, 0xff043000.
+481: 0x00000000fe9f793f ff044000 00000000 fl pg 0x00000000169353eb, 0xff044000.
+482: 0x00000000b563250b ff045000 00000000 fl pg 0x0000000036e24950, 0xff045000.
+483: 0x000000009d6fd0a9 ff046000 00000000 fl pg 0x00000000b3137d01, 0xff046000.
+484: 0x000000002fad22b4 ff047000 00000000 fl pg 0x00000000a9c016ff, 0xff047000.
+485: 0x0000000097d31bab ff048000 00000000 fl pg 0x00000000708438ab, 0xff048000.
+486: 0x000000007f94db4c ff049000 00000000 fl pg 0x00000000cf578b5c, 0xff049000.
+487: 0x000000005397f496 ff04a000 00000000 fl pg 0x00000000285f88ad, 0xff04a000.
+488: 0x00000000eb675440 ff04b000 00000000 fl pg 0x0000000085ab5744, 0xff04b000.
+489: 0x0000000096e8747d ff04c000 00000000 fl pg 0x0000000063d3d0e1, 0xff04c000.
+490: 0x00000000f02babda ff04d000 00000000 fl pg 0x00000000f8875525, 0xff04d000.
+491: 0x00000000ac697dea ff04e000 00000000 fl pg 0x00000000e08c1794, 0xff04e000.
+492: 0x0000000080cd6ebb ff04f000 00000000 fl pg 0x0000000014e99ae5, 0xff04f000.
+493: 0x000000005fda61b4 ff050000 00000000 fl pg 0x000000009308a59d, 0xff050000.
+494: 0x0000000080c495bd ff051000 00000000 fl pg 0x00000000fcdceb99, 0xff051000.
+495: 0x000000000bbbf7c7 ff052000 00000000 fl pg 0x00000000bb0d125d, 0xff052000.
+496: 0x00000000fd010f73 ff053000 00000000 fl pg 0x0000000066506dca, 0xff053000.
+497: 0x0000000059edadfd ff054000 00000000 fl pg 0x000000004df8f1fa, 0xff054000.
+498: 0x0000000068b443c0 ff055000 00000000 fl pg 0x00000000d75c2c31, 0xff055000.
+499: 0x000000005e210b98 ff056000 00000000 fl pg 0x00000000fc688782, 0xff056000.
+500: 0x00000000e8d3fd86 ff057000 00000000 fl pg 0x000000009be7f48a, 0xff057000.
+501: 0x000000002e1d8cea ff058000 00000000 fl pg 0x00000000bb819371, 0xff058000.
+502: 0x0000000072463503 ff059000 00000000 fl pg 0x000000004b5414ca, 0xff059000.
+503: 0x0000000094579981 ff05a000 00000000 fl pg 0x00000000947a9072, 0xff05a000.
+504: 0x00000000076d052d ff05b000 00000000 fl pg 0x000000006b0edbb1, 0xff05b000.
+505: 0x0000000045a76465 ff05c000 00000000 fl pg 0x0000000095dd1a1d, 0xff05c000.
+506: 0x000000001fe7a47e ff05d000 00000000 fl pg 0x000000006b1a05d5, 0xff05d000.
+507: 0x00000000cedf2bdf ff05e000 00000000 fl pg 0x00000000a96fd2ba, 0xff05e000.
+508: 0x000000007da9f04a ff05f000 00000000 fl pg 0x00000000d5f0fbd3, 0xff05f000.
+509: 0x0000000045eb77ac ff060000 00000000 fl pg 0x0000000065ec84c2, 0xff060000.
+510: 0x000000005d848af9 ff061000 00000000 fl pg 0x00000000efa81e57, 0xff061000.
+CMPL STATUS: 0x000000005eec6eba 00000000 00000000
+data 0: 0x00000000f981533d 00000000 00000000
+</pre></div>
+</div>
+<p>Command:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/queues/0/c2h/info
+</pre></div>
+</div>
+<p>Sample Output:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>qdma&lt;BDF&gt;-ST-0 C2H online
 </pre></div>
 </div>
 </div>
 <div class="section" id="stm-n">
-<h2>STM-N<a class="headerlink" href="#stm-n" title="Permalink to this headline">¶</a></h2>
+<span id="stmn"></span><h2>STM-N<a class="headerlink" href="#stm-n" title="Permalink to this headline">¶</a></h2>
 <p>This file prints a snapshot of STM-N errors, drops, status and statistics. After every read, the underlying registers get cleared.</p>
 <p>Command:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/stmn
+<div class="highlight-none notranslate"><div class="highlight"><pre># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/stmn
+</pre></div>
+</div>
+<p>Sample Output:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>STMN version Minor:2 Major:0 BlcokID:0
+***********Status***********
+Last Drop Axis response  : drop_code:0 num_desc:1 num_pkt:1 accept:0 sim_byp:0 qid:0 reg_val:1
+First Drop Axis response : drop_code:0 num_desc:0 num_pkt:0 accept:0 sim_byp:0 qid:0 reg_val:0
+Dropping Queue Type      : accept_sim_byp:0  accept_not_byp:0 drop_cache_byp:0  drop_sim_byp:0  drop_not_byp:0
+Dropping Queue cause     : drop_sim_byp_len:0  drop_sim_byp_avl:0 drop_sim_byp_init:0  drop_qid_err:0  drop_qid_not_st:0  drop_qid_not_en:0
+C2h Flags: last:0  cmp:0 not_last:0  drop:0  max_qid:0
+***********Error***********
+s_axis_err                     0x0
+m_axis_err                     0x0
+dsc_sts_err                    0x0
+crdt_bypout_err                0x0
+c2h_dsc_sts_err                0x0
+c2h_dsc_str_wr_err             0x0
+c2h_dsc_str_rd_err             0x0
+h2c_dsc_sts_err                0x0
+h2c_dsc_str_wr_err             0x0
+h2c_dsc_str_rd_err             0x0
+C2H Desc Err     :  err:0  qinv:0  irq_arm:0  mm:0  byp:0 qen:0  port_id:0  avl:0  qid:0
+H2C Desc Err     :  err:0  qinv:0  irq_arm:0  mm:0  byp:0 qen:0  port_id:0  avl:0  qid:0
+C2H Desc Byp Err :  error:0  st_mm:0 mrkr_rsp:0  dsc_sz:0 port_id:0  func:0  cidx:0  qid:0
+H2C Desc Byp Err :  error:0  st_mm:0 mrkr_rsp:0  dsc_sz:0 port_id:0  func:0  cidx:0  qid:0
+***********Statistics***********
+STMN_STATS_AXIS_SLAVE
+  s_axis_pkt_in_cnt              0
+  s_axis_pkt_accept_cnt          0
+  s_axis_byte_accept_cnt         0
+  s_axis_pkt_drop_cnt            0
+  s_axis_byte_drop_cnt           0
+  qdma_pkt_accept_cnt            0
+  qdma_byte_accept_cnt           0
+  qdma_pkt_drop_cnt              0
+  qdma_byte_drop_cnt             0
+  s_axis_active                  0
+  s_axis_idle                    73012191936
+  s_axis_pause                   0
+  qdma_axis_c2h_active           0
+  qdma_axis_c2h_idle             73012191936
+  qdma_axis_c2h_pause            0
+  qdma_axis_c2h_cmpt_active      0
+  qdma_axis_c2h_cmpt_idle        73012191936
+  qdma_axis_c2h_cmpt_pause       0
+  qdma_axis_c2h_dmawr_cmp_cnt    0
+  c2h_cmpt_fifo_avg_cnt          0
+  qdma_c2h_sts_fifo_avg_cnt      0
+STMN_STATS_AXIS_MASTER
+  m_axis_pkt_cnt                 0
+  m_axis_byte_cnt                0
+  m_axis_active                  0
+  m_axis_idle                    73012191936
+  m_axis_pause                   0
+  h2c_meta_fifo_avg_cnt          0
+STMN_STATS_DESC_STATS
+  dsc_sts_c2h_cnt                0
+  dsc_sts_h2c_cnt                0
+  dsc_sts_c2h_avl_cnt            0
+  dsc_sts_h2c_avl_cnt            0
+  dsc_sts_c2h_fifo_avg_cnt       0
+  dsc_sts_h2c_fifo_avg_cnt       0
+STMN_STATS_CREDT_BYPOUT
+  crdt_in_c2h_vld_cnt            0
+  crdt_in_h2c_vld_cnt            0
+  crdt_in_c2h_cnt                0
+  crdt_in_h2c_cnt                0
+  byp_out_c2h_cnt                0
+  byp_out_h2c_cnt                0
+  c2h_crdt_fifo_avg_cnt          0
+  h2c_crdt_fifo_avg_cnt          0
+  c2h_byp_out_fifo_avg_cnt       0
+  h2c_byp_out_fifo_avg_cnt       0
+FIFO_MAX_FILL_LEVEL
+  c2h_cmpt                       0
+  qdma_c2h_sts                   0
+  h2c_meta                       0
+  c2h_dsc_sts                    0
+  h2c_dsc_sts                    0
+  c2h_crdt                       0
+  h2c_crdt                       0
+  c2h_byp_out                    0
+  h2c_byp_out                    0
+TM_DSC_MIN_MAX
+  c2h_min_avl                    0
+  c2h_max_avl                    0
+  h2c_min_avl                    0
+  h2c_max_avl                    0
+***********Memory and IDLE Status***********
+s_axis                         0xffffffff
+m_axis                         0xffffffff
+dsc_sts                        0xffffffff
+crdt_bypout                    0xffffffff
+c2h_dsc_sts                    0xffffffff
+c2h_dsc_str_wr                 0xffffffff
+c2h_dsc_str_rd                 0xffffffff
+h2c_dsc_sts                    0xffffffff
+h2c_dsc_str_wr                 0xffffffff
+h2c_dsc_str_rd                 0xffffffff
+qid qen byp init irq_arm rst err mm sts_avl dsc_avl
+C2H TM STS RAM
+0 0 0 0 0 0 0 0 0x0 0x0
+1 0 0 0 0 0 0 0 0x0 0x0
+2 0 0 0 0 0 0 0 0x0 0x0
+3 0 0 0 0 0 0 0 0x0 0x0
+4 0 0 0 0 0 0 0 0x0 0x0
+5 0 0 0 0 0 0 0 0x0 0x0
+6 0 0 0 0 0 0 0 0x0 0x0
+7 0 0 0 0 0 0 0 0x0 0x0
+8 0 0 0 0 0 0 0 0x0 0x0
+9 0 0 0 0 0 0 0 0x0 0x0
+10 0 0 0 0 0 0 0 0x0 0x0
+11 0 0 0 0 0 0 0 0x0 0x0
+12 0 0 0 0 0 0 0 0x0 0x0
+13 0 0 0 0 0 0 0 0x0 0x0
+14 0 0 0 0 0 0 0 0x0 0x0
+15 0 0 0 0 0 0 0 0x0 0x0
+16 0 0 0 0 0 0 0 0x0 0x0
+17 0 0 0 0 0 0 0 0x0 0x0
+18 0 0 0 0 0 0 0 0x0 0x0
+19 0 0 0 0 0 0 0 0x0 0x0
+20 0 0 0 0 0 0 0 0x0 0x0
+21 0 0 0 0 0 0 0 0x0 0x0
+22 0 0 0 0 0 0 0 0x0 0x0
+23 0 0 0 0 0 0 0 0x0 0x0
+24 0 0 0 0 0 0 0 0x0 0x0
+25 0 0 0 0 0 0 0 0x0 0x0
+26 0 0 0 0 0 0 0 0x0 0x0
+27 0 0 0 0 0 0 0 0x0 0x0
+28 0 0 0 0 0 0 0 0x0 0x0
+29 0 0 0 0 0 0 0 0x0 0x0
+30 0 0 0 0 0 0 0 0x0 0x0
+31 0 0 0 0 0 0 0 0x0 0x0
+H2C TM STS RAM
+0 0 0 0 0 0 0 0 0x40 0x0
+1 0 0 0 0 0 0 0 0x40 0x0
+2 0 0 0 0 0 0 0 0x40 0x0
+3 0 0 0 0 0 0 0 0x40 0x0
+4 0 0 0 0 0 0 0 0x40 0x0
+5 0 0 0 0 0 0 0 0x40 0x0
+6 0 0 0 0 0 0 0 0x40 0x0
+7 0 0 0 0 0 0 0 0x40 0x0
+8 0 0 0 0 0 0 0 0x40 0x0
+9 0 0 0 0 0 0 0 0x40 0x0
+10 0 0 0 0 0 0 0 0x40 0x0
+11 0 0 0 0 0 0 0 0x40 0x0
+12 0 0 0 0 0 0 0 0x40 0x0
+13 0 0 0 0 0 0 0 0x40 0x0
+14 0 0 0 0 0 0 0 0x40 0x0
+15 0 0 0 0 0 0 0 0x40 0x0
+16 0 0 0 0 0 0 0 0x40 0x0
+17 0 0 0 0 0 0 0 0x40 0x0
+18 0 0 0 0 0 0 0 0x40 0x0
+19 0 0 0 0 0 0 0 0x40 0x0
+20 0 0 0 0 0 0 0 0x40 0x0
+21 0 0 0 0 0 0 0 0x40 0x0
+22 0 0 0 0 0 0 0 0x40 0x0
+23 0 0 0 0 0 0 0 0x40 0x0
+24 0 0 0 0 0 0 0 0x40 0x0
+25 0 0 0 0 0 0 0 0x40 0x0
+26 0 0 0 0 0 0 0 0x40 0x0
+27 0 0 0 0 0 0 0 0x40 0x0
+28 0 0 0 0 0 0 0 0x40 0x0
+29 0 0 0 0 0 0 0 0x40 0x0
+30 0 0 0 0 0 0 0 0x40 0x0
+31 0 0 0 0 0 0 0 0x40 0x0
+qid qen err rst in_arb ptr1 ptr2
+C2H Desc Wr RAM
+0 0 0 0 0 0 0
+1 0 0 0 0 0 0
+2 0 0 0 0 0 0
+3 0 0 0 0 0 0
+4 0 0 0 0 0 0
+5 0 0 0 0 0 0
+6 0 0 0 0 0 0
+7 0 0 0 0 0 0
+8 0 0 0 0 0 0
+9 0 0 0 0 0 0
+10 0 0 0 0 0 0
+11 0 0 0 0 0 0
+12 0 0 0 0 0 0
+13 0 0 0 0 0 0
+14 0 0 0 0 0 0
+15 0 0 0 0 0 0
+16 0 0 0 0 0 0
+17 0 0 0 0 0 0
+18 0 0 0 0 0 0
+19 0 0 0 0 0 0
+20 0 0 0 0 0 0
+21 0 0 0 0 0 0
+22 0 0 0 0 0 0
+23 0 0 0 0 0 0
+24 0 0 0 0 0 0
+25 0 0 0 0 0 0
+26 0 0 0 0 0 0
+27 0 0 0 0 0 0
+28 0 0 0 0 0 0
+29 0 0 0 0 0 0
+30 0 0 0 0 0 0
+31 0 0 0 0 0 0
+C2H Desc Rd RAM
+0 1 0 0 0 0 0
+1 1 0 0 0 0 0
+2 1 0 0 0 0 0
+3 1 0 0 0 0 0
+4 1 0 0 0 0 0
+5 1 0 0 0 0 0
+6 1 0 0 0 0 0
+7 1 0 0 0 0 0
+8 1 0 0 0 0 0
+9 1 0 0 0 0 0
+10 1 0 0 0 0 0
+11 1 0 0 0 0 0
+12 1 0 0 0 0 0
+13 1 0 0 0 0 0
+14 1 0 0 0 0 0
+15 1 0 0 0 0 0
+16 1 0 0 0 0 0
+17 1 0 0 0 0 0
+18 1 0 0 0 0 0
+19 1 0 0 0 0 0
+20 1 0 0 0 0 0
+21 1 0 0 0 0 0
+22 1 0 0 0 0 0
+23 1 0 0 0 0 0
+24 1 0 0 0 0 0
+25 1 0 0 0 0 0
+26 1 0 0 0 0 0
+27 1 0 0 0 0 0
+28 1 0 0 0 0 0
+29 1 0 0 0 0 0
+30 1 0 0 0 0 0
+31 1 0 0 0 0 0
+H2C Desc Wr RAM
+0 0 0 0 0 0 0
+1 0 0 0 0 0 0
+2 0 0 0 0 0 0
+3 0 0 0 0 0 0
+4 0 0 0 0 0 0
+5 0 0 0 0 0 0
+6 0 0 0 0 0 0
+7 0 0 0 0 0 0
+8 0 0 0 0 0 0
+9 0 0 0 0 0 0
+10 0 0 0 0 0 0
+11 0 0 0 0 0 0
+12 0 0 0 0 0 0
+13 0 0 0 0 0 0
+14 0 0 0 0 0 0
+15 0 0 0 0 0 0
+16 0 0 0 0 0 0
+17 0 0 0 0 0 0
+18 0 0 0 0 0 0
+19 0 0 0 0 0 0
+20 0 0 0 0 0 0
+21 0 0 0 0 0 0
+22 0 0 0 0 0 0
+23 0 0 0 0 0 0
+24 0 0 0 0 0 0
+25 0 0 0 0 0 0
+26 0 0 0 0 0 0
+27 0 0 0 0 0 0
+28 0 0 0 0 0 0
+29 0 0 0 0 0 0
+30 0 0 0 0 0 0
+31 0 0 0 0 0 0
+H2C Desc Rd RAM
+0 1 0 0 0 0 0
+1 1 0 0 0 0 0
+2 1 0 0 0 0 0
+3 1 0 0 0 0 0
+4 1 0 0 0 0 0
+5 1 0 0 0 0 0
+6 1 0 0 0 0 0
+7 1 0 0 0 0 0
+8 1 0 0 0 0 0
+9 1 0 0 0 0 0
+10 1 0 0 0 0 0
+11 1 0 0 0 0 0
+12 1 0 0 0 0 0
+13 1 0 0 0 0 0
+14 1 0 0 0 0 0
+15 1 0 0 0 0 0
+16 1 0 0 0 0 0
+17 1 0 0 0 0 0
+18 1 0 0 0 0 0
+19 1 0 0 0 0 0
+20 1 0 0 0 0 0
+21 1 0 0 0 0 0
+22 1 0 0 0 0 0
+23 1 0 0 0 0 0
+24 1 0 0 0 0 0
+25 1 0 0 0 0 0
+26 1 0 0 0 0 0
+27 1 0 0 0 0 0
+28 1 0 0 0 0 0
+29 1 0 0 0 0 0
+30 1 0 0 0 0 0
+31 1 0 0 0 0 0
 </pre></div>
 </div>
 </div>
 </div>
 
 
-           </div>
-           <div class="articleComments">
-            
            </div>
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="acronyms.html" class="btn btn-neutral float-right" title="Terms and Acronyms" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="acronyms.html" class="btn btn-neutral float-right" title="Terms and Acronyms" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="qep-callback-apis.html" class="btn btn-neutral" title="QEP Linux Driver APIs" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="qep-callback-apis.html" class="btn btn-neutral" title="QEP Linux Driver APIs" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -266,7 +1535,7 @@ For every QEP ethernet device detected, a filesystem tree is populated with dire
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019, Xilinx, Inc.
+        &copy; Copyright 2019-2020, Xilinx, Inc.
 
     </p>
   </div>
@@ -288,11 +1557,10 @@ For every QEP ethernet device detected, a filesystem tree is populated with dire
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'1.2.0',
+            VERSION:'1.3.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
+            HAS_SOURCE:  true
         };
     </script>
       <script type="text/javascript" src="_static/jquery.js"></script>

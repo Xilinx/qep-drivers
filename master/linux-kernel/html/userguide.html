@@ -8,11 +8,9 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>User Guide &mdash; QEP Linux Kernel Network Driver 1.2.0 documentation</title>
+  <title>User Guide &mdash; QEP Linux Kernel Network Driver 1.3.0 documentation</title>
   
 
-  
-  
   
   
 
@@ -30,12 +28,14 @@
   
 
   
+    <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+  
 
   
         <link rel="index" title="Index"
               href="genindex.html"/>
         <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="QEP Linux Kernel Network Driver 1.2.0 documentation" href="index.html"/>
+    <link rel="top" title="QEP Linux Kernel Network Driver 1.3.0 documentation" href="index.html"/>
         <link rel="next" title="Developer Guide" href="dev-guide.html"/>
         <link rel="prev" title="System Requirements" href="system-requirements.html"/> 
 
@@ -46,7 +46,6 @@
 
 <body class="wy-body-for-nav" role="document">
 
-   
   <div class="wy-grid-for-nav">
 
     
@@ -66,7 +65,7 @@
             
             
               <div class="version">
-                1.2.0
+                1.3.0
               </div>
             
           
@@ -87,10 +86,7 @@
           
             
             
-              
-            
-            
-              <p class="caption"><span class="caption-text">Table of Contents</span></p>
+                <p class="caption"><span class="caption-text">Table of Contents</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="system-overview.html">System Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system-requirements.html">System Requirements</a></li>
@@ -138,10 +134,8 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        
-          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">QEP Linux Kernel Network Driver</a>
-        
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">QEP Linux Kernel Network Driver</a>
       </nav>
 
 
@@ -150,40 +144,23 @@
         <div class="rst-content">
           
 
-
-
-
-
-
-
-
-
-
-
-
+ 
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
-
   <ul class="wy-breadcrumbs">
-    
-      <li><a href="index.html">Docs</a> &raquo;</li>
-        
-      <li>User Guide</li>
-    
-    
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>User Guide</li>
       <li class="wy-breadcrumbs-aside">
         
-            
+          
             <a href="_sources/userguide.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -224,7 +201,7 @@ instructions provided in <a class="reference external" href="https://www.xilinx.
 <li>Once the device is programmed sucessfully with QEP Platform shell, execute the following command on the host system</li>
 </ol>
 <blockquote>
-<div><div class="highlight-none"><div class="highlight"><pre><span></span>#lspci -d 10ee:
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>#lspci -d 10ee:
 </pre></div>
 </div>
 <p>Following is the sample output</p>
@@ -262,7 +239,7 @@ on the Xilinx GitHub <a class="reference external" href="https://github.com/Xili
 <span id="build-linux"></span><h3>Compiling Linux kernel network driver<a class="headerlink" href="#compiling-linux-kernel-network-driver" title="Permalink to this headline">¶</a></h3>
 <p>Execute the following commands to install Linux headers, clone qep-drivers repo and
 compile the driver.</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span># sudo apt-get install linux-headers-$(uname -r) build-essential
+<div class="highlight-none notranslate"><div class="highlight"><pre># sudo apt-get install linux-headers-$(uname -r) build-essential
 # git clone https://github.com/Xilinx/qep-drivers.git
 # cd qep-drivers/linux-kernel/driver
 # make clean
@@ -272,7 +249,7 @@ compile the driver.</p>
 </div>
 <div class="section" id="compiling-qep-ctl-application">
 <h3>Compiling qep-ctl application<a class="headerlink" href="#compiling-qep-ctl-application" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-none"><div class="highlight"><pre><span></span># cd qep-drivers/qep-ctl
+<div class="highlight-none notranslate"><div class="highlight"><pre># cd qep-drivers/qep-ctl
 # gcc qep_ctl.c -o qep-ctl
 </pre></div>
 </div>
@@ -288,7 +265,7 @@ Configuring the Ethernet MAC address of the device is a priviliged operation tha
 from Management PF using qep-ctl application.</li>
 </ol>
 <blockquote>
-<div><div class="highlight-none"><div class="highlight"><pre><span></span>#cd qep-drivers/qep-ctl
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>#cd qep-drivers/qep-ctl
 #./qep-ctl config  -d 04:00.0 -m 00:5D:03:00:00:02
 </pre></div>
 </div>
@@ -299,7 +276,7 @@ a new bitstream is programmed. However it need not be configured after every dri
 <ol class="arabic" start="2">
 <li><p class="first">Execute the below command to verify that the MAC address is set</p>
 <blockquote>
-<div><div class="highlight-none"><div class="highlight"><pre><span></span>#./qep-ctl show -d 04:00.0
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>#./qep-ctl show -d 04:00.0
 </pre></div>
 </div>
 </div></blockquote>
@@ -314,14 +291,14 @@ a new bitstream is programmed. However it need not be configured after every dri
 <div class="section" id="inserting-the-driver-module">
 <span id="insert-driver"></span><h3>Inserting the driver module<a class="headerlink" href="#inserting-the-driver-module" title="Permalink to this headline">¶</a></h3>
 <p>Execute the following commands to load the QEP Linux kernel module</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>#cd qep-drivers/linux-kernel/driver
+<div class="highlight-none notranslate"><div class="highlight"><pre>#cd qep-drivers/linux-kernel/driver
 #insmod qep_drv.ko
 </pre></div>
 </div>
 <p>Upon successful insertion of the driver, a new network interface with the MAC address configured earlier
 is created that can be used for sending and receiving traffic.</p>
 <p>To list all network interfaces, use the following command:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>#ifconfig -a
+<div class="highlight-none notranslate"><div class="highlight"><pre>#ifconfig -a
 </pre></div>
 </div>
 <p>Sample Output:</p>
@@ -333,7 +310,7 @@ is created that can be used for sending and receiving traffic.</p>
 <div class="section" id="unloading-kernel-module">
 <h3>Unloading Kernel Module<a class="headerlink" href="#unloading-kernel-module" title="Permalink to this headline">¶</a></h3>
 <p>Execute the following command to unload the kernel module</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>#rmmod qep_drv
+<div class="highlight-none notranslate"><div class="highlight"><pre>#rmmod qep_drv
 </pre></div>
 </div>
 <p>Check the dmesg logs to confim that the driver is unloaded successfully without any errors.</p>
@@ -351,14 +328,14 @@ Execute the below commands for this test.</p>
 <li>Install hping3 application on the host system</li>
 </ol>
 <blockquote>
-<div><div class="highlight-none"><div class="highlight"><pre><span></span>#apt install hping3
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>#apt install hping3
 </pre></div>
 </div>
 </div></blockquote>
 <ol class="arabic simple" start="2">
 <li>Verify the network interfaces before inserting the driver</li>
 </ol>
-<div class="highlight-none"><div class="highlight"><pre><span></span>#ifconfig -s -a
+<div class="highlight-none notranslate"><div class="highlight"><pre>#ifconfig -s -a
 </pre></div>
 </div>
 <p>Sample Output:</p>
@@ -368,7 +345,7 @@ Execute the below commands for this test.</p>
 <ol class="arabic simple" start="3">
 <li>Insert the driver in loopback mode</li>
 </ol>
-<div class="highlight-none"><div class="highlight"><pre><span></span>#insmod qep_drv.ko loopback_en=1
+<div class="highlight-none notranslate"><div class="highlight"><pre>#insmod qep_drv.ko loopback_en=1
 #ifconfig -s -a
 </pre></div>
 </div>
@@ -377,13 +354,13 @@ Execute the below commands for this test.</p>
 <div><blockquote>
 <div><img alt="_images/after_load.PNG" class="align-center" src="_images/after_load.PNG" />
 </div></blockquote>
-<p>A new interface <code class="docutils literal"><span class="pre">ens4f2</span></code> as shown above is created.</p>
+<p>A new interface <code class="docutils literal notranslate"><span class="pre">ens4f2</span></code> as shown above is created.</p>
 </div></blockquote>
 <ol class="arabic simple" start="4">
 <li>Set IP address and send the network traffic using hping3 on the network interface</li>
 </ol>
 <blockquote>
-<div><div class="highlight-none"><div class="highlight"><pre><span></span>#ifconfig ens4f2 -arp
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>#ifconfig ens4f2 -arp
 #ifconfig ens4f2 192.168.1.10
 #hping3 192.168.1.20 -I ens4f2 -2 -c 10 -d 64
 </pre></div>
@@ -396,7 +373,7 @@ the network driver.</p>
 <li>Remove the driver</li>
 </ol>
 <blockquote>
-<div><div class="highlight-none"><div class="highlight"><pre><span></span>#rmmod qep_drv.ko
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>#rmmod qep_drv.ko
 </pre></div>
 </div>
 </div></blockquote>
@@ -413,7 +390,7 @@ Connect U250 board on Host1 with a peer 100G NIC card on Host2 with an optical Q
 <li>Insert the QEP Linux driver on Host1</li>
 </ol>
 <blockquote>
-<div><div class="highlight-none"><div class="highlight"><pre><span></span>#insmod qep_drv.ko
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>#insmod qep_drv.ko
 </pre></div>
 </div>
 </div></blockquote>
@@ -422,7 +399,7 @@ Connect U250 board on Host1 with a peer 100G NIC card on Host2 with an optical Q
 using the following command</li>
 </ol>
 <blockquote>
-<div><div class="highlight-none"><div class="highlight"><pre><span></span># ifconfig ens4f2 192.168.1.1 up
+<div><div class="highlight-none notranslate"><div class="highlight"><pre># ifconfig ens4f2 192.168.1.1 up
 </pre></div>
 </div>
 </div></blockquote>
@@ -431,7 +408,7 @@ using the following command</li>
 using following command</li>
 </ol>
 <blockquote>
-<div><div class="highlight-none"><div class="highlight"><pre><span></span># ifconfig enp175s0 192.168.1.2 up
+<div><div class="highlight-none notranslate"><div class="highlight"><pre># ifconfig enp175s0 192.168.1.2 up
 </pre></div>
 </div>
 </div></blockquote>
@@ -439,7 +416,7 @@ using following command</li>
 <li>From Host1 execute the following commands to check the connectivity with peer NIC</li>
 </ol>
 <blockquote>
-<div><div class="highlight-none"><div class="highlight"><pre><span></span># ping -I ens4f2 192.168.1.2 -c 10
+<div><div class="highlight-none notranslate"><div class="highlight"><pre># ping -I ens4f2 192.168.1.2 -c 10
 64 bytes from 192.168.1.2: icmp_seq=1 ttl=63 time=0.220 ms
 64 bytes from 192.168.1.2: icmp_seq=2 ttl=63 time=0.274 ms
 64 bytes from 192.168.1.2: icmp_seq=3 ttl=63 time=0.289 ms
@@ -451,30 +428,30 @@ using following command</li>
 <div class="section" id="validating-the-driver-in-virtual-machine">
 <h2>Validating the driver in Virtual Machine<a class="headerlink" href="#validating-the-driver-in-virtual-machine" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic">
-<li><p class="first">Update <code class="docutils literal"><span class="pre">/etc/default/grub</span></code> file as below to enable IOMMU.</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>GRUB_CMDLINE_LINUX=&quot;iommu=pt intel_iommu=on cma=14096M@0-16G&quot;
+<li><p class="first">Update <code class="docutils literal notranslate"><span class="pre">/etc/default/grub</span></code> file as below to enable IOMMU.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>GRUB_CMDLINE_LINUX=&quot;iommu=pt intel_iommu=on cma=14096M@0-16G&quot;
 </pre></div>
 </div>
 <p>Note: If there are any failures related to dma_alloc_coherent() in the driver, then the memory reserved for “cma” can be increased further.</p>
-<p>Execute the following command to modify the <code class="docutils literal"><span class="pre">/boot/grub/grub.cfg</span></code> with the configuration set in the above step and permanently add them to the kernel command line.</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>update-grub
+<p>Execute the following command to modify the <code class="docutils literal notranslate"><span class="pre">/boot/grub/grub.cfg</span></code> with the configuration set in the above step and permanently add them to the kernel command line.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre>update-grub
 </pre></div>
 </div>
 <p>Reboot host system after making the above modifications.</p>
 </li>
 </ol>
-<p>2. Find the Vendor Id (e.g. 10ee) and Device Id (e.g. 5016) of the PCIe function being attached to VM using <code class="docutils literal"><span class="pre">lspci</span></code> command.
-Add the Vendor Id and Device Id to vfio-pci configuration file <code class="docutils literal"><span class="pre">/etc/modprobe.d/vfio.conf</span></code> to bind the function to vfio-pci as below</p>
+<p>2. Find the Vendor Id (e.g. 10ee) and Device Id (e.g. 5016) of the PCIe function being attached to VM using <code class="docutils literal notranslate"><span class="pre">lspci</span></code> command.
+Add the Vendor Id and Device Id to vfio-pci configuration file <code class="docutils literal notranslate"><span class="pre">/etc/modprobe.d/vfio.conf</span></code> to bind the function to vfio-pci as below</p>
 <blockquote>
-<div><div class="highlight-none"><div class="highlight"><pre><span></span>options vfio-pci ids=10ee:5016
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>options vfio-pci ids=10ee:5016
 </pre></div>
 </div>
-<p>Create the file <code class="docutils literal"><span class="pre">/etc/modprobe.d/vfio.conf</span></code>, if it doesn’t exist already.</p>
+<p>Create the file <code class="docutils literal notranslate"><span class="pre">/etc/modprobe.d/vfio.conf</span></code>, if it doesn’t exist already.</p>
 </div></blockquote>
 <ol class="arabic" start="3">
 <li><p class="first">Insert the vfio-pci module</p>
 <blockquote>
-<div><div class="highlight-none"><div class="highlight"><pre><span></span>modprobe vfio-pci
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>modprobe vfio-pci
 </pre></div>
 </div>
 </div></blockquote>
@@ -483,14 +460,14 @@ Add the Vendor Id and Device Id to vfio-pci configuration file <code class="docu
 </li>
 <li><p class="first">Start the VM using below command by attaching the network PF (04:00.2 in this example) to VM</p>
 <blockquote>
-<div><div class="highlight-none"><div class="highlight"><pre><span></span>qemu-system-x86_64 -cpu host -enable-kvm -m 24576 -smp sockets=1,cores=15 -hda vm_image.qcow2 -device vfio-pci,host=04:00.2 -vnc :1
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>qemu-system-x86_64 -cpu host -enable-kvm -m 24576 -smp sockets=1,cores=15 -hda vm_image.qcow2 -device vfio-pci,host=04:00.2 -vnc :1
 </pre></div>
 </div>
 </div></blockquote>
 </li>
 <li><p class="first">Copy the Linux driver source code to the VM by executing below command from VM.</p>
 <blockquote>
-<div><div class="highlight-none"><div class="highlight"><pre><span></span>scp -r &lt;username&gt;@&lt;host_ip&gt;:&lt;qep_linux_sources&gt; &lt;qep_linux_copy_path_in_vm&gt;
+<div><div class="highlight-none notranslate"><div class="highlight"><pre>scp -r &lt;username&gt;@&lt;host_ip&gt;:&lt;qep_linux_sources&gt; &lt;qep_linux_copy_path_in_vm&gt;
 </pre></div>
 </div>
 </div></blockquote>
@@ -507,38 +484,38 @@ Add the Vendor Id and Device Id to vfio-pci configuration file <code class="docu
 <span id="ethtool"></span><h2>Ethtool command Usage<a class="headerlink" href="#ethtool-command-usage" title="Permalink to this headline">¶</a></h2>
 <ul>
 <li><p class="first">To check driver and device information of network interface</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>ethtool -i &lt;interface&gt;
+<div class="highlight-none notranslate"><div class="highlight"><pre>ethtool -i &lt;interface&gt;
 </pre></div>
 </div>
 </li>
 <li><p class="first">To print statistics of network interface</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>ethtool -S &lt;interface&gt;
+<div class="highlight-none notranslate"><div class="highlight"><pre>ethtool -S &lt;interface&gt;
 </pre></div>
 </div>
 </li>
 <li><p class="first">To query ring size values of network interface</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>ethtool -g &lt;interface&gt;
+<div class="highlight-none notranslate"><div class="highlight"><pre>ethtool -g &lt;interface&gt;
 </pre></div>
 </div>
 </li>
 <li><p class="first">To modify Tx and Rx ring size of network interface</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>ethtool -G &lt;interface&gt; rx &lt;Rx Ring Size&gt; tx &lt;Tx Ring Size&gt;
+<div class="highlight-none notranslate"><div class="highlight"><pre>ethtool -G &lt;interface&gt; rx &lt;Rx Ring Size&gt; tx &lt;Tx Ring Size&gt;
 </pre></div>
 </div>
 </li>
 <li><p class="first">Default number of Tx and Rx queues is the minimum of number of CPU cores and MSI-X vectors.
 To modify the number of Tx and Rx queues of network interface</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>ethtool -L &lt;interface&gt; rx &lt;num channel&gt; tx &lt;num channel&gt;
+<div class="highlight-none notranslate"><div class="highlight"><pre>ethtool -L &lt;interface&gt; rx &lt;num channel&gt; tx &lt;num channel&gt;
 </pre></div>
 </div>
 </li>
 <li><p class="first">To change the coalescing settings of the specified network device</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>ethtool -C &lt;interface&gt; rx-usecs &lt;N&gt; rx-frames &lt;N&gt;
+<div class="highlight-none notranslate"><div class="highlight"><pre>ethtool -C &lt;interface&gt; rx-usecs &lt;N&gt; rx-frames &lt;N&gt;
 </pre></div>
 </div>
 </li>
 <li><p class="first">To dump all Tx/Rx packets of network interface</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>tcpdump -XX -i &lt;interface&gt;
+<div class="highlight-none notranslate"><div class="highlight"><pre>tcpdump -XX -i &lt;interface&gt;
 </pre></div>
 </div>
 </li>
@@ -548,18 +525,15 @@ To modify the number of Tx and Rx queues of network interface</p>
 
 
            </div>
-           <div class="articleComments">
-            
-           </div>
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="dev-guide.html" class="btn btn-neutral float-right" title="Developer Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="dev-guide.html" class="btn btn-neutral float-right" title="Developer Guide" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="system-requirements.html" class="btn btn-neutral" title="System Requirements" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="system-requirements.html" class="btn btn-neutral" title="System Requirements" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -568,7 +542,7 @@ To modify the number of Tx and Rx queues of network interface</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019, Xilinx, Inc.
+        &copy; Copyright 2019-2020, Xilinx, Inc.
 
     </p>
   </div>
@@ -590,11 +564,10 @@ To modify the number of Tx and Rx queues of network interface</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'1.2.0',
+            VERSION:'1.3.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
+            HAS_SOURCE:  true
         };
     </script>
       <script type="text/javascript" src="_static/jquery.js"></script>

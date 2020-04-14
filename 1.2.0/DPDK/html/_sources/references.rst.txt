@@ -1,0 +1,14 @@
+References
+=============
+
+* UG973_: Vivado Design Suite User Guide
+
+.. _UG973: https://www.xilinx.com/support/documentation/sw_manuals/xilinx2019_1/ug973-vivado-release-notes-install-license.pdf
+
+* UG1301_: Getting Started with Alveo Data Center Acceleration Cards
+
+.. _UG1301: https://www.xilinx.com/support/documentation/boards_and_kits/accelerator-cards/2019_1/ug1301-getting-started-guide-alveo-accelerator-cards.pdf
+
+* PG302_ : QDMA Product Guide
+
+.. _PG302: https://www.xilinx.com/support/documentation/ip_documentation/qdma/v3_0/pg302-qdma.pdf
