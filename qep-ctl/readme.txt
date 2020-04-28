@@ -5,7 +5,7 @@ A utility to configure QDMA Ethernet Platform (QEP).
 
 Build:
 -------
-	gcc qep_ctl.c -o qep-ctl
+	make
 
 Supported Command:
 ------------------
@@ -14,12 +14,18 @@ qep-ctl supports following commands.
 	1. help : This command displays a short usage. The output looks as below.
 		./qep-ctl CMD [ options ]
 		  CMD = [ config | show | read | write | help ]
-		  Options =  -d BDF
-					 -b bar_num
-					 -c [ tx | rx ]
-					 -m mac_addr
-					 -v VID,DEI,PCP
-					 -e [ mac,vlan,discard ] [ disable ]
+		  Options =  	-d BDF
+				-b bar_num
+				-c [ tx | rx ]
+				-m mac_addr
+				-v VID,DEI,PCP
+				-e [ mac,vlan,discard ] [ disable ]
+		 ./qep-ctl show [ qsfp_info | sec_info | cmac ]
+				--alarm  : show alarm info along qsfp_info
+				--status : show CMAC status, valid with show cmac command
+				--stats  : show CMAC statistics, valid with show cmac command
+				--lbus   : show lbus info, valid with show cmac command
+
 	2. config : This command configures the Ethernet MAC address and 802.1Q 
 	VLAN fields. 
 		-m: With this option Ethernet MAC address is updated in the hardware.
@@ -31,7 +37,7 @@ qep-ctl supports following commands.
 			separated in order of VID, DEI, PCP respectively. DEI and PCP are 
 			optional. 
 			e.g. ./qep-ctl config -v 234,0,3
-		
+
 		-e: CLI supports upto four inputs with (-e) option. 
 			->'mac': This enables MAC update in tx direction. The source MAC 
 				address ofall outgoing packets will be updated with programmed 
@@ -51,23 +57,27 @@ qep-ctl supports following commands.
 		Comma separated list of values can be provided for enabling multiple 
 		features and direction can sleceted using general option.
 		e.g.  ./qep-ctl config -e mac,vlan -c tx
-		
-	3. show: This command displays the current configuration of the security 
-		block.
-		e.g.  ./qep-ctl show
-	
+
+	3. show: This command takes qsfp_info or sec_info or cmac as an argument.
+		sec_info: This sub command displays the current configuration of the security 
+			block.
+		cmac: This sub command displays CMAC status or statistics or LBUS information 
+			depending on option flag (--stats, --status, --lbus).
+		qsfp_info: This sub command displays information about QSFP module.
+		e.g.  ./qep-ctl show qsfp_info
+
 	4 read: This command is used to read a register directly. The offset must be
 		the first parameter to read command. By default, it uses first found 
 		device and user BAR i.e bar number 2. To read from different device 
 		and BAR use general options.
 		e.g.  ./qep-ctl read 0x0010000
-	
+
 	5. write: This command is used to write to a register directly. It 
 		takes offset and value as next two parameters. By default, it uses first
 		found device and user BAR i.e bar number 2. To write to different device
 		and BAR use general options.
 		e.g.  ./qep-ctl write 0x0010000 0xef
-	
+
 General Options:
 ----------------
 qep-ctl provides below general options. 
