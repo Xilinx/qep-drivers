@@ -1,0 +1,470 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>&lt;no title&gt; &mdash; QEP DPDK Driver 1.3.0 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="../_static/graphviz.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="QEP DPDK Driver 1.3.0 documentation" href="../index.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> QEP DPDK Driver
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.3.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <p class="caption"><span class="caption-text">Table of Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../system-overview.html">System Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../system-requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../userguide.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-guide.html">Developers Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../acronyms.html">Terms and Acronyms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../references.html">References</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../index.html">QEP DPDK Driver</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../index.html">Docs</a> &raquo;</li>
+      
+    <li>&lt;no title&gt;</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/debug/qdma_register_dump.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="highlight-none notranslate"><div class="highlight"><pre>EAL: Detected 24 lcore(s)
+EAL: Detected 1 NUMA nodes
+EAL: Multi-process socket /var/run/dpdk/rte/mp_socket_5715_693a0b69e25f8
+EAL: Probing VFIO support...
+EAL: PCI device 0000:05:00.0 on NUMA socket 0
+EAL:   probe driver: 8086:1533 net_e1000_igb
+EAL: PCI device 0000:06:00.0 on NUMA socket 0
+EAL:   probe driver: 1d6a:7b1 net_atlantic
+EAL: PCI device 0000:1a:00.2 on NUMA socket 0
+EAL:   probe driver: 10ee:5016 net_qep
+FPGA Config Registers for port_id: 0
+--------
+ Offset       Name                                        Value(Hex) Value(Dec)
+[      0] CFG_BLOCK_ID_0                                  0x1fd30000 533921792
+[    0x4] CFG_BUSDEV_0                                    0          0
+[    0x8] CFG_PCIE_MAX_PL_SZ_0                            0x51       81
+[    0xc] CFG_PCIE_MAX_RDRQ_SZ_0                          0x52       82
+[   0x10] CFG_SYS_ID_0                                    0x1234     4660
+[   0x14] CFG_MSI_EN_0                                    0x20202    131586
+[   0x18] CFG_PCIE_DATA_WIDTH_0                           0x3        3
+[   0x1c] CFG_PCIE_CTRL_0                                 0x1        1
+[   0x40] CFG_AXI_USR_MAX_PL_SZ_0                         0x55       85
+[   0x44] CFG_AXI_USR_MAX_RDRQ_SZ_0                       0x55       85
+[   0x4c] CFG_MISC_CTRL_0                                 0x10009    65545
+[   0x80] CFG_SCRATCH_REG_0                               0          0
+[   0x84] CFG_SCRATCH_REG_1                               0          0
+[   0x88] CFG_SCRATCH_REG_2                               0          0
+[   0x8c] CFG_SCRATCH_REG_3                               0          0
+[   0x90] CFG_SCRATCH_REG_4                               0          0
+[   0x94] CFG_SCRATCH_REG_5                               0          0
+[   0x98] CFG_SCRATCH_REG_6                               0          0
+[   0x9c] CFG_SCRATCH_REG_7                               0          0
+[   0xf0] QDMA_RAM_SBE_MSK_A_0                            0xffffff11 4294967057
+[   0xf4] QDMA_RAM_SBE_STS_A_0                            0          0
+[   0xf8] QDMA_RAM_DBE_MSK_A_0                            0xffffff11 4294967057
+[   0xfc] QDMA_RAM_DBE_STS_A_0                            0          0
+[  0x100] GLBL2_ID_0                                      0x1fd70000 534183936
+[  0x104] GLBL2_PF_BL_INT_0                               0x1101     4353
+[  0x108] GLBL2_PF_VF_BL_INT_0                            0          0
+[  0x10c] GLBL2_PF_BL_EXT_0                               0x4044     16452
+[  0x110] GLBL2_PF_VF_BL_EXT_0                            0          0
+[  0x114] GLBL2_CHNL_INST_0                               0x30101    196865
+[  0x118] GLBL2_CHNL_QDMA_0                               0x30f0f    200463
+[  0x11c] GLBL2_CHNL_STRM_0                               0x30000    196608
+[  0x120] GLBL2_QDMA_CAP_0                                0x800      2048
+[  0x128] GLBL2_PASID_CAP_0                               0          0
+[  0x12c] GLBL2_FUNC_RET_0                                0x2        2
+[  0x130] GLBL2_SYS_ID_0                                  0          0
+[  0x134] GLBL2_MISC_CAP_0                                0x1000000  16777216
+[  0x1b8] GLBL2_DBG_PCIE_RQ_0                             0x7c50003  130351107
+[  0x1bc] GLBL2_DBG_PCIE_RQ_1                             0x6024     24612
+[  0x1c0] GLBL2_DBG_AXIMM_WR_0                            0x600021   6291489
+[  0x1c4] GLBL2_DBG_AXIMM_WR_1                            0          0
+[  0x1c8] GLBL2_DBG_AXIMM_RD_0                            0x1        1
+[  0x1cc] GLBL2_DBG_AXIMM_RD_1                            0          0
+[  0x204] GLBL_RNGSZ_0                                    0x801      2049
+[  0x208] GLBL_RNGSZ_1                                    0x41       65
+[  0x20c] GLBL_RNGSZ_2                                    0x81       129
+[  0x210] GLBL_RNGSZ_3                                    0xc1       193
+[  0x214] GLBL_RNGSZ_4                                    0x101      257
+[  0x218] GLBL_RNGSZ_5                                    0x181      385
+[  0x21c] GLBL_RNGSZ_6                                    0x201      513
+[  0x220] GLBL_RNGSZ_7                                    0x301      769
+[  0x224] GLBL_RNGSZ_8                                    0x401      1025
+[  0x228] GLBL_RNGSZ_9                                    0x601      1537
+[  0x22c] GLBL_RNGSZ_10                                   0xc01      3073
+[  0x230] GLBL_RNGSZ_11                                   0x1001     4097
+[  0x234] GLBL_RNGSZ_12                                   0x1801     6145
+[  0x238] GLBL_RNGSZ_13                                   0x2001     8193
+[  0x23c] GLBL_RNGSZ_14                                   0x3001     12289
+[  0x240] GLBL_RNGSZ_15                                   0x4001     16385
+[  0x248] GLBL_ERR_STAT_0                                 0          0
+[  0x24c] GLBL_ERR_MASK_0                                 0xfff      4095
+[  0x250] GLBL_DSC_CFG_0                                  0x30       48
+[  0x254] GLBL_DSC_ERR_STS_0                              0          0
+[  0x258] GLBL_DSC_ERR_MSK_0                              0x7ff      2047
+[  0x25c] GLBL_DSC_ERR_LOG_0                              0          0
+[  0x260] GLBL_DSC_ERR_LOG_1                              0          0
+[  0x264] GLBL_TRQ_ERR_STS_0                              0          0
+[  0x268] GLBL_TRQ_ERR_MSK_0                              0xf        15
+[  0x26c] GLBL_TRQ_ERR_LOG_0                              0          0
+[  0x270] GLBL_DSC_DBG_DAT_0                              0x221e0000 572391424
+[  0x274] GLBL_DSC_DBG_DAT_1                              0x8080     32896
+[  0x27c] GLBL_DSC_ERR_LOG2_0                             0          0
+[  0x288] GLBL_INTERRUPT_CFG_0                            0          0
+[  0x400] TRQ_SEL_FMAP_0                                  0          0
+[  0x404] TRQ_SEL_FMAP_1                                  0          0
+[  0x408] TRQ_SEL_FMAP_2                                  0x8100     33024
+[  0x40c] TRQ_SEL_FMAP_3                                  0          0
+[  0x804] IND_CTXT_DATA_0                                 0x10f5a    69466
+[  0x808] IND_CTXT_DATA_1                                 0xfffffffe 4294967294
+[  0x80c] IND_CTXT_DATA_2                                 0xffffffff 4294967295
+[  0x810] IND_CTXT_DATA_3                                 0xffffffff 4294967295
+[  0x814] IND_CTXT_DATA_4                                 0xffffffff 4294967295
+[  0x818] IND_CTXT_DATA_5                                 0xffffffff 4294967295
+[  0x81c] IND_CTXT_DATA_6                                 0xffffffff 4294967295
+[  0x820] IND_CTXT_DATA_7                                 0xffffffff 4294967295
+[  0x824] IND_CTXT_MASK_0                                 0xffffffff 4294967295
+[  0x828] IND_CTXT_MASK_1                                 0xffffffff 4294967295
+[  0x82c] IND_CTXT_MASK_2                                 0xffffffff 4294967295
+[  0x830] IND_CTXT_MASK_3                                 0xffffffff 4294967295
+[  0x834] IND_CTXT_MASK_4                                 0xffffffff 4294967295
+[  0x838] IND_CTXT_MASK_5                                 0xffffffff 4294967295
+[  0x83c] IND_CTXT_MASK_6                                 0xffffffff 4294967295
+[  0x840] IND_CTXT_MASK_7                                 0xffffffff 4294967295
+[  0x844] IND_CTXT_CMD_0                                  0x87ac     34732
+[  0xa00] C2H_TIMER_CNT_0                                 0x1        1
+[  0xa04] C2H_TIMER_CNT_1                                 0x2        2
+[  0xa08] C2H_TIMER_CNT_2                                 0x4        4
+[  0xa0c] C2H_TIMER_CNT_3                                 0x5        5
+[  0xa10] C2H_TIMER_CNT_4                                 0x8        8
+[  0xa14] C2H_TIMER_CNT_5                                 0xa        10
+[  0xa18] C2H_TIMER_CNT_6                                 0xf        15
+[  0xa1c] C2H_TIMER_CNT_7                                 0x14       20
+[  0xa20] C2H_TIMER_CNT_8                                 0x19       25
+[  0xa24] C2H_TIMER_CNT_9                                 0x1e       30
+[  0xa28] C2H_TIMER_CNT_10                                0x32       50
+[  0xa2c] C2H_TIMER_CNT_11                                0x4b       75
+[  0xa30] C2H_TIMER_CNT_12                                0x64       100
+[  0xa34] C2H_TIMER_CNT_13                                0x7d       125
+[  0xa38] C2H_TIMER_CNT_14                                0x96       150
+[  0xa3c] C2H_TIMER_CNT_15                                0xc8       200
+[  0xa40] C2H_CNT_THRESH_0                                0x40       64
+[  0xa44] C2H_CNT_THRESH_1                                0x2        2
+[  0xa48] C2H_CNT_THRESH_2                                0x4        4
+[  0xa4c] C2H_CNT_THRESH_3                                0x8        8
+[  0xa50] C2H_CNT_THRESH_4                                0x10       16
+[  0xa54] C2H_CNT_THRESH_5                                0x18       24
+[  0xa58] C2H_CNT_THRESH_6                                0x20       32
+[  0xa5c] C2H_CNT_THRESH_7                                0x30       48
+[  0xa60] C2H_CNT_THRESH_8                                0x50       80
+[  0xa64] C2H_CNT_THRESH_9                                0x60       96
+[  0xa68] C2H_CNT_THRESH_10                               0x70       112
+[  0xa6c] C2H_CNT_THRESH_11                               0x80       128
+[  0xa70] C2H_CNT_THRESH_12                               0x90       144
+[  0xa74] C2H_CNT_THRESH_13                               0xa0       160
+[  0xa78] C2H_CNT_THRESH_14                               0xb0       176
+[  0xa7c] C2H_CNT_THRESH_15                               0xc0       192
+[  0xa88] C2H_STAT_S_AXIS_C2H_ACCEPTED_0                  0x12       18
+[  0xa8c] C2H_STAT_S_AXIS_CMPT_ACCEPTED_0                 0x12       18
+[  0xa90] C2H_STAT_DESC_RSP_PKT_ACCEPTED_0                0x12       18
+[  0xa94] C2H_STAT_AXIS_PKG_CMP_0                         0x12       18
+[  0xa98] C2H_STAT_DESC_RSP_ACCEPTED_0                    0x12       18
+[  0xa9c] C2H_STAT_DESC_RSP_CMP_0                         0x12       18
+[  0xaa0] C2H_STAT_WRQ_OUT_0                              0x15       21
+[  0xaa4] C2H_STAT_WPL_REN_ACCEPTED_0                     0x24       36
+[  0xaa8] C2H_STAT_TOTAL_WRQ_LEN_0                        0x900      2304
+[  0xaac] C2H_STAT_TOTAL_WPL_LEN_0                        0x900      2304
+[  0xab0] C2H_BUF_SZ_0                                    0x1000     4096
+[  0xab4] C2H_BUF_SZ_1                                    0x100      256
+[  0xab8] C2H_BUF_SZ_2                                    0x200      512
+[  0xabc] C2H_BUF_SZ_3                                    0x400      1024
+[  0xac0] C2H_BUF_SZ_4                                    0x800      2048
+[  0xac4] C2H_BUF_SZ_5                                    0xf80      3968
+[  0xac8] C2H_BUF_SZ_6                                    0x1000     4096
+[  0xacc] C2H_BUF_SZ_7                                    0x1000     4096
+[  0xad0] C2H_BUF_SZ_8                                    0x1000     4096
+[  0xad4] C2H_BUF_SZ_9                                    0x1000     4096
+[  0xad8] C2H_BUF_SZ_10                                   0x1000     4096
+[  0xadc] C2H_BUF_SZ_11                                   0x1000     4096
+[  0xae0] C2H_BUF_SZ_12                                   0x1000     4096
+[  0xae4] C2H_BUF_SZ_13                                   0x2000     8192
+[  0xae8] C2H_BUF_SZ_14                                   0x233a     9018
+[  0xaec] C2H_BUF_SZ_15                                   0x4000     16384
+[  0xaf0] C2H_ERR_STAT_0                                  0          0
+[  0xaf4] C2H_ERR_MASK_0                                  0xfedb     65243
+[  0xaf8] C2H_FATAL_ERR_STAT_0                            0          0
+[  0xafc] C2H_FATAL_ERR_MASK_0                            0x7df1b    515867
+[  0xb00] C2H_FATAL_ERR_ENABLE_0                          0          0
+[  0xb04] GLBL_ERR_INT_0                                  0x1000001  16777217
+[  0xb08] C2H_PFCH_CFG_0                                  0xc201100  203428096
+[  0xb0c] C2H_INT_TIMER_TICK_0                            0x19       25
+[  0xb10] C2H_STAT_DESC_RSP_DROP_ACCEPTED_0               0          0
+[  0xb14] C2H_STAT_DESC_RSP_ERR_ACCEPTED_0                0          0
+[  0xb18] C2H_STAT_DESC_REQ_0                             0x12       18
+[  0xb1c] C2H_STAT_DEBUG_DMA_ENG_0                        0          0
+[  0xb20] C2H_STAT_DEBUG_DMA_ENG_1                        0x82409012 2185269266
+[  0xb24] C2H_STAT_DEBUG_DMA_ENG_2                        0xc1204812 3240118290
+[  0xb28] C2H_STAT_DEBUG_DMA_ENG_3                        0x105415   1070101
+[  0xb2c] C2H_DBG_PFCH_ERR_CTXT_0                         0          0
+[  0xb30] C2H_FIRST_ERR_QID_0                             0          0
+[  0xb34] STAT_NUM_CMPT_IN_0                              0x12       18
+[  0xb38] STAT_NUM_CMPT_OUT_0                             0x12       18
+[  0xb3c] STAT_NUM_CMPT_DRP_0                             0          0
+[  0xb40] STAT_NUM_STAT_DESC_OUT_0                        0x12       18
+[  0xb44] STAT_NUM_DSC_CRDT_SENT_0                        0          0
+[  0xb48] STAT_NUM_FCH_DSC_RCVD_0                         0          0
+[  0xb4c] STAT_NUM_BYP_DSC_RCVD_0                         0x12       18
+[  0xb50] C2H_CMPT_COAL_CFG_0                             0x80064014 2147893268
+[  0xb54] C2H_INTR_H2C_REQ_0                              0          0
+[  0xb58] C2H_INTR_C2H_MM_REQ_0                           0          0
+[  0xb5c] C2H_INTR_ERR_INT_REQ_0                          0          0
+[  0xb60] C2H_INTR_C2H_ST_REQ_0                           0          0
+[  0xb64] C2H_INTR_H2C_ERR_MM_MSIX_ACK_0                  0          0
+[  0xb68] C2H_INTR_H2C_ERR_MM_MSIX_FAIL_0                 0          0
+[  0xb6c] C2H_INTR_H2C_ERR_MM_NO_MSIX_0                   0          0
+[  0xb70] C2H_INTR_H2C_ERR_MM_CTXT_INVAL_0                0          0
+[  0xb74] C2H_INTR_C2H_ST_MSIX_ACK_0                      0          0
+[  0xb78] C2H_INTR_C2H_ST_MSIX_FAIL_0                     0          0
+[  0xb7c] C2H_INTR_C2H_ST_NO_MSIX_0                       0          0
+[  0xb80] C2H_INTR_C2H_ST_CTXT_INVAL_0                    0          0
+[  0xb84] C2H_STAT_WR_CMP_0                               0x12       18
+[  0xb88] C2H_STAT_DEBUG_DMA_ENG_4_0                      0x41204800 1092634624
+[  0xb8c] C2H_STAT_DEBUG_DMA_ENG_5_0                      0          0
+[  0xb90] C2H_DBG_PFCH_QID_0                              0          0
+[  0xb94] C2H_DBG_PFCH_0                                  0          0
+[  0xb98] C2H_INT_DEBUG_0                                 0          0
+[  0xb9c] C2H_STAT_IMM_ACCEPTED_0                         0          0
+[  0xba0] C2H_STAT_MARKER_ACCEPTED_0                      0          0
+[  0xba4] C2H_STAT_DISABLE_CMP_ACCEPTED_0                 0          0
+[  0xba8] C2H_C2H_PAYLOAD_FIFO_CRDT_CNT_0                 0          0
+[  0xbac] C2H_INTR_DYN_REQ_0                              0          0
+[  0xbb0] C2H_INTR_DYN_MSIX_0                             0          0
+[  0xbb4] C2H_DROP_LEN_MISMATCH_0                         0          0
+[  0xbb8] C2H_DROP_DESC_RSP_LEN_0                         0          0
+[  0xbbc] C2H_DROP_QID_FIFO_LEN_0                         0          0
+[  0xbc0] C2H_DROP_PAYLOAD_CNT_0                          0          0
+[  0xbc4] QDMA_C2H_CMPT_FORMAT_0                          0x20001    131073
+[  0xbc8] QDMA_C2H_CMPT_FORMAT_1                          0          0
+[  0xbcc] QDMA_C2H_CMPT_FORMAT_2                          0          0
+[  0xbd0] QDMA_C2H_CMPT_FORMAT_3                          0          0
+[  0xbd4] QDMA_C2H_CMPT_FORMAT_4                          0          0
+[  0xbd8] QDMA_C2H_CMPT_FORMAT_5                          0          0
+[  0xbdc] QDMA_C2H_CMPT_FORMAT_6                          0          0
+[  0xbe0] C2H_PFCH_CACHE_DEPTH_0                          0x10       16
+[  0xbe4] C2H_CMPT_COAL_BUF_DEPTH_0                       0x20       32
+[  0xbe8] C2H_PFCH_CRDT_0                                 0          0
+[  0xe00] H2C_ERR_STAT_0                                  0          0
+[  0xe04] H2C_ERR_MASK_0                                  0x1f       31
+[  0xe08] H2C_FIRST_ERR_QID_0                             0          0
+[  0xe0c] H2C_DBG_REG_0                                   0x100010   1048592
+[  0xe10] H2C_DBG_REG_1                                   0x100020   1048608
+[  0xe14] H2C_DBG_REG_2                                   0          0
+[  0xe18] H2C_DBG_REG_3                                   0x44008025 1140883493
+[  0xe1c] H2C_DBG_REG_4                                   0xa16a2040 2708086848
+[  0xe20] H2C_FATAL_ERR_EN_0                              0          0
+[  0xe24] H2C_REQ_THROT_0                                 0xc14000   12664832
+[  0xe28] H2C_ALN_DBG_REG0_0                              0x10       16
+[ 0x1004] C2H_MM_CONTROL_0                                0x1        1
+[ 0x1008] C2H_MM_CONTROL_1                                0x1        1
+[ 0x100c] C2H_MM_CONTROL_2                                0x1        1
+[ 0x1040] C2H_MM_STATUS_0                                 0x1        1
+[ 0x1044] C2H_MM_STATUS_1                                 0x1        1
+[ 0x1048] C2H_MM_CMPL_DSC_CNT_0                           0          0
+[ 0x1054] C2H_MM_ERR_CODE_EN_MASK_0                       0          0
+[ 0x1058] C2H_MM_ERR_CODE_0                               0          0
+[ 0x105c] C2H_MM_ERR_INFO_0                               0          0
+[ 0x10c0] C2H_MM_PERF_MON_CTRL_0                          0          0
+[ 0x10c4] C2H_MM_PERF_MON_CY_CNT_0                        0          0
+[ 0x10c8] C2H_MM_PERF_MON_CY_CNT_1                        0          0
+[ 0x10cc] C2H_MM_PERF_MON_DATA_CNT_0                      0          0
+[ 0x10d0] C2H_MM_PERF_MON_DATA_CNT_1                      0          0
+[ 0x10e8] C2H_MM_DBG_INFO_0                               0x10002    65538
+[ 0x10ec] C2H_MM_DBG_INFO_1                               0          0
+[ 0x1204] H2C_MM_CONTROL_0                                0x1        1
+[ 0x1208] H2C_MM_CONTROL_1                                0x1        1
+[ 0x120c] H2C_MM_CONTROL_2                                0x1        1
+[ 0x1240] H2C_MM_STATUS_0                                 0x1        1
+[ 0x1248] H2C_MM_CMPL_DSC_CNT_0                           0          0
+[ 0x1254] H2C_MM_ERR_CODE_EN_MASK_0                       0          0
+[ 0x1258] H2C_MM_ERR_CODE_0                               0          0
+[ 0x125c] H2C_MM_ERR_INFO_0                               0          0
+[ 0x12c0] H2C_MM_PERF_MON_CTRL_0                          0          0
+[ 0x12c4] H2C_MM_PERF_MON_CY_CNT_0                        0          0
+[ 0x12c8] H2C_MM_PERF_MON_CY_CNT_1                        0          0
+[ 0x12cc] H2C_MM_PERF_MON_DATA_CNT_0                      0          0
+[ 0x12d0] H2C_MM_PERF_MON_DATA_CNT_1                      0          0
+[ 0x12e8] H2C_MM_DBG_INFO_0                               0x10002    65538
+[ 0x12ec] H2C_MM_REQ_THROT_0                              0x8000     32768
+</pre></div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Xilinx, Inc.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'1.3.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

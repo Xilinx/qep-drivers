@@ -1,0 +1,65 @@
+Driver Design
+=============
+
+The driver is implemented as a PCIe network device driver. The driver configures the CMAC, QDMA and STM-N components 
+in the hardware design for performing packet reception and transmission. Each of these components have a set of APIs 
+which are called from the network driver callback APIs registered with the Linux network subsystem. 
+
+CMAC APIs can be found in ``linux-kernel/driver/cmac`` folder
+
+QDMA APIs can be found in ``linux-kernel/driver/qdma`` folder
+
+STM-N APIs can be found in ``linux-kernel/driver/stmn`` folder
+
+ 
+The below network device operations are implemented in ``linux-kernel/driver/qep.c``
+
+  ::
+
+	static const struct net_device_ops qep_netdev_ops = {
+	.ndo_open = qep_open,
+	.ndo_stop = qep_stop,
+	.ndo_start_xmit = qep_start_xmit,
+	.ndo_select_queue = qep_select_queue,
+	.ndo_get_stats64 = qep_get_stats64,
+	.ndo_change_mtu = qep_change_mtu
+	};
+
+The following ethtool operations supported by the driver are implemented in ``linux-kernel/driver/qep_ethtool.c``:
+
+::
+
+	static const struct ethtool_ops qep_ethtool_ops = {
+	.get_drvinfo            = qep_get_drvinfo,
+	.get_regs_len           = qep_get_regs_len,
+	.get_regs               = qep_get_regs,
+	.get_link               = ethtool_op_get_link,
+	.get_msglevel           = qep_get_msglevel,
+	.set_msglevel           = qep_set_msglevel,
+	.get_ringparam          = qep_get_ringparam,
+	.set_ringparam          = qep_set_ringparam,
+	.get_channels           = qep_get_channels,
+	.set_channels           = qep_set_channels,
+	.get_strings            = qep_get_strings,
+	.get_ethtool_stats      = qep_get_ethtool_stats,
+	.get_coalesce           = qep_get_coalesce,
+	.set_coalesce           = qep_set_coalesce,
+	.get_per_queue_coalesce = qep_get_per_queue_coalesce,
+	.set_per_queue_coalesce = qep_set_per_queue_coalesce,
+	.get_fecparam           = qep_get_fecparam,
+	.set_fecparam           = qep_set_fecparam,
+	.get_rxfh_key_size      = qep_get_rxfh_key_size
+	.get_rxfh_indir_size    = qep_rss_indir_size,
+	.get_rxfh               = qep_get_rxfh,
+	.set_rxfh               = qep_set_rxfh,
+	.get_rxnfc              = qep_get_rxnfc,
+	.get_sset_count         = qep_get_sset_count
+	};
+
+
+Detailed documentation of the above network device operations and ethtool operations can be found in
+
+  .. toctree::
+   :maxdepth: 1
+
+   qep-callback-apis.rst

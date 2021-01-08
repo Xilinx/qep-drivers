@@ -13,6 +13,8 @@
 
   
   
+  
+  
 
   
 
@@ -27,8 +29,6 @@
     <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   
 
-  
-    <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
   
 
   
@@ -47,6 +47,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -87,7 +88,10 @@
           
             
             
-                <p class="caption"><span class="caption-text">Table of Contents</span></p>
+              
+            
+            
+              <p class="caption"><span class="caption-text">Table of Contents</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="system-overview.html">System Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system-requirements.html">System Requirements</a></li>
@@ -114,8 +118,10 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="index.html">QEP Linux Kernel Network Driver</a>
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">QEP Linux Kernel Network Driver</a>
+        
       </nav>
 
 
@@ -124,27 +130,44 @@
         <div class="rst-content">
           
 
- 
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="index.html">Docs</a> &raquo;</li>
-      
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
           <li><a href="dev-guide.html">Developer Guide</a> &raquo;</li>
-      
+        
           <li><a href="driver-design.html">Driver Design</a> &raquo;</li>
-      
-    <li>QEP Linux Driver APIs</li>
+        
+      <li>QEP Linux Driver APIs</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
+            
             <a href="_sources/qep-callback-apis.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -163,7 +186,7 @@ int <code class="descname">qep_module_init</code><span class="sig-paren">(</span
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">void</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">void</span></code></dt>
 <dd>no arguments</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -183,7 +206,7 @@ void __exit <code class="descname">qep_module_exit</code><span class="sig-paren"
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">void</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">void</span></code></dt>
 <dd>no arguments</dd>
 </dl>
 <dl class="function">
@@ -194,9 +217,9 @@ int <code class="descname">qep_pci_probe</code><span class="sig-paren">(</span>s
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">pci_dev</span> <span class="pre">*</span> <span class="pre">pdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">pci_dev</span> <span class="pre">*</span> <span class="pre">pdev</span></code></dt>
 <dd>Pointer to PCIe device struct</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">struct</span> <span class="pre">pci_device_id</span> <span class="pre">*</span> <span class="pre">pci_dev_id</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">struct</span> <span class="pre">pci_device_id</span> <span class="pre">*</span> <span class="pre">pci_dev_id</span></code></dt>
 <dd>Pointer to pci_device_id structure containing the PCIe Vendor ID and Device ID</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -220,7 +243,7 @@ void <code class="descname">qep_pci_remove</code><span class="sig-paren">(</span
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">pci_dev</span> <span class="pre">*</span> <span class="pre">pdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">pci_dev</span> <span class="pre">*</span> <span class="pre">pdev</span></code></dt>
 <dd>Pointer to PCIe Device struct</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -233,7 +256,7 @@ int <code class="descname">qep_open</code><span class="sig-paren">(</span>struct
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -256,7 +279,7 @@ int <code class="descname">qep_stop</code><span class="sig-paren">(</span>struct
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -277,16 +300,16 @@ int <code class="descname">qep_start_xmit</code><span class="sig-paren">(</span>
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">sk_buff</span> <span class="pre">*</span> <span class="pre">skb</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">sk_buff</span> <span class="pre">*</span> <span class="pre">skb</span></code></dt>
 <dd>Pointer to sk_buff conataining data and metadata for transfer</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
 </dl>
 <p><strong>Description</strong></p>
 <ul class="simple">
 <li>Upon receiving packets from networking stack, .ndo_start_xmit callback of net_device_ops is called with sk_buff passed as an argument.</li>
 <li>Queue in which packet needs to be transmitted is identified from skb.</li>
-<li>The physical address of sk_buff data and fragments are mapped to qdma_pkt_data structure and passed to <code class="xref c c-func docutils literal notranslate"><span class="pre">qdma_queue_packet_write()</span></code> API.</li>
+<li>The physical address of sk_buff data and fragments are mapped to qdma_pkt_data structure and passed to <code class="xref c c-func docutils literal"><span class="pre">qdma_queue_packet_write()</span></code> API.</li>
 <li>Once the packet has been DMAed, interrupt is raised by QDMA. qep_isr_tx_tophalf which is registered as the callback during initialization is called.</li>
 <li>qep_isr_tx_tophalf determines the queue and schedules a tasklet and acknowledges the interrupt.</li>
 <li>tasklet routine frees the sk_buff.</li>
@@ -304,17 +327,17 @@ int <code class="descname">qep_rx_pkt_process</code><span class="sig-paren">(</s
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">long</span> <span class="pre">qhndl</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">unsigned</span> <span class="pre">long</span> <span class="pre">qhndl</span></code></dt>
 <dd>Handle to the queue on which data is received</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">long</span> <span class="pre">quld</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">unsigned</span> <span class="pre">long</span> <span class="pre">quld</span></code></dt>
 <dd>Pointer to QEP private data</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">len</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">len</span></code></dt>
 <dd>Length of the packet data</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">sgcnt</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">sgcnt</span></code></dt>
 <dd>Number of entries in scatter gatherer list</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">qdma_sw_sg</span> <span class="pre">*</span> <span class="pre">sgl</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">qdma_sw_sg</span> <span class="pre">*</span> <span class="pre">sgl</span></code></dt>
 <dd>Pointer to scatter gatherer list</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">udd</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">udd</span></code></dt>
 <dd>User logic metadata</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -322,8 +345,8 @@ int <code class="descname">qep_rx_pkt_process</code><span class="sig-paren">(</s
 <li>Upon the arrival of the data packets from CMAC, QDMA  will raise interrupt based on interrupt vector configuration.</li>
 <li>QDMA API provides support for registering additional top half processing function in qdma_dev_conf-&gt;:c:func:<cite>fp_descq_isr_top()</cite>
 through callback and QEP driver-specific data via qdma_dev_conf-&gt;isr_top_param. This configuration shall be done as
-part of <code class="xref c c-func docutils literal notranslate"><span class="pre">qdma_device_open()</span></code> API  which is called from the probe function.</li>
-<li><code class="xref c c-func docutils literal notranslate"><span class="pre">qep_isr_rx_tophalf()</span></code> determines the queue, acknowledges the interrupts and schedules a NAPI for the  queue</li>
+part of <code class="xref c c-func docutils literal"><span class="pre">qdma_device_open()</span></code> API  which is called from the probe function.</li>
+<li><code class="xref c c-func docutils literal"><span class="pre">qep_isr_rx_tophalf()</span></code> determines the queue, acknowledges the interrupts and schedules a NAPI for the  queue</li>
 <li>Callback registered with NAPI, when executed, fetches the data from QDMA to SKB buffer and hands over the packet to the Linux kernel stack</li>
 </ul>
 <img alt="_images/rx.png" class="align-center" src="_images/rx.png" />
@@ -337,9 +360,9 @@ u16 <code class="descname">qep_select_queue</code><span class="sig-paren">(</spa
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">sk_buff</span> <span class="pre">*</span> <span class="pre">skb</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">sk_buff</span> <span class="pre">*</span> <span class="pre">skb</span></code></dt>
 <dd>Pointer to sk_buff conataining data and metadata for the transfer</dd>
 </dl>
 <p><strong>Return</strong></p>
@@ -352,9 +375,9 @@ struct rtnl_link_stats64 * <code class="descname">qep_get_stats64</code><span cl
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">rtnl_link_stats64</span> <span class="pre">*</span> <span class="pre">stats</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">rtnl_link_stats64</span> <span class="pre">*</span> <span class="pre">stats</span></code></dt>
 <dd>Pointer to struct rtnl_link_stats64 for link statistics</dd>
 </dl>
 <p><strong>Return</strong></p>
@@ -367,9 +390,9 @@ int <code class="descname">qep_change_mtu</code><span class="sig-paren">(</span>
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">new_mtu</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">new_mtu</span></code></dt>
 <dd>New MTU of the device to be set</dd>
 </dl>
 <p><strong>Return</strong></p>
@@ -382,7 +405,7 @@ void <code class="descname">qep_tx_timeout</code><span class="sig-paren">(</span
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
 </dl>
 <p><strong>Return</strong></p>
@@ -398,9 +421,9 @@ void <code class="descname">qep_get_drvinfo</code><span class="sig-paren">(</spa
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">ethtool_drvinfo</span> <span class="pre">*</span> <span class="pre">drvinfo</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">ethtool_drvinfo</span> <span class="pre">*</span> <span class="pre">drvinfo</span></code></dt>
 <dd>Pointer to struct ethtool_drvinfo</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -414,7 +437,7 @@ int <code class="descname">qep_get_regs_len</code><span class="sig-paren">(</spa
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
 </dl>
 <p><strong>Return</strong></p>
@@ -427,11 +450,11 @@ void <code class="descname">qep_get_regs</code><span class="sig-paren">(</span>s
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">ethtool_regs</span> <span class="pre">*</span> <span class="pre">regs</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">ethtool_regs</span> <span class="pre">*</span> <span class="pre">regs</span></code></dt>
 <dd>Pointer to ethtool_regs struct</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">p</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">p</span></code></dt>
 <dd>Pointer to register dump data</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -444,7 +467,7 @@ u32 <code class="descname">qep_get_msglevel</code><span class="sig-paren">(</spa
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
 </dl>
 <p><strong>Return</strong></p>
@@ -457,9 +480,9 @@ void <code class="descname">qep_set_msglevel</code><span class="sig-paren">(</sp
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">u32</span> <span class="pre">data</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">u32</span> <span class="pre">data</span></code></dt>
 <dd>Message level</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -471,9 +494,9 @@ void <code class="descname">qep_get_ringparam</code><span class="sig-paren">(</s
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">ethtool_ringparam</span> <span class="pre">*</span> <span class="pre">ring</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">ethtool_ringparam</span> <span class="pre">*</span> <span class="pre">ring</span></code></dt>
 <dd>Pointer to ethtool_ringparam struct</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -486,9 +509,9 @@ int <code class="descname">qep_set_ringparam</code><span class="sig-paren">(</sp
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">ethtool_ringparam</span> <span class="pre">*</span> <span class="pre">ring</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">ethtool_ringparam</span> <span class="pre">*</span> <span class="pre">ring</span></code></dt>
 <dd>Pointer to ethtool_ringparam struct</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -501,9 +524,9 @@ void <code class="descname">qep_get_channels</code><span class="sig-paren">(</sp
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">ethtool_channels</span> <span class="pre">*</span> <span class="pre">ch</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">ethtool_channels</span> <span class="pre">*</span> <span class="pre">ch</span></code></dt>
 <dd>Pointer to ethtool_channels struct</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -517,9 +540,9 @@ int <code class="descname">qep_get_sset_count</code><span class="sig-paren">(</s
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">sset</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">sset</span></code></dt>
 <dd>string set ID</dd>
 </dl>
 <p><strong>Return</strong></p>
@@ -532,11 +555,11 @@ void <code class="descname">qep_get_strings</code><span class="sig-paren">(</spa
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">u32</span> <span class="pre">stringset</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">u32</span> <span class="pre">stringset</span></code></dt>
 <dd>string set ID</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">u8</span> <span class="pre">*</span> <span class="pre">data</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">u8</span> <span class="pre">*</span> <span class="pre">data</span></code></dt>
 <dd>Pointer to memory where strings are to be populated, provided by ethtool</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -549,11 +572,11 @@ void <code class="descname">qep_get_ethtool_stats</code><span class="sig-paren">
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">ethtool_stats</span> <span class="pre">*</span> <span class="pre">stats</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">ethtool_stats</span> <span class="pre">*</span> <span class="pre">stats</span></code></dt>
 <dd>Pointer to ethtool_stats struct</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">u64</span> <span class="pre">*</span> <span class="pre">data</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">u64</span> <span class="pre">*</span> <span class="pre">data</span></code></dt>
 <dd>Pointer to memory  where stats are to be populated, provided by ethtool</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -567,9 +590,9 @@ int <code class="descname">qep_get_coalesce</code><span class="sig-paren">(</spa
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">ethtool_coalesce</span> <span class="pre">*</span> <span class="pre">ec</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">ethtool_coalesce</span> <span class="pre">*</span> <span class="pre">ec</span></code></dt>
 <dd>Pointer to ethtool_coalesce struct</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -582,9 +605,9 @@ int <code class="descname">qep_set_coalesce</code><span class="sig-paren">(</spa
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">ethtool_coalesce</span> <span class="pre">*</span> <span class="pre">ec</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">ethtool_coalesce</span> <span class="pre">*</span> <span class="pre">ec</span></code></dt>
 <dd>Pointer to ethtool_coalesce struct</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -599,11 +622,11 @@ int <code class="descname">qep_get_per_queue_coalesce</code><span class="sig-par
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">u32</span> <span class="pre">queue</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">u32</span> <span class="pre">queue</span></code></dt>
 <dd>queue ID for which configuration is provided</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">ethtool_coalesce</span> <span class="pre">*</span> <span class="pre">ec</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">ethtool_coalesce</span> <span class="pre">*</span> <span class="pre">ec</span></code></dt>
 <dd>Pointer to ethtool_coalesce struct</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -621,11 +644,11 @@ int <code class="descname">qep_set_per_queue_coalesce</code><span class="sig-par
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">u32</span> <span class="pre">queue</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">u32</span> <span class="pre">queue</span></code></dt>
 <dd>queue ID for which configuration is provided</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">ethtool_coalesce</span> <span class="pre">*</span> <span class="pre">ec</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">ethtool_coalesce</span> <span class="pre">*</span> <span class="pre">ec</span></code></dt>
 <dd>Pointer to ethtool_coalesce struct</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -643,9 +666,9 @@ int <code class="descname">qep_get_fecparam</code><span class="sig-paren">(</spa
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">ethtool_fecparam</span> <span class="pre">*</span> <span class="pre">fec</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">ethtool_fecparam</span> <span class="pre">*</span> <span class="pre">fec</span></code></dt>
 <dd>Pointer to ethtool_fecparam struct</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -662,9 +685,9 @@ int <code class="descname">qep_set_fecparam</code><span class="sig-paren">(</spa
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">ethtool_fecparam</span> <span class="pre">*</span> <span class="pre">fec</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">ethtool_fecparam</span> <span class="pre">*</span> <span class="pre">fec</span></code></dt>
 <dd>Pointer to ethtool_fecparam struct</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -682,7 +705,7 @@ int <code class="descname">qep_get_rxfh_key_size</code><span class="sig-paren">(
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -699,7 +722,7 @@ u32 <code class="descname">qep_rss_indir_size</code><span class="sig-paren">(</s
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -716,13 +739,13 @@ int <code class="descname">qep_get_rxfh</code><span class="sig-paren">(</span>st
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">u32</span> <span class="pre">*</span> <span class="pre">indir</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">u32</span> <span class="pre">*</span> <span class="pre">indir</span></code></dt>
 <dd>Pointer to the RSS indirection table</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">u8</span> <span class="pre">*</span> <span class="pre">key</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">u8</span> <span class="pre">*</span> <span class="pre">key</span></code></dt>
 <dd>Pointer to the Rx Flow hash key</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">u8</span> <span class="pre">*</span> <span class="pre">hfunc</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">u8</span> <span class="pre">*</span> <span class="pre">hfunc</span></code></dt>
 <dd>Pointer to the Rx Flow hash function</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -739,13 +762,13 @@ int <code class="descname">qep_set_rxfh</code><span class="sig-paren">(</span>st
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">u32</span> <span class="pre">*</span> <span class="pre">indir</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">u32</span> <span class="pre">*</span> <span class="pre">indir</span></code></dt>
 <dd>Pointer to the RSS indirection table</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">u8</span> <span class="pre">*</span> <span class="pre">key</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">u8</span> <span class="pre">*</span> <span class="pre">key</span></code></dt>
 <dd>Pointer to the Rx Flow hash key</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">u8</span> <span class="pre">hfunc</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">u8</span> <span class="pre">hfunc</span></code></dt>
 <dd>Pointer to the Rx Flow hash function</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -763,9 +786,9 @@ int <code class="descname">qep_get_link_ksettings</code><span class="sig-paren">
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">ethtool_link_ksettings</span> <span class="pre">*</span> <span class="pre">link_ksettings</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">ethtool_link_ksettings</span> <span class="pre">*</span> <span class="pre">link_ksettings</span></code></dt>
 <dd>Pointer to ethtool link settings</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -782,16 +805,16 @@ int <code class="descname">qep_set_link_ksettings</code><span class="sig-paren">
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">struct</span> <span class="pre">ethtool_link_ksettings</span> <span class="pre">*</span> <span class="pre">link_ksettings</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">struct</span> <span class="pre">ethtool_link_ksettings</span> <span class="pre">*</span> <span class="pre">link_ksettings</span></code></dt>
 <dd>Pointer to ethtool link settings</dd>
 </dl>
 <p><strong>Description</strong></p>
-<ul>
+<ul class="simple">
 <li><dl class="first docutils">
 <dt>This is to support ethtool option “-s|- -change” which sets the below link settings.</dt>
-<dd><ul class="first last simple">
+<dd><ul class="first last">
 <li>RSFEC</li>
 <li>Auto Negotiation</li>
 </ul>
@@ -809,7 +832,7 @@ int <code class="descname">qep_nway_reset</code><span class="sig-paren">(</span>
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -826,9 +849,9 @@ int <code class="descname">qep_reset</code><span class="sig-paren">(</span>struc
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">net_device</span> <span class="pre">*</span> <span class="pre">netdev</span></code></dt>
 <dd>Pointer to net_device struct of the device</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">u32</span> <span class="pre">*</span> <span class="pre">reset</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">u32</span> <span class="pre">*</span> <span class="pre">reset</span></code></dt>
 <dd>Pointer to flags that are toggled on successful reset</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -841,15 +864,18 @@ int <code class="descname">qep_reset</code><span class="sig-paren">(</span>struc
 
 
            </div>
+           <div class="articleComments">
+            
+           </div>
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="debugfs.html" class="btn btn-neutral float-right" title="DebugFS Support" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="debugfs.html" class="btn btn-neutral float-right" title="DebugFS Support" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="driver-design.html" class="btn btn-neutral" title="Driver Design" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="driver-design.html" class="btn btn-neutral" title="Driver Design" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -883,7 +909,8 @@ int <code class="descname">qep_reset</code><span class="sig-paren">(</span>struc
             VERSION:'1.3.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
         };
     </script>
       <script type="text/javascript" src="_static/jquery.js"></script>

@@ -1,0 +1,245 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>&lt;no title&gt; &mdash; QEP DPDK Driver 1.3.0 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="../_static/graphviz.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="QEP DPDK Driver 1.3.0 documentation" href="../index.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> QEP DPDK Driver
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.3.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <p class="caption"><span class="caption-text">Table of Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../system-overview.html">System Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../system-requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../userguide.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-guide.html">Developers Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../acronyms.html">Terms and Acronyms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../references.html">References</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../index.html">QEP DPDK Driver</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../index.html">Docs</a> &raquo;</li>
+      
+    <li>&lt;no title&gt;</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/debug/stmn_info_dump.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="highlight-none notranslate"><div class="highlight"><pre>EAL: Detected 24 lcore(s)
+EAL: Detected 1 NUMA nodes
+EAL: Multi-process socket /var/run/dpdk/rte/mp_socket_6113_6956910070a62
+EAL: Probing VFIO support...
+EAL: PCI device 0000:05:00.0 on NUMA socket 0
+EAL:   probe driver: 8086:1533 net_e1000_igb
+EAL: PCI device 0000:06:00.0 on NUMA socket 0
+EAL:   probe driver: 1d6a:7b1 net_atlantic
+EAL: PCI device 0000:1a:00.2 on NUMA socket 0
+EAL:   probe driver: 10ee:5016 net_qep
+STMN version Minor:2 Major:0 BlcokID:0
+***********Status***********
+Last Drop Axis response  : drop_code:0 num_desc:0 num_pkt:0 accept:0 sim_byp:0 qid:0 reg_val:0
+First Drop Axis response : drop_code:0 num_desc:0 num_pkt:0 accept:0 sim_byp:0 qid:0 reg_val:0
+Dropping Queue Type      : accept_sim_byp:0  accept_not_byp:0 drop_cache_byp:0  drop_sim_byp:0  drop_not_byp:0
+Dropping Queue cause     : drop_sim_byp_len:0  drop_sim_byp_avl:0 drop_sim_byp_init:0  drop_qid_err:0  drop_qid_not_st:0  drop_qid_not_en:0
+C2h Flags: last:0  cmp:0 not_last:0  drop:0  max_qid:0
+***********Error***********
+s_axis_err                     0x0
+m_axis_err                     0x0
+dsc_sts_err                    0x0
+crdt_bypout_err                0x0
+c2h_dsc_sts_err                0x0
+c2h_dsc_str_wr_err             0x0
+c2h_dsc_str_rd_err             0x0
+h2c_dsc_sts_err                0x0
+h2c_dsc_str_wr_err             0x0
+h2c_dsc_str_rd_err             0x0
+C2H Desc Err     :  err:0  qinv:0  irq_arm:0  mm:0  byp:0 qen:0  port_id:0  avl:0  qid:0
+H2C Desc Err     :  err:0  qinv:0  irq_arm:0  mm:0  byp:0 qen:0  port_id:0  avl:0  qid:0
+C2H Desc Byp Err :  error:0  st_mm:0 mrkr_rsp:0  dsc_sz:0 port_id:0  func:0  cidx:0  qid:0
+H2C Desc Byp Err :  error:0  st_mm:0 mrkr_rsp:0  dsc_sz:0 port_id:0  func:0  cidx:0  qid:0
+RX(LBUS_to_AXIS) Info
+Config: Pass_Err=0 Pass_Truncate=0
+Error : Ctl_FIFO_Full=0 Ctl_FIFO_Empty=0 Data_FIFO_Full=0 Data_FIFO_Empty=0
+Packet Drop Indication : FIFO_full=0 lbus_err=0 Invalid_bus=0
+Status : Module_In_Reset= 0 Data_FIFO_in_reset=0 Control_FIFO_in_Reset=0 Data_FIFO_Full=0 axis_idle=0 lbus_idle=0
+Packet Drop Cause : Backpressure=0 Cmac Err=0
+Statistics :  axis_out=481789737 axis_drop=0 lbus_drop=0
+TX(AXIS_to_LBUS) Info
+Config : Padd_Enable=0
+Error : Ctl_FIFO_Full=0 Ctl_FIFO_Empty=0 Data_FIFO_Full=0 Data_FIFO_Empty=0
+Error : Lbus_overflow =0 lbus_underflow=0
+Status : Module_In_Reset= 0 Data_FIFO_in_reset=0 Control_FIFO_in_Reset=0 Data_FIFO_Full=0 axis_idle=0 lbus_idle=0
+</pre></div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Xilinx, Inc.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'1.3.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

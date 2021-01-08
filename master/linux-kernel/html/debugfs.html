@@ -13,6 +13,8 @@
 
   
   
+  
+  
 
   
 
@@ -27,8 +29,6 @@
     <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   
 
-  
-    <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
   
 
   
@@ -47,6 +47,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -87,7 +88,10 @@
           
             
             
-                <p class="caption"><span class="caption-text">Table of Contents</span></p>
+              
+            
+            
+              <p class="caption"><span class="caption-text">Table of Contents</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="system-overview.html">System Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system-requirements.html">System Requirements</a></li>
@@ -119,8 +123,10 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="index.html">QEP Linux Kernel Network Driver</a>
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">QEP Linux Kernel Network Driver</a>
+        
       </nav>
 
 
@@ -129,25 +135,42 @@
         <div class="rst-content">
           
 
- 
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="index.html">Docs</a> &raquo;</li>
-      
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
           <li><a href="dev-guide.html">Developer Guide</a> &raquo;</li>
-      
-    <li>DebugFS Support</li>
+        
+      <li>DebugFS Support</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
+            
             <a href="_sources/debugfs.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -160,7 +183,7 @@ debug related information is also provided through the read-only interface. Debu
 CMAC, QDMA, QEP and STM-N. The debugfs files are located at  /sys/kernel/debug/qep_dev/ in the host filesystem.
 For every QEP ethernet device detected, a filesystem tree is populated with directory name as its &lt;Bus:Device:Function&gt;,
 herein after referred to as &lt;BDF&gt; in short.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre># sudo tree /sys/kernel/debug/qep_dev/
+<div class="highlight-none"><div class="highlight"><pre><span></span># sudo tree /sys/kernel/debug/qep_dev/
 </pre></div>
 </div>
 <p>The DebugFS filesystem tree is as shown below:</p>
@@ -180,11 +203,11 @@ herein after referred to as &lt;BDF&gt; in short.</p>
 <span id="id1"></span><h2>CMAC<a class="headerlink" href="#cmac" title="Permalink to this headline">¶</a></h2>
 <p>This file contains a snapshot of error, status and statistics registers of CMAC IP. For details refer to CMAC user guide.</p>
 <p>Command:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/cmac
+<div class="highlight-none"><div class="highlight"><pre><span></span># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/cmac
 </pre></div>
 </div>
 <p>Sample Output:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre>rx_bytes                         = 0
+<div class="highlight-none"><div class="highlight"><pre><span></span>rx_bytes                         = 0
 rx_mac_bytes                     = 91
 rx_good_bytes                    = 91
 rx_packets                       = 0
@@ -305,11 +328,11 @@ QID TX RX
 <span id="id2"></span><h2>QDMA Info<a class="headerlink" href="#qdma-info" title="Permalink to this headline">¶</a></h2>
 <p>This file provides information about configuration mode of QDMA.</p>
 <p>Command:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/qdma_info
+<div class="highlight-none"><div class="highlight"><pre><span></span># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/qdma_info
 </pre></div>
 </div>
 <p>Sample Output:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre>Master PF                           : False
+<div class="highlight-none"><div class="highlight"><pre><span></span>Master PF                           : False
 QBase                               : 256
 Max Qsets                           : 256
 Number of VFs                       : 0
@@ -322,11 +345,11 @@ Driver Mode                         : direct interrupt mode
 <span id="qdma-regs"></span><h2>QDMA Register Dump<a class="headerlink" href="#qdma-register-dump" title="Permalink to this headline">¶</a></h2>
 <p>This file provides a snapshot of QDMA registers. For details of the registers, please refer to QDMA IP user guide <a class="reference external" href="https://www.xilinx.com/support/documentation/ip_documentation/qdma/v3_0/pg302-qdma.pdf">UG302</a></p>
 <p>Command:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/qdma_regs
+<div class="highlight-none"><div class="highlight"><pre><span></span># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/qdma_regs
 </pre></div>
 </div>
 <p>Sample Output:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre>################################################################################
+<div class="highlight-none"><div class="highlight"><pre><span></span>################################################################################
 ###             qdma&lt;BDF&gt;, reg dump
 ################################################################################
 [    0x0] CFG_BLOCK_ID_0                                  0x1fd30000 533921792
@@ -592,11 +615,11 @@ Driver Mode                         : direct interrupt mode
 <span id="id3"></span><h2>QEP Config<a class="headerlink" href="#qep-config" title="Permalink to this headline">¶</a></h2>
 <p>This file provides information of QEP driver configuration modes.</p>
 <p>Command:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/qep_config
+<div class="highlight-none"><div class="highlight"><pre><span></span># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/qep_config
 </pre></div>
 </div>
 <p>Sample Output:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre>rs_fec_en           = 1
+<div class="highlight-none"><div class="highlight"><pre><span></span>rs_fec_en           = 1
 num_rx_queues       = 32
 num_tx_queues       = 32
 num_msix            = 32
@@ -623,11 +646,11 @@ rx_napi_cnt         = 1
 <li>info: Queue info</li>
 </ul>
 <p>Command:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/queues/0/c2h/cntxt
+<div class="highlight-none"><div class="highlight"><pre><span></span># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/queues/0/c2h/cntxt
 </pre></div>
 </div>
 <p>Sample Output:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre>SOFTWARE CTXT:
+<div class="highlight-none"><div class="highlight"><pre><span></span>SOFTWARE CTXT:
     Interrupt Aggregation                           0x0        0
     Interrupt Vector                                0x0        0
     Descriptor Ring Base Addr (High)                0x0        0
@@ -678,11 +701,11 @@ PREFETCH CTXT:
 </pre></div>
 </div>
 <p>Command:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/queues/0/c2h/desc
+<div class="highlight-none"><div class="highlight"><pre><span></span># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/queues/0/c2h/desc
 </pre></div>
 </div>
 <p>Sample Output:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre>qdma&lt;BDF&gt; C2H online
+<div class="highlight-none"><div class="highlight"><pre><span></span>qdma&lt;BDF&gt; C2H online
 0: 0x000000006aa1f187 fd6a8000 00000000 fl pg 0x0000000071455f1a, 0xfd6a8000.
 1: 0x00000000b7d618da febb1000 00000000 fl pg 0x0000000028483ae2, 0xfebb1000.
 2: 0x00000000a0f9bf20 febb2000 00000000 fl pg 0x00000000d5e084cf, 0xfebb2000.
@@ -1199,11 +1222,11 @@ data 0: 0x00000000f981533d 00000000 00000000
 </pre></div>
 </div>
 <p>Command:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/queues/0/c2h/info
+<div class="highlight-none"><div class="highlight"><pre><span></span># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/queues/0/c2h/info
 </pre></div>
 </div>
 <p>Sample Output:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre>qdma&lt;BDF&gt;-ST-0 C2H online
+<div class="highlight-none"><div class="highlight"><pre><span></span>qdma&lt;BDF&gt;-ST-0 C2H online
 </pre></div>
 </div>
 </div>
@@ -1211,11 +1234,11 @@ data 0: 0x00000000f981533d 00000000 00000000
 <span id="stmn"></span><h2>STM-N<a class="headerlink" href="#stm-n" title="Permalink to this headline">¶</a></h2>
 <p>This file prints a snapshot of STM-N errors, drops, status and statistics. After every read, the underlying registers get cleared.</p>
 <p>Command:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/stmn
+<div class="highlight-none"><div class="highlight"><pre><span></span># cat /sys/kernel/debug/qep_dev/&lt;BDF&gt;/stmn
 </pre></div>
 </div>
 <p>Sample Output:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre>STMN version Minor:2 Major:0 BlcokID:0
+<div class="highlight-none"><div class="highlight"><pre><span></span>STMN version Minor:2 Major:0 BlcokID:0
 ***********Status***********
 Last Drop Axis response  : drop_code:0 num_desc:1 num_pkt:1 accept:0 sim_byp:0 qid:0 reg_val:1
 First Drop Axis response : drop_code:0 num_desc:0 num_pkt:0 accept:0 sim_byp:0 qid:0 reg_val:0
@@ -1518,15 +1541,18 @@ H2C Desc Rd RAM
 
 
            </div>
+           <div class="articleComments">
+            
+           </div>
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="acronyms.html" class="btn btn-neutral float-right" title="Terms and Acronyms" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="acronyms.html" class="btn btn-neutral float-right" title="Terms and Acronyms" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="qep-callback-apis.html" class="btn btn-neutral" title="QEP Linux Driver APIs" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="qep-callback-apis.html" class="btn btn-neutral" title="QEP Linux Driver APIs" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -1560,7 +1586,8 @@ H2C Desc Rd RAM
             VERSION:'1.3.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
         };
     </script>
       <script type="text/javascript" src="_static/jquery.js"></script>
