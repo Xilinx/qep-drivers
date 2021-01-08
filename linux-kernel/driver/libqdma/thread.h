@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -45,7 +45,7 @@ struct qdma_kthread {
 	/**  thread id */
 	unsigned short id;
 	/**  thread sleep timeout value */
-	unsigned int timeout;
+	unsigned int kth_timeout;
 	/**  flags for thread */
 	unsigned long flag;
 	/**  thread wait queue */

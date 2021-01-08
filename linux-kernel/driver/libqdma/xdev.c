@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,7 @@
 #include "qdma_mbox.h"
 #include "qdma_intr.h"
 #include "qdma_resource_mgmt.h"
-#include "qdma_access.h"
+#include "qdma_access_common.h"
 #ifdef DEBUGFS
 #include "qdma_debugfs_dev.h"
 #endif
@@ -56,13 +56,6 @@
 #define QDMA_TOTAL_Q 2048
 #endif
 #endif
-
-/**
- * This flag needs to be uncommented when HW fix for MBOX communication
- * failure after FLR of PF is resolved.
- */
-
-/*#define QDMA_FLR_ENABLE*/
 
 /**
  * qdma device management
@@ -83,8 +76,115 @@ static DEFINE_MUTEX(xdev_mutex);
 struct qdma_resource_lock {
 	struct list_head node;
 	struct mutex lock;
-	uint8_t pci_bus_num;
 };
+
+/*****************************************************************************/
+/**
+ * pci_dma_mask_set() - check the pci capability of the dma device
+ *
+ * @param[in]	pdev:	pointer to struct pci_dev
+ *
+ *
+ * @return	0: on success
+ * @return	<0: on failure
+ *****************************************************************************/
+static int pci_dma_mask_set(struct pci_dev *pdev)
+{
+	/** 64-bit addressing capability for XDMA? */
+	if (!pci_set_dma_mask(pdev, DMA_BIT_MASK(64))) {
+		/** use 64-bit DMA for descriptors */
+		pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(64));
+		/** use 64-bit DMA, 32-bit for consistent */
+	} else if (!pci_set_dma_mask(pdev, DMA_BIT_MASK(32))) {
+		pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(32));
+		/** use 32-bit DMA */
+		dev_info(&pdev->dev, "Using a 32-bit DMA mask.\n");
+	} else {
+		/** use 32-bit DMA */
+		dev_info(&pdev->dev, "No suitable DMA possible.\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+#if KERNEL_VERSION(3, 5, 0) <= LINUX_VERSION_CODE
+static void pci_enable_relaxed_ordering(struct pci_dev *pdev)
+{
+	pcie_capability_set_word(pdev, PCI_EXP_DEVCTL, PCI_EXP_DEVCTL_RELAX_EN);
+}
+
+static void pci_disable_relaxed_ordering(struct pci_dev *pdev)
+{
+	pcie_capability_clear_word(pdev, PCI_EXP_DEVCTL,
+			PCI_EXP_DEVCTL_RELAX_EN);
+}
+
+static void pci_enable_extended_tag(struct pci_dev *pdev)
+{
+	pcie_capability_set_word(pdev, PCI_EXP_DEVCTL, PCI_EXP_DEVCTL_EXT_TAG);
+}
+
+static void pci_disable_extended_tag(struct pci_dev *pdev)
+{
+	pcie_capability_clear_word(pdev, PCI_EXP_DEVCTL,
+			PCI_EXP_DEVCTL_EXT_TAG);
+}
+
+#else
+static void pci_enable_relaxed_ordering(struct pci_dev *pdev)
+{
+	u16 v;
+	int pos;
+
+	pos = pci_pcie_cap(pdev);
+	if (pos > 0) {
+		pci_read_config_word(pdev, pos + PCI_EXP_DEVCTL, &v);
+		v |= PCI_EXP_DEVCTL_RELAX_EN;
+		pci_write_config_word(pdev, pos + PCI_EXP_DEVCTL, v);
+	}
+}
+
+static void pci_disable_relaxed_ordering(struct pci_dev *pdev)
+{
+	u16 v;
+	int pos;
+
+	pos = pci_pcie_cap(pdev);
+	if (pos > 0) {
+		pci_read_config_word(pdev, pos + PCI_EXP_DEVCTL, &v);
+		v &= ~(PCI_EXP_DEVCTL_RELAX_EN);
+		pci_write_config_word(pdev, pos + PCI_EXP_DEVCTL, v);
+	}
+}
+
+static void pci_enable_extended_tag(struct pci_dev *pdev)
+{
+	u16 v;
+	int pos;
+
+	pos = pci_pcie_cap(pdev);
+	if (pos > 0) {
+		pci_read_config_word(pdev, pos + PCI_EXP_DEVCTL, &v);
+		v |= PCI_EXP_DEVCTL_EXT_TAG;
+		pci_write_config_word(pdev, pos + PCI_EXP_DEVCTL, v);
+	}
+}
+
+static void pci_disable_extended_tag(struct pci_dev *pdev)
+{
+	u16 v;
+	int pos;
+
+	pos = pci_pcie_cap(pdev);
+	if (pos > 0) {
+		pci_read_config_word(pdev, pos + PCI_EXP_DEVCTL, &v);
+		v &= ~(PCI_EXP_DEVCTL_EXT_TAG);
+		pci_write_config_word(pdev, pos + PCI_EXP_DEVCTL, v);
+	}
+}
+#endif
+
 
 #if defined(__QDMA_VF__)
 static void xdev_reset_work(struct work_struct *work)
@@ -92,9 +192,44 @@ static void xdev_reset_work(struct work_struct *work)
 	struct xlnx_dma_dev *xdev = container_of(work, struct xlnx_dma_dev,
 								reset_work);
 	struct pci_dev *pdev = xdev->conf.pdev;
+	int rv = 0;
 
 	if (xdev->reset_state == RESET_STATE_RECV_PF_RESET_REQ) {
-		pci_reset_function(pdev);
+
+		qdma_device_offline(pdev, (unsigned long)xdev, XDEV_FLR_ACTIVE);
+		pci_disable_extended_tag(pdev);
+		pci_disable_relaxed_ordering(pdev);
+		pci_release_regions(pdev);
+		pci_disable_device(pdev);
+
+		rv = pci_request_regions(pdev, "qdma-vf");
+		if (rv) {
+			pr_err("cannot obtain PCI resources\n");
+			return;
+		}
+
+		rv = pci_enable_device(pdev);
+		if (rv) {
+			pr_err("cannot enable PCI device\n");
+			pci_release_regions(pdev);
+			return;
+		}
+
+		/* enable relaxed ordering */
+		pci_enable_relaxed_ordering(pdev);
+
+		/* enable extended tag */
+		pci_enable_extended_tag(pdev);
+
+		/* enable bus master capability */
+		pci_set_master(pdev);
+
+		pci_dma_mask_set(pdev);
+
+		pcie_set_readrq(pdev, 512);
+
+		qdma_device_online(pdev, (unsigned long)xdev, XDEV_FLR_ACTIVE);
+
 		if (xdev->reset_state == RESET_STATE_RECV_PF_RESET_DONE)
 			xdev->reset_state = RESET_STATE_IDLE;
 	}  else if (xdev->reset_state == RESET_STATE_RECV_PF_OFFLINE_REQ) {
@@ -201,7 +336,9 @@ static inline void xdev_list_add(struct xlnx_dma_dev *xdev)
 	 * '0' indicates queue is already configured. < 0, indicates
 	 * config done using sysfs entry
 	 */
+
 	list_for_each_entry_safe(_xdev, tmp, &xdev_list, list_head) {
+
 		/*are we dealing with a different card?*/
 #ifdef __QDMA_VF__
 		/** for VF check only bus number, as dev number can change
@@ -365,7 +502,8 @@ static int xdev_map_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 		map_len = QDMA_MAX_BAR_LEN_MAPPED;
 
 	xdev->regs = pci_iomap(pdev, xdev->conf.bar_num_config, map_len);
-	if (!xdev->regs) {
+	if (!xdev->regs ||
+		map_len < QDMA_MIN_BAR_LEN_MAPPED) {
 		pr_err("%s unable to map config bar %d.\n", xdev->conf.name,
 				xdev->conf.bar_num_config);
 		return -EINVAL;
@@ -376,9 +514,7 @@ static int xdev_map_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 
 /*****************************************************************************/
 /**
- * xdev_identify_bars() - verifies that the config bar passed from the user
- *			matches with the QDMA magic number. Also identifies
- *			the user bar and bypass bar
+ * xdev_identify_bars() - identifies the user bar and bypass bar
  *
  * @param[in]	xdev:	pointer to current xdev
  * @param[in]	pdev:	pointer to struct pci_dev\
@@ -387,15 +523,15 @@ static int xdev_map_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
  *****************************************************************************/
 static int xdev_identify_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 {
-	int rv = 0;
 	int bar_idx = 0;
-	int map_len = 0;
 	u8 num_bars_present = 0;
 	int bar_id_list[QDMA_BAR_NUM];
 	int bar_id_idx = 0;
 
 	/* Find out the number of bars present in the design */
 	for (bar_idx = 0; bar_idx < QDMA_BAR_NUM; bar_idx++) {
+		int map_len = 0;
+
 		map_len = pci_resource_len(pdev, bar_idx);
 		if (!map_len)
 			continue;
@@ -406,18 +542,19 @@ static int xdev_identify_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 	}
 
 	if (num_bars_present > 1) {
+		int rv = 0;
+
 		/* USER BAR IDENTIFICATION */
-		if ((xdev->version_info.device_type ==
-				QDMA_DEVICE_VERSAL) &&
-			(xdev->version_info.versal_ip_type ==
-				QDMA_VERSAL_HARD_IP))
+		if (xdev->version_info.ip_type == QDMA_VERSAL_HARD_IP)
 			xdev->conf.bar_num_user = DEFAULT_USER_BAR;
 		else {
 #ifndef __QDMA_VF__
 			rv = xdev->hw.qdma_get_user_bar(xdev, 0,
+					xdev->func_id,
 					(uint8_t *)&xdev->conf.bar_num_user);
 #else
 			rv = xdev->hw.qdma_get_user_bar(xdev, 1,
+					xdev->func_id_parent,
 					(uint8_t *)&xdev->conf.bar_num_user);
 #endif
 		}
@@ -485,36 +622,6 @@ static struct xlnx_dma_dev *xdev_alloc(struct qdma_dev_conf *conf)
 	return xdev;
 }
 
-/*****************************************************************************/
-/**
- * pci_dma_mask_set() - check the pci capability of the dma device
- *
- * @param[in]	pdev:	pointer to struct pci_dev
- *
- *
- * @return	0: on success
- * @return	<0: on failure
- *****************************************************************************/
-static int pci_dma_mask_set(struct pci_dev *pdev)
-{
-	/** 64-bit addressing capability for XDMA? */
-	if (!pci_set_dma_mask(pdev, DMA_BIT_MASK(64))) {
-		/** use 32-bit DMA for descriptors */
-		pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(64));
-		/** use 64-bit DMA, 32-bit for consistent */
-	} else if (!pci_set_dma_mask(pdev, DMA_BIT_MASK(32))) {
-		pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(32));
-		/** use 32-bit DMA */
-		dev_info(&pdev->dev, "Using a 32-bit DMA mask.\n");
-	} else {
-		/** use 32-bit DMA */
-		dev_info(&pdev->dev, "No suitable DMA possible.\n");
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
 #ifndef __QDMA_VF__
 static void qdma_err_mon(struct work_struct *work)
 {
@@ -537,43 +644,7 @@ static void qdma_err_mon(struct work_struct *work)
 }
 #endif
 
-#if KERNEL_VERSION(3, 5, 0) <= LINUX_VERSION_CODE
-static void pci_enable_relaxed_ordering(struct pci_dev *pdev)
-{
-	pcie_capability_set_word(pdev, PCI_EXP_DEVCTL, PCI_EXP_DEVCTL_RELAX_EN);
-}
 
-static void pci_enable_extended_tag(struct pci_dev *pdev)
-{
-	pcie_capability_set_word(pdev, PCI_EXP_DEVCTL, PCI_EXP_DEVCTL_EXT_TAG);
-}
-#else
-static void pci_enable_relaxed_ordering(struct pci_dev *pdev)
-{
-	u16 v;
-	int pos;
-
-	pos = pci_pcie_cap(pdev);
-	if (pos > 0) {
-		pci_read_config_word(pdev, pos + PCI_EXP_DEVCTL, &v);
-		v |= PCI_EXP_DEVCTL_RELAX_EN;
-		pci_write_config_word(pdev, pos + PCI_EXP_DEVCTL, v);
-	}
-}
-
-static void pci_enable_extended_tag(struct pci_dev *pdev)
-{
-	u16 v;
-	int pos;
-
-	pos = pci_pcie_cap(pdev);
-	if (pos > 0) {
-		pci_read_config_word(pdev, pos + PCI_EXP_DEVCTL, &v);
-		v |= PCI_EXP_DEVCTL_EXT_TAG;
-		pci_write_config_word(pdev, pos + PCI_EXP_DEVCTL, v);
-	}
-}
-#endif
 
 /*****************************************************************************/
 /**
@@ -590,9 +661,7 @@ int qdma_device_offline(struct pci_dev *pdev, unsigned long dev_hndl,
 						 int reset)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
-#ifdef __QDMA_VF__
-	int retry_cnt = 10;
-#endif
+
 	if (!xdev) {
 		pr_err("dev_hndl is NULL");
 		return -EINVAL;
@@ -622,6 +691,8 @@ int qdma_device_offline(struct pci_dev *pdev, unsigned long dev_hndl,
 
 #ifdef __QDMA_VF__
 	if (xdev->reset_state == RESET_STATE_PF_OFFLINE_REQ_PROCESSING) {
+		int retry_cnt = 10;
+
 		while (!xlnx_dma_device_flag_check(xdev, XDEV_FLAG_OFFLINE)) {
 			mdelay(100);
 			if (retry_cnt == 0)
@@ -651,29 +722,44 @@ int qdma_device_offline(struct pci_dev *pdev, unsigned long dev_hndl,
 
 	qdma_device_cleanup(xdev);
 	qdma_device_interrupt_cleanup(xdev);
+	qdma_mbox_stop(xdev);
+	intr_teardown(xdev);
+	xdev->flags &= ~(XDEV_FLAG_IRQ);
 
+	/*
+	 * When the FLR is done to parent PF , it's associated VFs
+	 * and it's resources are no more active. The
+	 * interrupt state of the VF goes bad. That's why switching
+	 * from mbox's interrupt mode to poll mode
+	 */
+	qdma_mbox_poll_start(xdev);
 #ifdef __QDMA_VF__
-	xdev_sriov_vf_offline(xdev, 0); /* should be last message */
+	if (reset) {
+		if (xdev->reset_state == RESET_STATE_RECV_PF_RESET_REQ) {
 
-	if (xdev->reset_state == RESET_STATE_RECV_PF_RESET_REQ) {
-		/** Wait for the PF to send the PF Reset Done*/
-#ifdef QDMA_FLR_ENABLE
-		/**
-		 * Due to hardware issue, Reset Done message from PF does
-		 * not reach VF, so waiting for the RESET_DONE message
-		 * only slows down VF reset.
-		 */
-		qdma_waitq_wait_event_timeout(xdev->wq,
-			(xdev->reset_state == RESET_STATE_RECV_PF_RESET_DONE),
-			QDMA_MBOX_MSG_TIMEOUT_MS);
-#endif
-		if (xdev->reset_state != RESET_STATE_RECV_PF_RESET_DONE)
-			xdev->reset_state = RESET_STATE_INVALID;
-	}  else if (xdev->reset_state == RESET_STATE_RECV_PF_OFFLINE_REQ)
-		xdev->reset_state = RESET_STATE_PF_OFFLINE_REQ_PROCESSING;
-	else if (!reset) {
-		destroy_workqueue(xdev->workq);
-		xdev->workq = NULL;
+			xdev_sriov_vf_reset_offline(xdev);
+
+			/** Wait for the PF to send the PF Reset Done*/
+			qdma_waitq_wait_event_timeout(xdev->wq,
+				(xdev->reset_state ==
+				 RESET_STATE_RECV_PF_RESET_DONE),
+				10 * QDMA_MBOX_MSG_TIMEOUT_MS);
+
+			if (xdev->reset_state != RESET_STATE_RECV_PF_RESET_DONE)
+				xdev->reset_state = RESET_STATE_INVALID;
+		} else
+			xdev_sriov_vf_offline(xdev, 0);
+
+	} else {
+		if (xdev->reset_state == RESET_STATE_RECV_PF_OFFLINE_REQ) {
+			xdev_sriov_vf_offline(xdev, 0);
+			xdev->reset_state =
+				RESET_STATE_PF_OFFLINE_REQ_PROCESSING;
+		} else {
+			xdev_sriov_vf_offline(xdev, 0);
+			destroy_workqueue(xdev->workq);
+			xdev->workq = NULL;
+		}
 	}
 	qdma_mbox_stop(xdev);
 #elif defined(CONFIG_PCI_IOV)
@@ -686,9 +772,17 @@ int qdma_device_offline(struct pci_dev *pdev, unsigned long dev_hndl,
 	}
 
 #endif
+
+	if (reset) {
+		/* Free the allocated resources if FLR process running*/
+		if (xdev->conf.fp_flr_free_resource)
+			xdev->conf.fp_flr_free_resource((unsigned long)xdev);
+	}
+
+	if (xdev->conf.qdma_drv_mode != POLL_MODE)
+		xdev->mbox.rx_poll = 0;
+
 	xdev_flag_set(xdev, XDEV_FLAG_OFFLINE);
-	intr_teardown(xdev);
-	xdev->flags &= ~(XDEV_FLAG_IRQ);
 	if (xdev->dev_cap.mailbox_en)
 		qdma_mbox_cleanup(xdev);
 
@@ -710,16 +804,14 @@ int qdma_device_online(struct pci_dev *pdev, unsigned long dev_hndl, int reset)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
 	int rv;
-#if !defined(__QDMA_VF__) && defined(QDMA_FLR_ENABLE)
-	struct mbox_msg *m = NULL;
-	struct qdma_vf_info *vf = (struct qdma_vf_info *)xdev->vf_info;
-	int i = 0;
+#if !defined(__QDMA_VF__)
+	struct qdma_vf_info *vf;
 #endif
-
-	if (!dev_hndl) {
+	if (!xdev) {
 		pr_err("Invalid device handle received");
 		return -EINVAL;
 	}
+
 
 	if (xdev_check_hndl(__func__, pdev, dev_hndl) < 0) {
 		pr_err("Invalid device");
@@ -731,9 +823,12 @@ int qdma_device_online(struct pci_dev *pdev, unsigned long dev_hndl, int reset)
 			(unsigned long)xdev->conf.pdev, (unsigned long)pdev);
 	}
 
-#if defined(__QDMA_VF__) && !defined(QDMA_FLR_ENABLE)
-	if (reset && xdev->reset_state == RESET_STATE_INVALID)
+#if defined(__QDMA_VF__)
+	pr_info("reset_state = %d", xdev->reset_state);
+	if (reset && xdev->reset_state == RESET_STATE_INVALID) {
+		pr_info("returning");
 		return -EINVAL;
+	}
 #endif
 
 	if (xdev->conf.qdma_drv_mode != POLL_MODE &&
@@ -797,14 +892,25 @@ int qdma_device_online(struct pci_dev *pdev, unsigned long dev_hndl, int reset)
 		schedule_delayed_work(&xdev->err_mon,
 				      msecs_to_jiffies(1000));
 	}
-#ifdef QDMA_FLR_ENABLE
+
 	/**
-	 * Due to hardware issue, Reset Done message from PF does not reach
-	 * VF.
+	 * Send the RESET_DONE message to VF
 	 */
 	if (reset && xdev->vf_count != 0) {
+		int i = 0;
+
+		vf = (struct qdma_vf_info *)xdev->vf_info;
+
+		if (!vf) {
+			pr_err("Invalid vf handle received");
+			return -EINVAL;
+		}
+
 		qdma_mbox_start(xdev);
 		for (i = 0; i < xdev->vf_count; i++) {
+			struct mbox_msg *m = NULL;
+			u8 vf_count_online = xdev->vf_count_online;
+
 			m = qdma_mbox_msg_alloc();
 			if (!m) {
 				pr_err("Failed to allocate mbox msg\n");
@@ -814,9 +920,14 @@ int qdma_device_online(struct pci_dev *pdev, unsigned long dev_hndl, int reset)
 						xdev->func_id, vf[i].func_id);
 			qdma_mbox_msg_send(xdev, m, 1,
 						QDMA_MBOX_MSG_TIMEOUT_MS);
+
+			qdma_waitq_wait_event_timeout(xdev->wq,
+				(xdev->vf_count_online ==
+				(vf_count_online + 1)),
+				QDMA_MBOX_MSG_TIMEOUT_MS);
 		}
 	}
-#endif
+
 #endif
 
 	return 0;
@@ -907,7 +1018,8 @@ int qdma_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 		goto disable_device;
 	}
 
-	pcie_set_readrq(pdev, 512);
+	if (pcie_get_readrq(pdev) < 512)
+		pcie_set_readrq(pdev, 512);
 
 	/* allocate zeroed device book keeping structure */
 	xdev = xdev_alloc(conf);
@@ -949,14 +1061,20 @@ int qdma_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 
 	/* get the device attributes */
 	qdma_device_attributes_get(xdev);
-	rv = qdma_master_resource_create(pdev->bus->number, qbase,
-				    qmax);
+	if (pdev->bus->parent)
+		rv = qdma_master_resource_create(pdev->bus->number,
+				pci_bus_max_busnr(pdev->bus->parent), qbase,
+				qmax, &xdev->dma_device_index);
+	else
+		rv = qdma_master_resource_create(pdev->bus->number,
+				pdev->bus->number, qbase,
+				qmax, &xdev->dma_device_index);
+
 	if (rv == -QDMA_ERR_NO_MEM) {
 		pr_err("master_resource_create failed, err = %d", rv);
 		rv = -ENOMEM;
 		goto unmap_bars;
 	}
-
 #else
 	rv = qdma_hw_access_init(xdev, 1, &xdev->hw);
 	if (rv != QDMA_SUCCESS)
@@ -969,12 +1087,6 @@ int qdma_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 	pr_info("Vivado version = %s\n",
 			xdev->version_info.qdma_vivado_release_id_str);
 
-	rv = xdev_identify_bars(xdev, pdev);
-	if (rv) {
-		pr_err("Failed to identify bars, err %d", rv);
-		goto unmap_bars;
-	}
-
 #ifndef __QDMA_VF__
 	rv = xdev->hw.qdma_get_function_number(xdev, &xdev->func_id);
 	if (rv < 0) {
@@ -983,11 +1095,12 @@ int qdma_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 		goto unmap_bars;
 	}
 
-	rv = qdma_dev_qinfo_get(pdev->bus->number, xdev->func_id,
+	rv = qdma_dev_qinfo_get(xdev->dma_device_index, xdev->func_id,
 				&xdev->conf.qsets_base,
 				(uint32_t *) &xdev->conf.qsets_max);
 	if (rv < 0) {
-		rv = qdma_dev_entry_create(pdev->bus->number, xdev->func_id);
+		rv = qdma_dev_entry_create(xdev->dma_device_index,
+				xdev->func_id);
 		if (rv < 0) {
 			pr_err("Failed to create device entry, err = %d", rv);
 			rv = -ENODEV;
@@ -995,7 +1108,7 @@ int qdma_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 		}
 	}
 
-	rv = qdma_dev_update(pdev->bus->number, xdev->func_id,
+	rv = qdma_dev_update(xdev->dma_device_index, xdev->func_id,
 			     xdev->conf.qsets_max, &xdev->conf.qsets_base);
 	if (rv < 0) {
 		pr_err("qdma_dev_update function call failed, err = %d\n", rv);
@@ -1011,11 +1124,8 @@ int qdma_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 #endif
 
 #ifdef __QDMA_VF__
-	if (conf->qdma_drv_mode != POLL_MODE &&
-		((xdev->version_info.device_type ==
-			QDMA_DEVICE_VERSAL) &&
-		(xdev->version_info.versal_ip_type ==
-			QDMA_VERSAL_HARD_IP))) {
+	if ((conf->qdma_drv_mode != POLL_MODE) &&
+		(xdev->version_info.ip_type == QDMA_VERSAL_HARD_IP)) {
 		pr_warn("VF is not supported in %s mode\n",
 				mode_name_list[conf->qdma_drv_mode].name);
 		pr_info("Switching VF to poll mode\n");
@@ -1035,6 +1145,12 @@ int qdma_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 	if (rv < 0) {
 		pr_warn("Failed to set the dma device  online, err = %d", rv);
 		goto cleanup_qdma;
+	}
+
+	rv = xdev_identify_bars(xdev, pdev);
+	if (rv) {
+		pr_err("Failed to identify bars, err %d", rv);
+		goto unmap_bars;
 	}
 
 	pr_info("%s, %05x, pdev 0x%p, xdev 0x%p, ch %u, q %u, vf %u.\n",
@@ -1059,6 +1175,8 @@ unmap_bars:
 	kfree(xdev);
 
 disable_device:
+	pci_disable_extended_tag(pdev);
+	pci_disable_relaxed_ordering(pdev);
 	pci_disable_device(pdev);
 
 release_regions:
@@ -1104,12 +1222,14 @@ int qdma_device_close(struct pci_dev *pdev, unsigned long dev_hndl)
 	dbgfs_dev_exit(xdev);
 #endif
 #ifndef __QDMA_VF__
-	qdma_dev_entry_destroy(pdev->bus->number, xdev->func_id);
-	qdma_master_resource_destroy(pdev->bus->number);
+	qdma_dev_entry_destroy(xdev->dma_device_index, xdev->func_id);
+	qdma_master_resource_destroy(xdev->dma_device_index);
 #endif
 
 	xdev_unmap_bars(xdev, pdev);
 
+	pci_disable_relaxed_ordering(pdev);
+	pci_disable_extended_tag(pdev);
 	pci_release_regions(pdev);
 	pci_disable_device(pdev);
 
@@ -1181,6 +1301,9 @@ int qdma_device_clear_stats(unsigned long dev_hndl)
 	xdev->total_mm_c2h_pkts = 0;
 	xdev->total_st_h2c_pkts = 0;
 	xdev->total_st_c2h_pkts = 0;
+	xdev->ping_pong_lat_max = 0;
+	xdev->ping_pong_lat_min = 0;
+	xdev->ping_pong_lat_total = 0;
 
 	return 0;
 }
@@ -1269,6 +1392,80 @@ int qdma_device_get_stc2h_pkts(unsigned long dev_hndl,
 	return 0;
 }
 
+int qdma_device_get_ping_pong_min_lat(unsigned long dev_hndl,
+				unsigned long long *min_lat)
+{
+	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *) dev_hndl;
+
+	/** make sure that the dev_hndl passed is Valid */
+	if (!xdev) {
+		pr_err("dev_hndl is NULL");
+		return -EINVAL;
+	}
+
+	if (!min_lat) {
+		pr_err("Min Lat is NULL\n");
+		return -EINVAL;
+	}
+	if (xdev_check_hndl(__func__, xdev->conf.pdev, dev_hndl) < 0) {
+		pr_err("Invalid dev_hndl passed");
+		return -EINVAL;
+	}
+
+	*min_lat = xdev->ping_pong_lat_min;
+
+	return 0;
+}
+
+int qdma_device_get_ping_pong_max_lat(unsigned long dev_hndl,
+				unsigned long long *max_lat)
+{
+	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *) dev_hndl;
+
+	/** make sure that the dev_hndl passed is Valid */
+	if (!xdev) {
+		pr_err("dev_hndl is NULL");
+		return -EINVAL;
+	}
+
+	if (!max_lat) {
+		pr_err("Max Lat is NULL\n");
+		return -EINVAL;
+	}
+	if (xdev_check_hndl(__func__, xdev->conf.pdev, dev_hndl) < 0) {
+		pr_err("Invalid dev_hndl passed");
+		return -EINVAL;
+	}
+
+	*max_lat = xdev->ping_pong_lat_max;
+
+	return 0;
+}
+
+int qdma_device_get_ping_pong_tot_lat(unsigned long dev_hndl,
+				unsigned long long *lat_total)
+{
+	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *) dev_hndl;
+
+	/** make sure that the dev_hndl passed is Valid */
+	if (!xdev) {
+		pr_err("dev_hndl is NULL");
+		return -EINVAL;
+	}
+
+	if (!lat_total) {
+		pr_err("Total Lat is NULL\n");
+		return -EINVAL;
+	}
+	if (xdev_check_hndl(__func__, xdev->conf.pdev, dev_hndl) < 0) {
+		pr_err("Invalid dev_hndl passed");
+		return -EINVAL;
+	}
+
+	*lat_total = xdev->ping_pong_lat_total;
+
+	return 0;
+}
 /*****************************************************************************/
 /**
  * qdma_device_set_config() - set the device configuration

@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -38,15 +38,6 @@
  * STM bar
  */
 #define STM_BAR		2
-
-/**
- * Maximum number of physical functions
- */
-#define QDMA_PF_MAX		4	/* 4 PFs */
-/**
- * Maximum number of virtual functions
- */
-#define QDMA_VF_MAX		252
 
 /**
  * Maximum number of QDMA devices in the system

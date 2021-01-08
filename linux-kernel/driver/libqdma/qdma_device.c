@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,7 @@
 #include "qdma_intr.h"
 #include "qdma_regs.h"
 #include "qdma_mbox.h"
-#include "qdma_access.h"
+#include "qdma_access_common.h"
 #include "qdma_resource_mgmt.h"
 
 #ifdef __QDMA_VF__
@@ -246,9 +246,7 @@ int qdma_device_init(struct xlnx_dma_dev *xdev)
 
 	spin_lock_init(&qdev->lock);
 	xdev->dev_priv = (void *)qdev;
-#ifdef __QDMA_VF__
-	xdev->func_id = xdev->func_id_parent = 0; /* filled later */
-#else
+#ifndef __QDMA_VF__
 	if (xdev->conf.master_pf) {
 		rv = xdev->hw.qdma_init_ctxt_memory(xdev);
 		if (rv < 0) {
@@ -545,10 +543,10 @@ void qdma_pf_trigger_vf_reset(unsigned long dev_hndl)
 	xdev->reset_state = RESET_STATE_PF_WAIT_FOR_BYES;
 	for (i = 0; i < vf_count_online; i++) {
 		active_queue_count = qdma_get_device_active_queue_count(
-					xdev->conf.pdev->bus->number,
+					xdev->dma_device_index,
 					vf[i].func_id, QDMA_DEV_Q_TYPE_H2C);
 		active_queue_count += qdma_get_device_active_queue_count(
-					xdev->conf.pdev->bus->number,
+					xdev->dma_device_index,
 					vf[i].func_id, QDMA_DEV_Q_TYPE_C2H);
 		sleep_timeout = QDMA_MBOX_MSG_TIMEOUT_MS +
 				(200 * active_queue_count);
@@ -612,10 +610,10 @@ void qdma_pf_trigger_vf_offline(unsigned long dev_hndl)
 
 	for (i = 0; i < vf_count_online; i++) {
 		active_queue_count = qdma_get_device_active_queue_count(
-					xdev->conf.pdev->bus->number,
+					xdev->dma_device_index,
 					vf[i].func_id, QDMA_DEV_Q_TYPE_H2C);
 		active_queue_count += qdma_get_device_active_queue_count(
-					xdev->conf.pdev->bus->number,
+					xdev->dma_device_index,
 					vf[i].func_id, QDMA_DEV_Q_TYPE_C2H);
 		sleep_timeout = QDMA_MBOX_MSG_TIMEOUT_MS +
 				(200 * active_queue_count);

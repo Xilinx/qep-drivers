@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -31,8 +31,7 @@
 #include "qdma_device.h"
 #include "qdma_descq.h"
 #include "qdma_st_c2h.h"
-#include "qdma_access.h"
-#include "qdma_reg.h"
+#include "qdma_access_common.h"
 #include "qdma_resource_mgmt.h"
 
 int qdma_set_ring_sizes(struct xlnx_dma_dev *xdev, u8 index,
@@ -301,7 +300,7 @@ int qdma_global_csr_set(unsigned long dev_hndl, u8 index, u8 count,
 	/** If qdma_get_active_queue_count() > 0,
 	 *  cannot modify global CSR.
 	 */
-	if (qdma_get_active_queue_count(xdev->conf.pdev->bus->number)) {
+	if (qdma_get_active_queue_count(xdev->dma_device_index)) {
 		pr_err("xdev %s, FMAP prog done, cannot modify global CSR\n",
 				xdev->mod_name);
 		return -EINVAL;
@@ -358,7 +357,7 @@ int qdma_global_csr_get(unsigned long dev_hndl, u8 index, u8 count,
 	/** If qdma_get_active_queue_count() > 0,
 	 *  read the stored xdev csr values.
 	 */
-	if (qdma_get_active_queue_count(xdev->conf.pdev->bus->number))
+	if (qdma_get_active_queue_count(xdev->dma_device_index))
 		memcpy(csr, &xdev->csr_info, sizeof(struct global_csr_conf));
 	else
 		qdma_csr_read(xdev, csr);
@@ -488,8 +487,8 @@ int qdma_device_version_info(unsigned long dev_hndl,
 		return  xdev->hw.qdma_get_error_code(rv);
 	}
 
-	strncpy(version_info->versal_ip_str, info.qdma_versal_ip_type_str,
-			sizeof(version_info->versal_ip_str) - 1);
+	strncpy(version_info->ip_str, info.qdma_ip_type_str,
+			sizeof(version_info->ip_str) - 1);
 	strncpy(version_info->rtl_version_str, info.qdma_rtl_version_str,
 			sizeof(version_info->rtl_version_str) - 1);
 	strncpy(version_info->vivado_release_str,

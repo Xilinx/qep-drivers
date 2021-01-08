@@ -129,6 +129,7 @@ int qep_cmac_stats_add(struct qep_cmac_stats *to, struct qep_cmac_stats *new);
 int qep_cmac_stats_read(struct xcmac *cmac, struct qep_cmac_stats *stats);
 
 int qep_lbus_get_buf_len(void);
+/* @addr is base address of lbus IP*/
 int qep_lbus_snprintf(void *addr, char *buf, int len);
 
 #endif

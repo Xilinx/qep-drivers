@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -26,9 +26,8 @@
 #include "qdma_intr.h"
 #include "qdma_regs.h"
 #include "qdma_context.h"
-#include "qdma_access.h"
+#include "qdma_access_common.h"
 #include "qdma_mbox_protocol.h"
-#include "qdma_reg.h"
 
 /**
  * Make the interrupt context
@@ -54,7 +53,8 @@ static int make_intr_context(struct xlnx_dma_dev *xdev,
 		ctxt[i].vec = entry->vec_id;
 		ctxt[i].baddr_4k = entry->intr_ring_bus;
 		ctxt[i].color = entry->color;
-		ctxt[i].page_size = QDMA_INDIRECT_INTR_RING_SIZE_4KB;
+		ctxt[i].page_size = xdev->conf.intr_rngsz;
+		ctxt[i].func_id = xdev->func_id;
 	}
 
 	return 0;
@@ -96,10 +96,11 @@ static int make_sw_context(struct qdma_descq *descq,
 		} else if (descq->conf.q_type == Q_C2H) {  /* st c2h */
 			sw_ctxt->frcd_en = descq->conf.fetch_credit;
 			sw_ctxt->desc_sz = DESC_SZ_8B;
-		} else {/* st h2c */
+		} else if (descq->conf.q_type == Q_H2C) { /* st h2c */
 			sw_ctxt->frcd_en = descq->conf.fetch_credit;
 			sw_ctxt->desc_sz = DESC_SZ_16B;
-		}
+		} else
+			sw_ctxt->desc_sz = DESC_SZ_16B;
 	}
 
 	/* pidx = 0; irq_ack = 0 */
@@ -115,8 +116,7 @@ static int make_sw_context(struct qdma_descq *descq,
 
 	/* Disable the marker response. Not applicable for ST C2H */
 	if ((!descq->conf.desc_bypass) &&
-		((!descq->conf.st) || (descq->conf.st &&
-				(descq->conf.q_type == Q_H2C))))
+		((!descq->conf.st) || (descq->conf.q_type == Q_H2C)))
 		sw_ctxt->mrkr_dis = 1;
 
 #ifdef ERR_DEBUG
@@ -337,7 +337,7 @@ int qdma_descq_context_clear(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 	rv = qdma_mbox_msg_send(xdev, m, 1, QDMA_MBOX_MSG_TIMEOUT_MS);
 	if (rv < 0) {
 		if (rv != -ENODEV)
-			pr_info("%s, qid_hw 0x%x mbox failed %d.\n",
+			pr_err("%s, qid_hw 0x%x mbox failed %d.\n",
 				xdev->conf.name, qid_hw, rv);
 		goto err_out;
 	}
@@ -379,7 +379,7 @@ int qdma_descq_context_read(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 	rv = qdma_mbox_msg_send(xdev, m, 1, QDMA_MBOX_MSG_TIMEOUT_MS);
 	if (rv < 0) {
 		if (rv != -ENODEV)
-			pr_info("%s, qid_hw 0x%x mbox failed %d.\n",
+			pr_err("%s, qid_hw 0x%x mbox failed %d.\n",
 				xdev->conf.name, qid_hw, rv);
 		goto err_out;
 	}
@@ -473,7 +473,7 @@ int qdma_descq_context_setup(struct qdma_descq *descq)
 	rv = qdma_mbox_msg_send(xdev, m, 1, QDMA_MBOX_MSG_TIMEOUT_MS);
 	if (rv < 0) {
 		if (rv != -ENODEV)
-			pr_info("%s, qid_hw 0x%x, %s mbox failed %d.\n",
+			pr_err("%s, qid_hw 0x%x, %s mbox failed %d.\n",
 				xdev->conf.name, descq->qidx_hw,
 				descq->conf.name, rv);
 		goto err_out;
@@ -487,6 +487,69 @@ int qdma_descq_context_setup(struct qdma_descq *descq)
 err_out:
 	qdma_mbox_msg_free(m);
 	return rv;
+}
+
+int qdma_descq_context_dump(struct qdma_descq *descq, char *buf, int buflen)
+{
+	int rv = 0;
+	int ring_index = -1;
+	int ring_count = 0;
+	int len = 0;
+	struct qdma_descq_context queue_context;
+	struct qdma_indirect_intr_ctxt intr_ctxt;
+
+	rv = qdma_descq_context_read(descq->xdev, descq->qidx_hw,
+			descq->conf.st, descq->conf.q_type, &queue_context);
+	if (rv < 0) {
+		pr_err("Failed to read queue context, rv = %d", rv);
+		return rv;
+	}
+
+	rv = descq->xdev->hw.qdma_dump_queue_context(descq->xdev,
+				descq->conf.st,
+				(enum qdma_dev_q_type)descq->conf.q_type,
+				&queue_context,
+				buf, buflen);
+	if (rv < 0) {
+		pr_err("Failed to dump queue context, rv = %d", rv);
+		return descq->xdev->hw.qdma_get_error_code(rv);
+	}
+	len = rv;
+
+	/** if interrupt aggregation is enabled
+	 *  add the interrupt context
+	 */
+	if ((descq->xdev->conf.qdma_drv_mode == INDIRECT_INTR_MODE) ||
+			(descq->xdev->conf.qdma_drv_mode == AUTO_MODE)) {
+		for (ring_count = 0;
+				ring_count < QDMA_NUM_DATA_VEC_FOR_INTR_CXT;
+				ring_count++) {
+			ring_index = get_intr_ring_index(
+						descq->xdev,
+						(descq->xdev->dvec_start_idx +
+								ring_count));
+
+			rv = qdma_intr_context_read(descq->xdev,
+						ring_index, &intr_ctxt);
+			if (rv < 0) {
+				pr_err("Failed to read intr context for ring %d, rv = %d",
+						ring_index, rv);
+				return rv;
+			}
+
+			rv = descq->xdev->hw.qdma_dump_intr_context(descq->xdev,
+						&intr_ctxt, ring_index,
+						buf + len, buflen - len);
+			if (rv < 0) {
+				pr_err("Failed to dump intr context, rv = %d",
+						rv);
+				return descq->xdev->hw.qdma_get_error_code(rv);
+			}
+			len += rv;
+		}
+	}
+
+	return len;
 }
 
 #else /* PF only */
@@ -704,21 +767,21 @@ int qdma_descq_context_read(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 
 	if (type != Q_CMPT) {
 		rv = xdev->hw.qdma_sw_ctx_conf(xdev, type, qid_hw,
-				&context->sw_ctxt, QDMA_HW_ACCESS_READ);
+				&(context->sw_ctxt), QDMA_HW_ACCESS_READ);
 		if (rv < 0) {
 			pr_err("Failed to read sw context, rv = %d", rv);
 			return xdev->hw.qdma_get_error_code(rv);
 		}
 
 		rv = xdev->hw.qdma_hw_ctx_conf(xdev, type, qid_hw,
-				&context->hw_ctxt, QDMA_HW_ACCESS_READ);
+				&(context->hw_ctxt), QDMA_HW_ACCESS_READ);
 		if (rv < 0) {
 			pr_err("Failed to read hw context, rv = %d", rv);
 			return xdev->hw.qdma_get_error_code(rv);
 		}
 
 		rv = xdev->hw.qdma_credit_ctx_conf(xdev, type, qid_hw,
-				&context->cr_ctxt, QDMA_HW_ACCESS_READ);
+				&(context->cr_ctxt), QDMA_HW_ACCESS_READ);
 		if (rv < 0) {
 			pr_err("Failed to read hw context, rv = %d", rv);
 			return xdev->hw.qdma_get_error_code(rv);
@@ -726,8 +789,8 @@ int qdma_descq_context_read(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 
 		if (st && type) {
 			rv = xdev->hw.qdma_pfetch_ctx_conf(xdev, qid_hw,
-							  &context->pfetch_ctxt,
-							  QDMA_HW_ACCESS_READ);
+						 &(context->pfetch_ctxt),
+						 QDMA_HW_ACCESS_READ);
 			if (rv < 0) {
 				pr_err("Failed to read pftch context, rv = %d",
 						rv);
@@ -738,7 +801,7 @@ int qdma_descq_context_read(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 
 	if ((st && (type == Q_C2H)) || (!st && (type == Q_CMPT))) {
 		rv = xdev->hw.qdma_cmpt_ctx_conf(xdev, qid_hw,
-						 &context->cmpt_ctxt,
+						 &(context->cmpt_ctxt),
 						 QDMA_HW_ACCESS_READ);
 		if (rv < 0) {
 			pr_err("Failed to read cmpt context, rv = %d", rv);
@@ -819,4 +882,61 @@ int qdma_descq_context_program(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 
 	return 0;
 }
+
+int qdma_descq_context_dump(struct qdma_descq *descq, char *buf, int buflen)
+{
+	int rv = 0;
+	int ring_index = -1;
+	int ring_count = 0;
+	int len = 0;
+	struct qdma_indirect_intr_ctxt intr_ctxt;
+
+	rv = descq->xdev->hw.qdma_read_dump_queue_context(descq->xdev,
+				descq->qidx_hw,
+				descq->conf.st, descq->conf.q_type,
+				buf, buflen);
+	if (rv < 0) {
+		pr_err("Failed to dump queue context, rv = %d", rv);
+		return descq->xdev->hw.qdma_get_error_code(rv);
+	}
+	len = rv;
+
+	/** if interrupt aggregation is enabled
+	 *  add the interrupt context
+	 */
+	if ((descq->xdev->conf.qdma_drv_mode == INDIRECT_INTR_MODE) ||
+			(descq->xdev->conf.qdma_drv_mode == AUTO_MODE)) {
+		for (ring_count = 0;
+				ring_count < QDMA_NUM_DATA_VEC_FOR_INTR_CXT;
+				ring_count++) {
+			ring_index = get_intr_ring_index(
+						descq->xdev,
+						(descq->xdev->dvec_start_idx +
+								ring_count));
+
+			rv = qdma_intr_context_read(descq->xdev,
+						ring_index, &intr_ctxt);
+			if (rv < 0) {
+				pr_err("Failed to read intr context for ring %d, rv = %d",
+						ring_index, rv);
+				return rv;
+			}
+
+			rv = descq->xdev->hw.qdma_dump_intr_context(descq->xdev,
+						&intr_ctxt, ring_index,
+						buf + len, buflen - len);
+			if (rv < 0) {
+				pr_err("Failed to dump intr context, rv = %d",
+						rv);
+				return descq->xdev->hw.qdma_get_error_code(rv);
+			}
+			len += rv;
+		}
+	}
+
+	return len;
+}
+
 #endif
+
+

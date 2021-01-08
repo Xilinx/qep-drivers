@@ -1,5 +1,5 @@
 /*
- * Copyright(c) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright(c) 2019-2020 Xilinx, Inc. All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -17,8 +17,7 @@
 #ifndef LIBQDMA_QDMA_PLATFORM_H_
 #define LIBQDMA_QDMA_PLATFORM_H_
 
-#include "qdma_access.h"
-#include "qdma_access_export.h"
+#include "qdma_access_common.h"
 #include "qdma_platform_env.h"
 
 #ifdef __cplusplus
@@ -52,6 +51,14 @@ void *qdma_calloc(uint32_t num_blocks, uint32_t size);
  * Return:	None
  *****************************************************************************/
 void qdma_memfree(void *memptr);
+
+/*****************************************************************************/
+/**
+ * qdma_resource_lock_init() - Init lock to access resource management APIs
+ *
+ * @return	None
+ *****************************************************************************/
+int qdma_resource_lock_init(void);
 
 /*****************************************************************************/
 /**

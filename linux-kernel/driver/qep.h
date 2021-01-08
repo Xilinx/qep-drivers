@@ -23,37 +23,30 @@
 #include "libqdma_export.h"
 #include "stmn.h"
 #include "qep_cmac.h"
+#include "qep_fdt.h"
 
+/* Driver Version */
 #define DRV_NAME "qep_drv"
 #define DRV_DESC "Xilinx QDMA Ethernet Platform Driver"
 
 #define QEP_VERSION_MAJOR 1
-#define QEP_VERSION_MINOR 3
+#define QEP_VERSION_MINOR 4
 #define QEP_VERSION_PATCH 0
 
-#define QEP_JUMBO_DISABLE (0)
+#define QEP_VERSION_STR                                                      \
+	__stringify(QEP_VERSION_MAJOR) "." __stringify(                       \
+		QEP_VERSION_MINOR) "." __stringify(QEP_VERSION_PATCH)
+
+#define DRV_VER QEP_VERSION_STR
+
+/* Driver Defaults */
+#define QEP_INTERRUPT_MODERATION_EN 1
 #define QEP_LOOPBACK_EN (0)
 #define QEP_RS_FEC_EN (1)
 #define QEP_DBG_DUMP_EN (0)
 
-#define QEP_NUM_MAX_QUEUES (256)
-
-#define DRV_VER QEP_VERSION_STR
-#define QEP_ERROR_STR_BUF_LEN (512)
-
-#define QEP_PCI_CONFIG_BAR (0)
-#if defined(QAP_DESIGN) || defined(QAP_STMN_DESIGN)
-#define QEP_PCI_USR_BAR (1)
-#define QEP_NUM_IRQ_MAX (8)
-#define QEP_QUEUE_BASE (0)
-#else
-#define QEP_PCI_USR_BAR (2)
-#define QEP_NUM_IRQ_MAX (32)
-#define QEP_QUEUE_BASE (256)
-#endif
-
 #define QEP_MIN_MTU (64)
-#if  (QEP_JUMBO_DISABLE)
+#if  defined(QEP_JUMBO_DISABLE)
 #define QEP_MAX_MTU (1500)
 #else
 #define QEP_MAX_MTU (9600)
@@ -63,8 +56,7 @@
 #define QEP_DEFAULT_RING_SIZE (1024)
 #define QEP_DEFAULT_C2H_TIMER_COUNT (5)
 #define QEP_DEFAULT_C2H_COUNT_THRESHOLD (64)
-#define QEP_DEFAULT_H2C_TIMER_COUNT (1) /* 1us */
-#define QEP_DEFAULT_H2C_COUNT_THRESHOLD (0)
+#define QEP_DEFAULT_H2C_COUNT_THRESHOLD (64)
 #define QEP_DEFAULT_C2H_BUFFER_SIZE (4096)
 
 #define QEP_RX_PKT_SKB_LEN (512)
@@ -73,15 +65,9 @@
 
 #define QEP_NAPI_WEIGHT (66)
 #define QEP_LINK_CHECK_INTERVAL (100)
+#define QEP_ERROR_STR_BUF_LEN (512)
 
-#define QEP_VERSION_STR                                                   \
-	__stringify(QEP_VERSION_MAJOR) "." __stringify(                       \
-		QEP_VERSION_MINOR) "." __stringify(QEP_VERSION_PATCH)
-
-#define QEP_VERSION                                                       \
-	((LIBQDMA_VERSION_MAJOR)*1000 + (LIBQDMA_VERSION_MINOR)*100 +         \
-	 LIBQDMA_VERSION_PATCH)
-
+/* Debug print macro */
 #define QEP_DEFAULT_MSG_ENABLE                                            \
 	(NETIF_MSG_DRV | NETIF_MSG_PROBE | NETIF_MSG_LINK | NETIF_MSG_TIMER | \
 	 NETIF_MSG_IFDOWN | NETIF_MSG_IFUP | NETIF_MSG_RX_ERR |               \
@@ -103,16 +89,13 @@
 	dev_warn(&xpriv->pcidev->dev, format, ##arg)
 #define qep_dev_err(format, arg...) dev_err(&xpriv->pcidev->dev, format, ##arg)
 
-//#define QEP_TOP_BASE (0x00500000)
-#define QEP_TOP_BASE (0x0)
-
-#define QEP_BASE_OFFSET (QEP_TOP_BASE + 0x0)
+/* QAP Base Register offsets */
 #define QEP_BASE_CMAC_RESET_CONTROL_OFFSET (0x00000020)
 #define QEP_BASE_QDMA_RESET_CONTROL_OFFSET (0x00000024)
 #define QEP_BASE_DMA_USER_H2C_OFFSET (0x00000028)
 #define QEP_BASE_DMA_USER_C2H_OFFSET (0x0000002C)
 
-#define QEP_CMAC_CTRL_BASE (QEP_TOP_BASE + 0x00010000)
+/* CMAC_CTL Register offsets */
 #define QEP_CMAC_CTRL_LOOPBACK (0x10)
 #define QEP_CMAC_CTRL_RST_OFFSET (0x00000014)
 #define QEP_CMAC_CTRL_RST_RX_GTWIZ_SHIFT (5)
@@ -121,12 +104,10 @@
 #define QEP_CMAC_CTRL_TX_CTRL_OFFSET (0x00000308)
 #define QEP_CMAC_CTRL_TX_CTRL_TX_INHIBIT_SHIFT (12)
 
-#define QEP_CMAC_100G_IP_BASE (QEP_TOP_BASE + 0x00020000)
-#define QEP_CMAC_DRP_OFFSET (QEP_TOP_BASE + 0xA4000)
 /* Actual address is 0xAF, need to multiply by 4 */
 #define QEP_CMAC_CTL_RX_MAX_PACKET_LEN_OFFSET (0x2BC)
 
-#define QEP_DMA_USER_C2H_BASE (QEP_TOP_BASE + 0x00050000)
+/* QDMA USER C2H base Register offsets */
 #define QEP_DMA_USER_C2H_CLCR_OFFSET (0x00000010)
 #define QEP_DMA_USER_C2H_CLCR2_OFFSET (0x00000014)
 #define QEP_DMA_USER_C2H_ETH_ADD_SEL_MASK (0x10000)
@@ -138,16 +119,22 @@
 #define QEP_DMA_USER_C2H_QBURST_MASK (0x07)
 #define QEP_DMA_USER_C2H_QBURST_BIT (20)
 
-#define QEP_STMN_BAR_OFFSET (QEP_TOP_BASE + 0x000D0000)
+/* MAC Security Block Register offsets*/
+#define QEP_USR_RX_META_LOW_R (0x000000)
+#define QEP_USR_RX_META_HIGH_R (0x001000)
 
-#define QEP_VERSION_REG (0x110000)
-#define QEP_USR_RX_META_LOW_R (0x200000)
-#define QEP_USR_RX_META_HIGH_R (0x201000)
-
+/* RSS Block*/
 #define QEP_RSS_INDR_TBL_SIZE 256
 #define QEP_RSS_HKEY_SIZE 40
-#define QEP_RSS_OFFSET 0x00300000
 #define QEP_RSS_INDR_DATA_MASK 0x7ff
+
+/* QDMA Config bar PFCH tag offsets*/
+#define QEP_QDMA_BYPASS_TAG_QID 0x1408
+#define QEP_QDMA_BYPASS_TAG 0x140c
+
+/* STMN QID Base Offset */
+#define STMN_QID_OFFSET 0x00000090
+#define STMN_QID_MASK  0x7ff
 
 /***************** Type Definitions ***********************/
 struct qep_drv_stats {
@@ -166,9 +153,11 @@ struct qep_drv_stats {
 
 };
 
-struct qep_tx_cb_arg {
+struct qep_dma_request {
 	struct sk_buff *skb;
 	struct net_device *netdev;
+	struct qdma_request qdma;
+	struct qdma_sw_sg   sgl[MAX_SKB_FRAGS];
 };
 
 /*Per queue structure*/
@@ -215,6 +204,7 @@ struct qep_priv {
 	struct tasklet_struct *task_tx_done;
 	struct qdma_dev_conf qdma_dev_conf;
 	struct qep_dma_q *tx_q, *rx_q;
+	struct kmem_cache *dma_req;
 
 	struct task_struct *link_thread;
 	struct dentry *debugfs_dev_root;
@@ -234,6 +224,8 @@ struct qep_priv {
 	struct qep_cmac_stats *mac_stats;
 	struct qep_drv_stats *drv_stats;
 	struct rtnl_link_stats64 *tx_qstats, *rx_qstats;
+	struct qep_platform_info *pinfo;
+	void *mailbox_pltfrm;
 };
 
 /* Global Variables  */

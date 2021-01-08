@@ -31,8 +31,6 @@
 
 #define QEP_LBUS_BUF_LEN 2048
 
-#define QEP_LBUS_BASE 0x00030000
-
 #define QEP_LBUS_DROP_LSB 0x00000020
 #define QEP_AXIS_DROP_LSB 0x00000028
 #define QEP_AXIS_OUT_LSB 0x00000030
@@ -104,7 +102,7 @@ static int qep_lbus_pm_tick(uint64_t base)
 {
 	uint64_t offset;
 
-	offset = base + QEP_LBUS_BASE + QEP_LBUS_STAT_PM;
+	offset = base + QEP_LBUS_STAT_PM;
 	xcmac_out32(offset, 0x1);
 
 	return 0;
@@ -121,18 +119,17 @@ static uint64_t qep_lbus_read64(uint64_t offset)
 	return data;
 }
 
-static int qep_lbus_get_rx_stats(uint64_t base, struct qep_lbus_rx_stats *stats)
+static int qep_lbus_get_rx_stats(uint64_t offset,
+		struct qep_lbus_rx_stats *stats)
 {
-	uint64_t offset;
 
 	if (!stats) {
 		lbus_err("%s: Invalid input param", __func__);
 		return -EINVAL;
 	}
 
-	qep_lbus_pm_tick(base);
+	qep_lbus_pm_tick(offset);
 
-	offset = base + QEP_LBUS_BASE;
 	stats->lbus_drop = qep_lbus_read64(offset + QEP_LBUS_DROP_LSB);
 	stats->axis_drop = qep_lbus_read64(offset + QEP_AXIS_DROP_LSB);
 	stats->axis_out = qep_lbus_read64(offset + QEP_AXIS_OUT_LSB);
@@ -140,9 +137,8 @@ static int qep_lbus_get_rx_stats(uint64_t base, struct qep_lbus_rx_stats *stats)
 	return 0;
 }
 
-static int qep_lbus_get_rx(uint64_t base, struct qep_lbus_rx *lbus_rx)
+static int qep_lbus_get_rx(uint64_t offset, struct qep_lbus_rx *lbus_rx)
 {
-	uint64_t offset;
 	uint32_t *val;
 	int ret;
 
@@ -151,13 +147,11 @@ static int qep_lbus_get_rx(uint64_t base, struct qep_lbus_rx *lbus_rx)
 		return -EINVAL;
 	}
 
-	ret = qep_lbus_get_rx_stats(base, &lbus_rx->stats);
+	ret = qep_lbus_get_rx_stats(offset, &lbus_rx->stats);
 	if (ret) {
 		lbus_err("%s: qep_lbus_get_rx_stats failed", __func__);
 		return ret;
 	}
-
-	offset = base + QEP_LBUS_BASE;
 
 	val = (uint32_t *)&lbus_rx->err;
 	*val = xcmac_in32(offset + QEP_LBUS_RX_ERR);
@@ -171,17 +165,14 @@ static int qep_lbus_get_rx(uint64_t base, struct qep_lbus_rx *lbus_rx)
 	return 0;
 }
 
-static int qep_lbus_get_tx(uint64_t base, struct qep_lbus_tx *lbus_tx)
+static int qep_lbus_get_tx(uint64_t offset, struct qep_lbus_tx *lbus_tx)
 {
-	uint64_t offset;
 	uint32_t *val;
 
 	if (!lbus_tx) {
 		lbus_err("%s: Invalid input param", __func__);
 		return -EINVAL;
 	}
-
-	offset = base + QEP_LBUS_BASE;
 
 	val = (uint32_t *)&lbus_tx->err;
 	*val = xcmac_in32(offset + QEP_LBUS_TX_ERR);
@@ -229,13 +220,13 @@ static void qep_lbus_snprintf_status(struct qep_lbus_status *status,
 	}
 
 	snprintf(buf + strlen(buf), len - strlen(buf),
-		"Status : Module_In_Reset= %u Data_FIFO_in_reset=%u Control_FIFO_in_Reset=%u Data_FIFO_Full=%u axis_idle=%u lbus_idle=%u\n",
+		"Status : Module_In_Reset=%u Data_FIFO_in_reset=%u Control_FIFO_in_Reset=%u Data_FIFO_Full=%u axis_idle=%u lbus_idle=%u\n",
 		status->module_in_reset, status->data_fifo_in_reset,
 		status->ctl_fifo_in_reset, status->data_fifo_full,
 		status->axis_intf_idle, status->lbus_intf_idle);
 	if (core == XCMAC_CORE_RX) {
 		snprintf(buf + strlen(buf), len - strlen(buf),
-			"Packet Drop Cause : Backpressure=%u Cmac Err=%u\n",
+			"Packet Drop Cause : Backpressure=%u Cmac_Err=%u\n",
 			status->backpressure, status->cmac_err);
 	}
 }
@@ -249,7 +240,7 @@ static int qep_lbus_snprint_rx(struct qep_lbus_rx *lbus_rx, char *buf, int len)
 	}
 
 	snprintf(buf + strlen(buf), len - strlen(buf),
-		"RX(LBUS_to_AXIS) Info\n");
+		"**RX(LBUS_to_AXIS) Info\n");
 	snprintf(buf + strlen(buf), len - strlen(buf),
 		"Config: Pass_Err=%u Pass_Truncate=%u\n",
 		lbus_rx->ctl.pass_err, lbus_rx->ctl.pass_trunc);
@@ -277,7 +268,7 @@ static int qep_lbus_snprint_tx(struct qep_lbus_tx *lbus_tx, char *buf, int len)
 	}
 
 	snprintf(buf + strlen(buf), len - strlen(buf),
-		"TX(AXIS_to_LBUS) Info\n");
+		"**TX(AXIS_to_LBUS) Info\n");
 	snprintf(buf + strlen(buf), len - strlen(buf),
 		"Config : Padd_Enable=%u\n", lbus_tx->ctl.padd_en);
 

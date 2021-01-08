@@ -1,5 +1,5 @@
 /*
- * Copyright(c) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright(c) 2019-2020 Xilinx, Inc. All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -78,6 +78,31 @@ struct qdma_dev_attributes {
 
 /** qdma_dev_attributes structure size */
 #define QDMA_DEV_ATTR_STRUCT_SIZE	(sizeof(struct qdma_dev_attributes))
+
+/** global_csr_conf structure size */
+#define QDMA_DEV_GLOBAL_CSR_STRUCT_SIZE	(sizeof(struct global_csr_conf))
+
+/**
+ * enum qdma_dev_type - To hold qdma device type
+ */
+enum qdma_dev_type {
+	QDMA_DEV_PF,
+	QDMA_DEV_VF
+};
+
+/**
+ * enum qdma_dev_q_type: Q type
+ */
+enum qdma_dev_q_type {
+	/** @QDMA_DEV_Q_TYPE_H2C: H2C Q */
+	QDMA_DEV_Q_TYPE_H2C,
+	/** @QDMA_DEV_Q_TYPE_C2H: C2H Q */
+	QDMA_DEV_Q_TYPE_C2H,
+	/** @QDMA_DEV_Q_TYPE_CMPT: CMPT Q */
+	QDMA_DEV_Q_TYPE_CMPT,
+	/** @QDMA_DEV_Q_TYPE_MAX: Total Q types */
+	QDMA_DEV_Q_TYPE_MAX
+};
 
 /**
  * @enum qdma_desc_size - QDMA queue descriptor size
@@ -160,19 +185,12 @@ enum qdma_wrb_interval {
 };
 
 enum qdma_rtl_version {
-	/** @QDMA_RTL_1 - RTL 1  */
+	/** @QDMA_RTL_BASE - RTL Base  */
 	QDMA_RTL_BASE,
-	/** @QDMA_RTL_2 - RTL 2  */
-	QDMA_RTL_PATCH
-};
-
-enum qdma_versal_ip_type {
-	/** @QDMA_VERSAL_HARD_IP - Hard IP  */
-	QDMA_VERSAL_HARD_IP,
-	/** @QDMA_VERSAL_SOFT_IP - Soft IP  */
-	QDMA_VERSAL_SOFT_IP,
-	/** @QDMA_VERSAL_NONE - Not versal device  */
-	QDMA_VERSAL_NONE
+	/** @QDMA_RTL_PATCH - RTL Patch  */
+	QDMA_RTL_PATCH,
+	/** @QDMA_RTL_NONE - Not a valid RTL version */
+	QDMA_RTL_NONE,
 };
 
 enum qdma_vivado_release_id {
@@ -182,17 +200,31 @@ enum qdma_vivado_release_id {
 	QDMA_VIVADO_2019_1,
 	/** @QDMA_VIVADO_2019_2 - Vivado version 2019.2  */
 	QDMA_VIVADO_2019_2,
+	/** @QDMA_VIVADO_2020_1 - Vivado version 2020.1  */
+	QDMA_VIVADO_2020_1,
 	/** @QDMA_VIVADO_NONE - Not a valid Vivado version*/
 	QDMA_VIVADO_NONE
 };
+
+enum qdma_ip_type {
+	/** @QDMA_VERSAL_HARD_IP - Hard IP  */
+	QDMA_VERSAL_HARD_IP,
+	/** @QDMA_VERSAL_SOFT_IP - Soft IP  */
+	QDMA_VERSAL_SOFT_IP,
+	/** @QDMA_SOFT_IP - Hard IP  */
+	QDMA_SOFT_IP,
+	/** @EQDMA_SOFT_IP - Soft IP  */
+	EQDMA_SOFT_IP,
+	/** @QDMA_VERSAL_NONE - Not versal device  */
+	QDMA_NONE_IP
+};
+
 
 enum qdma_device_type {
 	/** @QDMA_DEVICE_SOFT - UltraScale+ IP's  */
 	QDMA_DEVICE_SOFT,
 	/** @QDMA_DEVICE_VERSAL -VERSAL IP  */
 	QDMA_DEVICE_VERSAL,
-	/** @QDMA_DEVICE_VERSAL_CPM5 - VERSAL CPM5  */
-	QDMA_DEVICE_VERSAL_CPM5,
 	/** @QDMA_DEVICE_NONE - Not a valid device  */
 	QDMA_DEVICE_NONE
 };

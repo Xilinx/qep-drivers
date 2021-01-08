@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Xilinx, Inc.
+ * Copyright (c) 2019-2020 Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -61,9 +61,9 @@ static int stmn_proc_h2c_request_single(void *qhndl,
 	dump_qdma_sw_sgl(sg_max, req->sgl);
 #endif
 	i = qdma_sgl_find_offset(req, &sg, &sg_offset);
-	if (i < 0)
+	if (unlikely(i < 0))
 		return -EINVAL;
-	if (i == 0)
+	if (likely(i == 0))
 		gl_count = calculate_stmn_gl_count(req);
 
 	for (; i < sg_max; i++, sg++) {
@@ -83,7 +83,7 @@ static int stmn_proc_h2c_request_single(void *qhndl,
 
 		req_desc_cnt = stmn_get_desc_cnt(tlen);
 		rv = qdma_q_desc_get(qhndl, req_desc_cnt, &desc_list);
-		if (rv < 0) {
+		if (unlikely(rv < 0)) {
 			if (desc_cnt)
 				goto update_req;
 			else
@@ -145,7 +145,7 @@ int qep_stmn_parse_cmpl_entry(void *cmpl_entry, struct qdma_ul_cmpt_info *cmpl)
 int qep_stmn_bypass_desc_fill(void *q_hndl, enum qdma_q_mode q_mode,
 			       enum qdma_q_dir q_dir, struct qdma_request *req)
 {
-	if ((q_mode == QDMA_Q_MODE_ST) && (q_dir == QDMA_Q_DIR_H2C))
+	if (likely((q_mode == QDMA_Q_MODE_ST) && (q_dir == QDMA_Q_DIR_H2C)))
 		return stmn_proc_h2c_request_single(q_hndl, req);
 
 	return -EINVAL;

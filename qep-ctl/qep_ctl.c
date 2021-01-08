@@ -16,25 +16,39 @@
 
 /*  qep_ctl.c - An utility to configure QDMA Ethernet Platform (QEP) */
 
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#define WINDOWS_OS
+#pragma warning(disable : 4996)
+#endif
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <stdbool.h>
 #include <errno.h>
-#include <getopt.h>
 #include <inttypes.h>
+#include <stdlib.h>
+#ifdef EN_CMAC_STATS
+#include "cmac/qep_cmac.h"
+#endif
 
+#ifdef WINDOWS_OS
+#include <windows.h>
+#include <setupapi.h>
+#include <initguid.h>
+#include "XoclMgmt_INTF.h"
+#include "getopt.h"
+#else
+#include <unistd.h>
 #include <sys/mman.h>
 #include <sys/fcntl.h>
 #include <netinet/ether.h>
-#include "cmac/qep_cmac.h"
+#include <getopt.h>
+#endif
 /************************Macros**********************************************/
 
-#define PCIE_DEV_ID_MGMT_PF  (0x5014)
-#define DEFAULT_USER_BAR (2)
-#define DEFAULT_USER_BAR_LEN (0x4000000)
+#define PCIE_DEV_ID_MGMT_PF (0x5004)
+#define DEFAULT_USER_BAR (0)
+#define DEFAULT_USER_BAR_LEN (0x2000000)
 
 #define MAX_BDF_LEN (32)
 #define MIN_BDF_LEN (7)
@@ -55,6 +69,23 @@
 
 #define QEPCTL_CMAC_OFFSET (0x00500000)
 #define QEPCTL_CMAC_IP_BASE (QEPCTL_CMAC_OFFSET + 0x00020000)
+
+#define QEPCTL_CONTROL_REG_VLAN_SHIFT 1
+#define QEPCTL_CONTROL_REG_MAC_SHIFT 2
+#define QEPCTL_CONTROL_PKT_DISCARD_SHIFT 3
+
+#ifdef WINDOWS_OS
+#define ETH_ALEN 6
+struct ether_addr {
+	uint8_t ether_addr_octet[ETH_ALEN];
+};
+#endif
+
+#if defined(_MSC_VER)
+#define strncasecmp _strnicmp
+#define strcasecmp _stricmp
+#endif
+
 /****************************************************************************/
 enum direction {
 	TX_CORE, RX_CORE, BOTH_CORE, CORE_MAX
@@ -81,10 +112,10 @@ enum cmd_type {
 };
 
 struct qepsec_enable {
-	uint8_t mac :1;
-	uint8_t vlan :1;
-	uint8_t discard :1;
 	uint8_t disable :1;
+	uint8_t vlan :1;
+	uint8_t mac :1;
+	uint8_t discard :1;
 };
 
 struct qepctl_cntx {
@@ -104,6 +135,10 @@ struct qepctl_cntx {
 		uint8_t core_en[CORE_MAX];
 		struct qepsec_enable en[CORE_MAX];
 	};
+#ifdef WINDOWS_OS
+	int dev_id;
+	HANDLE m_hdl;
+#endif
 };
 /****************************************************************************/
 int qepctl_qsfp_show_info(void *base, bool alarm);
@@ -114,17 +149,21 @@ static void usage(void)
 
 	fprintf(stdout, " ./%s CMD [ options ]\n", app_name);
 	fprintf(stdout, "      CMD = [ config | show | read | write | help ]\n");
-	fprintf(stdout, "      Options =  -d BDF or dev\n");
-	fprintf(stdout, "                 -b bar num\n");
+	fprintf(stdout, "      Options =  -d Domain:BDF or dev\n");
+	fprintf(stdout, "	          -b bar num\n");
 	fprintf(stdout, "                 -c [ tx | rx ]\n");
 	fprintf(stdout, "                 -m mac_addr\n");
 	fprintf(stdout, "                 -v VID,DEI,PCP\n");
 	fprintf(stdout, "                 -e [ mac,vlan,discard ] [ disable ]\n");
 	fprintf(stdout, " ./%s show [ qsfp_info | sec_info | cmac ]\n", app_name);
+#ifdef EN_QSFP
 	fprintf(stdout, "                 --alarm  : show alarm info along qsfp_info\n");
+#endif
+#ifdef EN_CMAC_STATS
 	fprintf(stdout, "                 --status : show CMAC status, valid with show cmac command\n");
 	fprintf(stdout, "                 --stats  : show CMAC statistics, valid with show cmac command\n");
 	fprintf(stdout, "                 --lbus   : show lbus info, valid with show cmac command\n");
+#endif
 	fprintf(stdout, "Examples:\n");
 	fprintf(stdout, "  ./%s config -m 01:02:03:03:04:06 -v 4,0,3 -e mac,vlan -c tx -d 18:00.1\n", app_name);
 	fprintf(stdout, "  ./%s read 0x20000 -d 18:00.1 -b 2\n", app_name);
@@ -141,7 +180,78 @@ static void writel(uint32_t val, uint32_t *addr)
 {
 	*addr = val;
 }
+#ifdef WINDOWS_OS
+static void *qepctl_get_bar_win(struct qepctl_cntx *cntx)
+{
+	ULONG size = 0;
+	HDEVINFO device_info;
+	SP_DEVICE_INTERFACE_DATA device_interface;
+	PSP_DEVICE_INTERFACE_DETAIL_DATA device_detail;
+	DWORD ret_bytes = 0;
+	PVOID *bar_address;
+	BOOL status;
+	GUID guid = GUID_XILINX_PF_INTERFACE;
 
+
+	device_info = SetupDiGetClassDevs(
+		&guid, NULL, NULL, DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
+
+	device_interface.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
+	if (!SetupDiEnumDeviceInterfaces(device_info, NULL, &guid, cntx->dev_id,
+			&device_interface)) {
+		printf("%s: SetupDiEnumDeviceInterfaces failed Error: %ld\n",
+			__func__, GetLastError());
+		return NULL;
+	}
+
+	if (!SetupDiGetDeviceInterfaceDetail(device_info, &device_interface,
+			NULL, 0, &size, NULL) &&
+			GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
+		printf("%s: SetupDiGetDeviceInterfaceDetail - get length failed Error: %ld\n",
+			__func__, GetLastError());
+		return NULL;
+	}
+
+	device_detail = malloc(size);
+	if (!device_detail) {
+		printf("%s:Cannot allocate device detail, out of memory Error: %ld\n",
+			__func__, GetLastError());
+		return NULL;
+	}
+	device_detail->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
+
+	if (!SetupDiGetDeviceInterfaceDetail(device_info, &device_interface,
+			device_detail, size, NULL, NULL)) {
+		free(device_detail);
+		printf("%s: SetupDiGetDeviceInterfaceDetail - get detail failed Error: %ld\n",
+			__func__, GetLastError());
+		return NULL;
+	}
+
+	cntx->m_hdl = CreateFile(device_detail->DevicePath,
+				GENERIC_READ | GENERIC_WRITE,
+				FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+				OPEN_EXISTING, 0, NULL);
+
+	free(device_detail);
+
+	if (cntx->m_hdl == INVALID_HANDLE_VALUE)
+		printf("%s: CreateFile failed with Error: %ld\n", __func__,
+			GetLastError());
+
+	status = DeviceIoControl(cntx->m_hdl, XCLMGMT_OID_GET_BAR_ADDR, NULL, 0,
+				&bar_address, sizeof(PVOID), &ret_bytes, NULL);
+
+	if (!status || !bar_address) {
+		CloseHandle(cntx->m_hdl);
+		cntx->m_hdl = NULL;
+		printf("%s:Could not map BAR, Error:%ld\n", __func__,
+			GetLastError());
+	}
+
+	return bar_address;
+}
+#else
 static void *qepctl_pci_mmap_bar(char *bdf, uint8_t bar_num, uint32_t bar_len)
 {
 	int fd;
@@ -153,22 +263,21 @@ static void *qepctl_pci_mmap_bar(char *bdf, uint8_t bar_num, uint32_t bar_len)
 		return NULL;
 	}
 
-	sprintf(filename, "/sys/bus/pci/devices/0000:%s/resource%d",
-			bdf, bar_num);
+	sprintf(filename, "/sys/bus/pci/devices/%s/resource%d", bdf, bar_num);
 
 	fd = open(filename, O_RDWR);
 	if (fd < 0) {
 		fprintf(stderr, " %s : Resource file(%s) open failed Error:%s\n",
 				__func__, filename, strerror(errno));
-		fprintf(stderr, "Invalid BDF or BAR Number ! pass BDF(-d) or Bar(-b) as input\n");
-		system("lspci -d 10ee: -v");
+		fprintf(stderr, "Invalid BDF or BAR Number ! pass Domain:BDF(-d) or Bar(-b) as input\n");
+		system("lspci -d 10ee: -D");
 		return NULL;
 	}
 
 	base_addr = mmap(0, bar_len, PROT_READ | PROT_WRITE, MAP_SHARED,
 			fd, 0);
 	if (base_addr == MAP_FAILED) {
-		fprintf(stderr, " %s : mapped failed Error:%s\n", __func__,
+		fprintf(stderr, " %s : PCI  mmap failed Error:%s\n", __func__,
 				strerror(errno));
 		base_addr = NULL;
 	}
@@ -184,7 +293,7 @@ static int qepctl_pci_get_bdf(uint32_t dev_id, char *bdf_usr, unsigned int len)
 	char bdf[MAX_BDF_LEN] = {'\0'};
 	char *token;
 
-	sprintf(cmd, "lspci -d 10ee:%x | cut -d \' \' -f1", dev_id);
+	sprintf(cmd, "lspci -d 10ee:%x -D | cut -d \' \' -f1", dev_id);
 
 	fp = popen(cmd, "r");
 	if (fp == NULL) {
@@ -193,7 +302,7 @@ static int qepctl_pci_get_bdf(uint32_t dev_id, char *bdf_usr, unsigned int len)
 	}
 
 	if (fgets(bdf, sizeof(bdf) - 1, fp) == NULL) {
-		fprintf(stderr, "Failed to run command\n");
+		fprintf(stderr, "%s Failed\n", cmd);
 		goto func_exit;
 	}
 
@@ -214,7 +323,7 @@ static int qepctl_pci_get_bdf(uint32_t dev_id, char *bdf_usr, unsigned int len)
 	}
 
 	if (strlen(bdf) > MIN_BDF_LEN && len > strlen(bdf)) {
-		strncpy(bdf_usr, bdf, strlen(bdf)-1);
+		strncpy(bdf_usr, bdf, strlen(bdf) - 1);
 		return 0;
 	}
 
@@ -222,8 +331,10 @@ func_exit:
 	pclose(fp);
 	return -EINVAL;
 }
+#endif
 
-static int qepctl_cmac_print_stats(struct xcmac  *cmac)
+#if defined(EN_CMAC_STATS)
+static int qepctl_cmac_print_stats(struct xcmac *cmac)
 {
 	struct qep_cmac_stats stats;
 	int len = 0, ret;
@@ -260,7 +371,7 @@ static int qepctl_cmac_print_stats(struct xcmac  *cmac)
 	return ret;
 }
 
-static int qepctl_cmac_print_status(struct xcmac  *cmac)
+static int qepctl_cmac_print_status(struct xcmac *cmac)
 {
 	int len = 0, ret;
 	char *buf = NULL;
@@ -341,6 +452,8 @@ static int qepctl_cmac_show_info(void *addr, struct qepctl_cntx *cntx)
 
 	return 0;
 }
+#endif
+
 static void qepctl_sec_write_en_reg(void *addr, enum direction dir, struct qepsec_enable *en)
 {
 	uint32_t offset, en_reg;
@@ -350,10 +463,10 @@ static void qepctl_sec_write_en_reg(void *addr, enum direction dir, struct qepse
 	else
 		offset = QEPCTL_SEC_RX_CFG_W;
 
-	en_reg = readl(addr + offset);
+	en_reg = readl((uint32_t *)((char *)addr + offset));
 
 	if (en->disable) {
-		writel(0, addr + offset);
+		writel(0, (uint32_t *)((char *)addr + offset));
 		return;
 	}
 
@@ -361,30 +474,27 @@ static void qepctl_sec_write_en_reg(void *addr, enum direction dir, struct qepse
 	en_reg |= 1;
 
 	if (en->vlan)
-		en_reg |= 1 << 1;
+		en_reg |= 1 << QEPCTL_CONTROL_REG_VLAN_SHIFT;
 	if (en->mac)
-		en_reg |= 1 << 2;
+		en_reg |= 1 << QEPCTL_CONTROL_REG_MAC_SHIFT;
 	if (en->discard)
-		en_reg |= 1 << 3;
+		en_reg |= 1 << QEPCTL_CONTROL_PKT_DISCARD_SHIFT;
 
-	writel(en_reg, addr + offset);
+	writel(en_reg, (uint32_t *)((char *)addr + offset));
 }
 
 static void qepctl_sec_read_hwreg(void *addr, enum direction dir, uint8_t *en, uint32_t *rlow,
 		uint32_t *rhigh)
 {
-	*rlow = readl(addr + QEPCTL_SEC_META_LOW_W);
-	*rhigh = readl(addr + QEPCTL_SEC_META_HIGH_W);
+	*rlow = readl((uint32_t *)((char *)addr + QEPCTL_SEC_META_LOW_W));
+	*rhigh = readl((uint32_t *)((char *)addr + QEPCTL_SEC_META_HIGH_W));
 
-	if (dir == TX_CORE) {
-		en[dir] = readl(addr + QEPCTL_SEC_TX_CFG_W);
-	} else if (dir == RX_CORE) {
-		en[dir] = readl(addr + QEPCTL_SEC_RX_CFG_W);
-	} else if (dir == BOTH_CORE) {
-		en[TX_CORE] = readl(addr + QEPCTL_SEC_TX_CFG_W);
-		en[RX_CORE] = readl(addr + QEPCTL_SEC_RX_CFG_W);
-	} else
-		fprintf(stderr, "%s:INVALID CORE TYPE", __func__);
+	if (dir == TX_CORE || dir == BOTH_CORE)
+		en[TX_CORE] = readl((uint32_t *)((char *)addr + QEPCTL_SEC_TX_CFG_W));
+
+	if (dir == RX_CORE || dir == BOTH_CORE)
+		en[RX_CORE] = readl((uint32_t *)((char *)addr + QEPCTL_SEC_RX_CFG_W));
+
 }
 
 static void qepctl_sec_read_hwconfig(void *addr, struct qepctl_cntx *cntx)
@@ -407,21 +517,44 @@ static void qepctl_sec_read_hwconfig(void *addr, struct qepctl_cntx *cntx)
 	cntx->vlan.pcp |= (rhigh & 0xf0000) >> QEPCTL_SEC_TX_PCP_BIT;
 }
 
+static void print_mac(struct ether_addr *mac)
+{
+	fprintf(stdout, "MAC Addr: %x:%x:%x:%x:%x:%x\n",
+		mac->ether_addr_octet[0], mac->ether_addr_octet[1],
+		mac->ether_addr_octet[2], mac->ether_addr_octet[3],
+		mac->ether_addr_octet[4], mac->ether_addr_octet[5]);
+}
+
+static void print_control_reg(struct qepctl_cntx *cntx)
+{
+	if (cntx->dir == TX_CORE || cntx->dir == BOTH_CORE)
+		fprintf(stdout,
+			"TX Control Reg: Sec_block:%d vlan:%d mac:%d pkt_diskard:%d\n",
+			cntx->en[TX_CORE].disable, cntx->en[TX_CORE].vlan,
+			cntx->en[TX_CORE].mac, cntx->en[TX_CORE].discard);
+	if (cntx->dir == RX_CORE || cntx->dir == BOTH_CORE)
+		fprintf(stdout,
+			"RX Control Reg: Sec_block:%d vlan:%d mac:%d pkt_diskard:%d\n",
+			cntx->en[RX_CORE].disable, cntx->en[RX_CORE].vlan,
+			cntx->en[RX_CORE].mac, cntx->en[RX_CORE].discard);
+}
+
 static int qepctl_sec_show_config(void *addr, struct qepctl_cntx *cntx)
 {
-
-	if (!addr || !cntx)
+	if (!addr || !cntx) {
+		printf("%s: Addr: %p or cntx:%p is NULL\n", __func__, addr, cntx);
 		return -EINVAL;
+	}
 
 	qepctl_sec_read_hwconfig(addr, cntx);
 
 	fprintf(stdout, "SECURITY BLOCK CONFIG\n");
 	fprintf(stdout, "---------------------\n");
-	fprintf(stdout, "MAC Addr: %s\n", ether_ntoa(&cntx->mac));
-	fprintf(stdout, "Vlan ID: %d\nPriority Class:%d\nDrop Eligibility Indicator :%d\n",
-			cntx->vlan.vid, cntx->vlan.pcp, cntx->vlan.dei);
-	fprintf(stdout, "Enable tx: %d rx: %d\n",
-			cntx->core_en[TX_CORE], cntx->core_en[RX_CORE]);
+	print_mac(&cntx->mac);
+	fprintf(stdout,
+		"Vlan ID: %d\nPriority Class:%d\nDrop Eligibility Indicator :%d\n",
+		cntx->vlan.vid, cntx->vlan.pcp, cntx->vlan.dei);
+	print_control_reg(cntx);
 	fprintf(stdout, "---------------------\n");
 
 	return 0;
@@ -453,14 +586,14 @@ static int qepctl_sec_update_config(void *addr, struct qepctl_cntx *cntx)
 		if (cntx->vlan.dei)
 			high |= cntx->vlan.dei << QEPCTL_SEC_TX_DEI_BIT;
 		if (cntx->vlan.pcp) {
-			high &= ~(0x7 << (QEPCTL_SEC_TX_PCP_BIT-1));
+			high &= ~(0x7 << (QEPCTL_SEC_TX_PCP_BIT - 1));
 			high |= cntx->vlan.pcp << QEPCTL_SEC_TX_PCP_BIT;
 		}
 	}
 
 	if (wr_mac) {
-		writel(low, addr + QEPCTL_SEC_META_LOW_W);
-		writel(high, addr + QEPCTL_SEC_META_HIGH_W);
+		writel(low, (uint32_t *)((char *)addr + QEPCTL_SEC_META_LOW_W));
+		writel(high, (uint32_t *)((char *)addr + QEPCTL_SEC_META_HIGH_W));
 	}
 
 	if (cntx->cmd[OPTION_ENABLE_CONF]) {
@@ -487,7 +620,7 @@ static int parse_mac(char *str, struct ether_addr *mac)
 
 	token = strtok(str_buf, ":");
 	while (token) {
-		mac->ether_addr_octet[count++] = strtoul(token, &end, 16);
+		mac->ether_addr_octet[count++] = (uint8_t)strtoul(token, &end, 16);
 		if (strlen(end)) {
 			fprintf(stderr, "Invalid Octet %s\n", token);
 			return -EINVAL;
@@ -672,7 +805,7 @@ int parse_options(int argc, char **argv, struct qepctl_cntx *cntx)
 			cntx->cmd[OPTION_USER_BDF] = true;
 			break;
 		case 'b':
-			cntx->bar_num = strtoul(optarg, &end, 0);
+			cntx->bar_num = (uint8_t)strtoul(optarg, &end, 0);
 			if (strlen(end)) {
 				fprintf(stderr, "Invalid Number Argument");
 				return -EINVAL;
@@ -833,23 +966,39 @@ int main_core(int argc, char **argv, struct qepctl_cntx *cntx)
 {
 	int ret = 0;
 	void *base = NULL;
-	uint32_t dev_id = PCIE_DEV_ID_MGMT_PF;
-
+#ifdef WINDOWS_OS
+	char *end;
+#endif
 	ret = parse_cmd_to_cntx(argc, argv, cntx);
 	if (ret != 0) {
 		fprintf(stderr, "Invalid CMDline input\n");
 		return ret;
 	}
 
+#ifdef WINDOWS_OS
+	if (!cntx->cmd[OPTION_USER_BDF])
+		cntx->dev_id = 0;
+	else {
+		cntx->dev_id = strtoul(cntx->bdf, &end, 10);
+		if (strlen(end)) {
+			fprintf(stderr, "Invalid Device Id %s\n", cntx->bdf);
+			return -EINVAL;
+		}
+	}
+
+	base = qepctl_get_bar_win(cntx);
+#else
 	if (!cntx->cmd[OPTION_USER_BDF]) {
-		ret = qepctl_pci_get_bdf(dev_id, cntx->bdf, MAX_BDF_LEN);
+		ret = qepctl_pci_get_bdf(PCIE_DEV_ID_MGMT_PF, cntx->bdf, MAX_BDF_LEN);
 		if (ret == -EINVAL)
 			return ret;
 	}
 
-	base = qepctl_pci_mmap_bar(cntx->bdf, cntx->bar_num, DEFAULT_USER_BAR_LEN);
+	base = qepctl_pci_mmap_bar(cntx->bdf, cntx->bar_num,
+				   DEFAULT_USER_BAR_LEN);
+#endif
 	if (base == NULL) {
-		fprintf(stderr, "mamap failed\n");
+		fprintf(stderr, "mapped BAR address get failed\n");
 		return -EINVAL;
 	}
 
@@ -859,7 +1008,11 @@ int main_core(int argc, char **argv, struct qepctl_cntx *cntx)
 	}
 
 	if (cntx->cmd[SHOW_CMAC_INFO]) {
+#if defined(EN_CMAC_STATS)
 		ret = qepctl_cmac_show_info(base, cntx);
+#else
+		ret = -1;
+#endif
 		goto base_unmap;
 	}
 
@@ -873,16 +1026,16 @@ int main_core(int argc, char **argv, struct qepctl_cntx *cntx)
 	}
 
 	if (cntx->cmd[READ_REG]) {
-		cntx->val = readl(base + cntx->offset);
+		cntx->val = readl((uint32_t *)((char *)base + cntx->offset));
 		fprintf(stdout, " bdf:%s bar:%d Value at addr:0x%x is 0x%x\n",
 			cntx->bdf, cntx->bar_num, cntx->offset, cntx->val);
 		goto base_unmap;
 	}
 
 	if (cntx->cmd[WRITE_REG]) {
-		writel(cntx->val, base + cntx->offset);
+		writel(cntx->val, (uint32_t *)((char *)base + cntx->offset));
 		fprintf(stdout, " bdf:%s bar:%d Value at addr:0x%x is 0x%x\n",
-				cntx->bdf, cntx->bar_num, cntx->offset, ret);
+			cntx->bdf, cntx->bar_num, cntx->offset, ret);
 		goto base_unmap;
 	}
 	if (cntx->cmd[WRITE_CONFIG]) {
@@ -891,10 +1044,13 @@ int main_core(int argc, char **argv, struct qepctl_cntx *cntx)
 	}
 
 base_unmap:
+#ifdef WINDOWS_OS
+	CloseHandle(cntx->m_hdl);
+#else
 	munmap(base, DEFAULT_USER_BAR_LEN);
 	if (ret != 0)
 		fprintf(stderr, "CMD failed\n");
-
+#endif
 	return ret;
 }
 

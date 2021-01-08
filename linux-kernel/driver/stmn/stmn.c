@@ -53,7 +53,7 @@ static unsigned int sleep(unsigned int msec)
 	do { \
 		if ((arg) < STMN_SUCCESS) { \
 			pr_err("%s : %s Failed! Error Code: %d \r\n", \
-			       __func__, (msg), arg); \
+				__func__, (msg), arg); \
 			return arg; \
 		} \
 	} while (0)
@@ -77,17 +77,19 @@ static unsigned int sleep(unsigned int msec)
 
 #define STMN_REG_SNAP 0x00000300
 #define STMN_REG_SNAP_MASK 0x00000100
-#define STMN_C2H_BUF_2048 2048
-#define STMN_C2H_BUF_4096 4096
-#define STMN_C2H_BUF_8192 8192
-#define STMN_C2H_BUF_16384 16384
 
-static const unsigned short stmn_enabled_device_id[] = { 0x903f, 0x6aa0, 0x5016,
+#define STMN_REG_MARKER_REQ 0xb0
+#define STMN_REG_MARKER_QID 0xb4
+#define STMN_REG_C2H_PFCH_BYP_TAG 0x1E0
+#define STMN_C2H_PFCH_BYP_TAG_MASK 0x3f
+
+
+static const unsigned short stmn_enabled_device_id[] = { 0x903f, 0x6aa0, 0x5016, 0x5006,
 							 0x7002 };
 
-const struct stmn_reg_offset stmn_regs = { 0x00000100, 0x00000140, 0x00000180,
-					   0x00000200, 0x00000280, 0x00000310,
-					   0x00000360, 0x00000400 };
+const struct stmn_reg_offset stmn_regs = { 0x00000080, 0x00000100, 0x00000140,
+					0x00000180, 0x00000200, 0x00000280,
+					0x00000310, 0x00000360, 0x00000400 };
 
 const char *stmn_reg_name_stats[STMN_REG_NAME_LEN_MAX] = {
 	"cycle_count",
@@ -896,4 +898,50 @@ int stmn_print_msg(void *dev_hndl, char *msg, uint32_t len)
 	return STMN_SUCCESS;
 }
 
+int stmn_queue_teardown_marker(void *dev_hndl, uint32_t start_qid,
+		uint32_t end_qid)
+{
+	uint32_t qid_reg = 0, req_reg = 0;
+	int counter = 0;
+
+	stmn_null_check(dev_hndl, "dev_hndl");
+
+	if (start_qid > end_qid) {
+		pr_err("%s: start qid greater then end qid\n", __func__);
+		return -STMN_INVALID_ARGS;
+	}
+
+	qid_reg = start_qid & (end_qid << 16);
+
+	stmn_reg_write(dev_hndl, STMN_REG_MARKER_QID, qid_reg);
+	stmn_reg_write(dev_hndl, STMN_REG_MARKER_REQ, 1);
+
+	do {
+		req_reg = stmn_reg_read(dev_hndl, STMN_REG_MARKER_REQ);
+		if ((req_reg == 0) || counter > STMN_POLL_COUNT_MAX)
+			break;
+		pr_debug("%s: Reg: 0x%x Counter: %d\n", __func__,
+				req_reg, counter);
+		counter++;
+		sleep(STMN_POLL_INTERVAL);
+	} while (1);
+
+	if (counter > STMN_POLL_COUNT_MAX) {
+		pr_err("%s: MARKER_REQ timedout\n", __func__);
+		return -STMN_FAILURE;
+	}
+
+	return STMN_SUCCESS;
+
+}
+
+int stmn_update_c2h_pfch_bypass_tag(void *dev_hndl, uint8_t tag)
+{
+	stmn_null_check(dev_hndl, "dev_hndl");
+
+	stmn_reg_write(dev_hndl, STMN_REG_C2H_PFCH_BYP_TAG,
+			tag & STMN_C2H_PFCH_BYP_TAG_MASK);
+
+	return 0;
+}
 /******************************************************************************/

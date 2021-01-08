@@ -17,6 +17,10 @@
 FLAGS=
 FLAGS += -g3 -Wall -Wextra -Wno-sign-compare
 
+ifeq ($(OS),Windows_NT)
+FLAGS += -lSetupapi
+endif
+
 CURRDIR=$(shell pwd)
 
 ETH_SRCS = $(wildcard ethtool_qsfp/*.c)
@@ -29,7 +33,7 @@ qep-ctl:
 	gcc qep_ctl.c -o qep-ctl $(FLAGS)
 
 qsfp:
-	gcc  $(FLAGS)  $(ETH_SRCS) $(I2C_SRC) $(CMAC_SRC) -DEN_QSFP qep_qsfp.c qep_ctl.c -o qep-ctl  -lm
+	gcc  $(FLAGS)  $(ETH_SRCS) $(I2C_SRC) $(CMAC_SRC) -DEN_QSFP -DEN_CMAC_STATS qep_qsfp.c qep_ctl.c -o qep-ctl  -lm
 
 clean:
 	rm -f qep-ctl *.out

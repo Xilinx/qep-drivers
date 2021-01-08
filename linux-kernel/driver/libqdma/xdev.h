@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -48,6 +48,10 @@ extern struct dentry *qdma_debugfs_root;
  * QDMA config bar size - 64MB
  */
 #define QDMA_MAX_BAR_LEN_MAPPED		0x4000000
+/**
+ * Min QDMA config bar size - 16K
+ */
+#define QDMA_MIN_BAR_LEN_MAPPED		0x4000
 
 /*
  *module_param_array:
@@ -215,6 +219,16 @@ struct xlnx_dma_dev {
 	unsigned long magic;	/* structure ID for sanity checks */
 	/**< Xilinx DMA device name */
 	char mod_name[QDMA_DEV_NAME_MAXLEN];
+	/**< Board id this device belongs to*/
+	u32 dma_device_index;
+	/**< Keeping track of last updated descq
+	 * Used only in case of auto and intr aggr driver mode
+	 * This is required because HW might prematurely raise interrupt
+	 * without actual new entries in the aggr ring and we need to
+	 * provide some update to the sw_cidx of aggr ring so that
+	 * interrupt gets triggered again
+	 */
+	struct qdma_descq *prev_descq;
 	/**< DMA device configuration */
 	struct qdma_dev_conf conf;
 	/**< csr info */
@@ -234,7 +248,7 @@ struct xlnx_dma_dev {
 	/**< sriov info */
 	void *vf_info;
 	/**< number of virtual functions */
-	u8 vf_count;
+	u16 vf_count;
 	/**< number of online virtual functions */
 	u8 vf_count_online;
 #ifdef __QDMA_VF__
@@ -295,6 +309,12 @@ struct xlnx_dma_dev {
 	unsigned long long total_mm_c2h_pkts;
 	unsigned long long total_st_h2c_pkts;
 	unsigned long long total_st_c2h_pkts;
+	/** max ping_pong latency */
+	u64 ping_pong_lat_max;
+	/** min ping_pong latency */
+	u64 ping_pong_lat_min;
+	/** avg ping_pong latency */
+	u64 ping_pong_lat_total;
 	/**< for upper layer calling function */
 	unsigned int dev_ulf_extra[0];
 
@@ -482,6 +502,18 @@ int xdev_sriov_vf_offline(struct xlnx_dma_dev *xdev, u8 func_id);
 
 /*****************************************************************************/
 /**
+ * xdev_sriov_vf_reset_offline() - API to set the virtual function to
+ *				offline mode in FLR flow initiated by PF
+ *
+ * @param[in]	xdev:		pointer to xdev
+ *
+ * @return	0: success
+ * @return	-1: on failure
+ *****************************************************************************/
+int xdev_sriov_vf_reset_offline(struct xlnx_dma_dev *xdev);
+
+/*****************************************************************************/
+/**
  * xdev_sriov_vf_online() - API to set the virtual function to online mode
  *
  * @param[in]	xdev:		pointer to xdev
@@ -552,6 +584,8 @@ int xdev_sriov_vf_online(struct xlnx_dma_dev *xdev, u8 func_id);
  *****************************************************************************/
 int xdev_sriov_vf_fmap(struct xlnx_dma_dev *xdev, u8 func_id,
 			unsigned short qbase, unsigned short qmax);
+
+#define xdev_sriov_vf_reset_offline(xdev)
 #else
 /** dummy declaration for xdev_sriov_disable()
  *  When virtual function is not enabled
@@ -569,7 +603,7 @@ int xdev_sriov_vf_fmap(struct xlnx_dma_dev *xdev, u8 func_id,
  *  When virtual function is not enabled
  */
 #define xdev_sriov_vf_online(xdev, func_id)
-
+#define xdev_sriov_vf_reset_offline(xdev)
 #endif
 
 #endif /* XDMA_LIB_H */

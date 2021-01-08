@@ -1,5 +1,5 @@
 /*
- * Copyright(c) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright(c) 2019-2020 Xilinx, Inc. All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -25,7 +25,7 @@
  */
 
 #include "qdma_platform_env.h"
-#include "qdma_access.h"
+#include "qdma_access_common.h"
 #include "qdma_resource_mgmt.h"
 
 #define QDMA_MBOX_VF_ONLINE			(1)
@@ -33,6 +33,7 @@
 #define QDMA_MBOX_VF_RESET			(2)
 #define QDMA_MBOX_PF_RESET_DONE		(3)
 #define QDMA_MBOX_PF_BYE			(4)
+#define QDMA_MBOX_VF_RESET_BYE            (5)
 
 /** mailbox register max */
 #define MBOX_MSG_REG_MAX		32
@@ -204,6 +205,17 @@ int qdma_mbox_compose_vf_offline(uint16_t func_id,
 int qdma_mbox_compose_vf_reset_message(uint32_t *raw_data, uint8_t src_funcid,
 				uint8_t dest_funcid);
 
+/*****************************************************************************/
+/**
+ * qdma_mbox_compose_vf_reset_offline(): compose VF BYE for PF initiated RESET
+ *
+ * @func_id: own function id
+ * @raw_data: output raw message to be sent
+ *
+ * Return:	0  : success and < 0: failure
+ *****************************************************************************/
+int qdma_mbox_compose_vf_reset_offline(uint16_t func_id,
+				uint32_t *raw_data);
 /*****************************************************************************/
 /**
  * qdma_mbox_compose_pf_reset_done_message(): compose PF reset done message
@@ -395,6 +407,19 @@ int qdma_mbox_compose_csr_read(uint16_t func_id,
 
 /*****************************************************************************/
 /**
+ * qdma_mbox_compose_reg_read(): compose message to read the register values
+ *
+ * @func_id:   destination function id
+ * @group_num:  group number for the registers to read
+ * @raw_data: output raw message to be sent
+ *
+ * Return:	0  : success and < 0: failure
+ *****************************************************************************/
+int qdma_mbox_compose_reg_read(uint16_t func_id, uint16_t group_num,
+			       uint32_t *raw_data);
+
+/*****************************************************************************/
+/**
  * qdma_mbox_compose_vf_intr_ctxt_write(): compose interrupt ring context
  * programming message
  *
@@ -504,11 +529,13 @@ uint8_t qdma_mbox_vf_parent_func_id_get(uint32_t *rcv_data);
  *
  * @rcv_data: mbox message recieved
  * @dev_cap: device capability information
+ * @dma_device_index: DMA Identifier to be read using the mbox.
  *
  * Return:	response status with dev info received to the sent message
  *****************************************************************************/
 int qdma_mbox_vf_dev_info_get(uint32_t *rcv_data,
-				struct qdma_dev_attributes *dev_cap);
+		struct qdma_dev_attributes *dev_cap,
+		uint32_t *dma_device_index);
 
 /*****************************************************************************/
 /**
@@ -532,6 +559,19 @@ int qdma_mbox_vf_qinfo_get(uint32_t *rcv_data, int *qbase, uint16_t *qmax);
  * Return:	response status received to the sent message
  *****************************************************************************/
 int qdma_mbox_vf_csr_get(uint32_t *rcv_data, struct qdma_csr_info *csr);
+
+/*****************************************************************************/
+/**
+ * qdma_mbox_vf_reg_list_get(): get reg info from received message
+ *
+ * @rcv_data: mbox message recieved
+ * @num_regs: number of register read
+ * @reg_list: pointer to the register info
+ *
+ * Return:	response status received to the sent message
+ *****************************************************************************/
+int qdma_mbox_vf_reg_list_get(uint32_t *rcv_data,
+		uint16_t *num_regs, struct qdma_reg_data *reg_list);
 
 /*****************************************************************************/
 /**

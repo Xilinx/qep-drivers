@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -19,8 +19,6 @@
 
 #define pr_fmt(fmt)	KBUILD_MODNAME ":%s: " fmt, __func__
 
-#include "qdma_intr.h"
-
 #include <linux/kernel.h>
 #include "qdma_descq.h"
 #include "qdma_device.h"
@@ -28,10 +26,11 @@
 #include "thread.h"
 #include "version.h"
 #include "qdma_mbox_protocol.h"
-#include "qdma_access.h"
+#include "qdma_intr.h"
 #ifdef DUMP_ON_ERROR_INTERRUPT
 #include "qdma_reg_dump.h"
 #endif
+#include "qdma_access_common.h"
 
 #ifndef __QDMA_VF__
 static LIST_HEAD(legacy_intr_q_list);
@@ -49,7 +48,7 @@ static int dump_qdma_regs(struct xlnx_dma_dev *xdev)
 	int len = 0, dis_len = 0;
 	int rv;
 	char *buf = NULL, tbuff = NULL;
-	int buflen = qdma_reg_dump_buf_len() + REG_BANNER_LEN;
+	int buflen;
 	char temp_buf[512];
 
 	if (!xdev) {
@@ -57,9 +56,17 @@ static int dump_qdma_regs(struct xlnx_dma_dev *xdev)
 		return -EINVAL;
 	}
 
+	rv = qdma_reg_dump_buf_len((void *)xdev,
+			xdev->version_info.ip_type, &buflen);
+	if (rv < 0) {
+		pr_err("Failed to get reg dump buffer length\n");
+		return rv;
+	}
+	buflen += REG_BANNER_LEN;
+
 	/** allocate memory */
-	tbuf = (char *) kzalloc(buflen, GFP_KERNEL);
-	if (!tbuf)
+	tbuff = (char *) kzalloc(buflen, GFP_KERNEL);
+	if (!tbuff)
 		return -ENOMEM;
 
 	buf = tbuff;
@@ -138,7 +145,8 @@ static irqreturn_t error_intr_handler(int irq_index, int irq, void *dev_id)
 }
 #endif
 
-static void data_intr_aggregate(struct xlnx_dma_dev *xdev, int vidx, int irq)
+static void data_intr_aggregate(struct xlnx_dma_dev *xdev, int vidx, int irq,
+		u64 timestamp)
 {
 	struct qdma_descq *descq = NULL;
 	u32 counter = 0;
@@ -149,6 +157,8 @@ static void data_intr_aggregate(struct xlnx_dma_dev *xdev, int vidx, int irq)
 	uint8_t color = 0;
 	uint8_t intr_type = 0;
 	uint32_t qid = 0;
+	uint32_t num_entries_processed = 0;
+
 
 	if (!coal_entry) {
 		pr_err("Failed to locate the coalescing entry for vector = %d\n",
@@ -182,12 +192,8 @@ static void data_intr_aggregate(struct xlnx_dma_dev *xdev, int vidx, int irq)
 		return;
 	}
 
-
-
 	do {
-		if ((xdev->version_info.device_type == QDMA_DEVICE_VERSAL) &&
-				(xdev->version_info.versal_ip_type ==
-						QDMA_VERSAL_HARD_IP)) {
+		if (xdev->version_info.ip_type == QDMA_VERSAL_HARD_IP) {
 			color = ring_entry->ring_cpm.coal_color;
 			intr_type = ring_entry->ring_cpm.intr_type;
 			qid = ring_entry->ring_cpm.qid;
@@ -210,6 +216,14 @@ static void data_intr_aggregate(struct xlnx_dma_dev *xdev, int vidx, int irq)
 					irq, vidx, qid);
 			return;
 		}
+		xdev->prev_descq = descq;
+		pr_debug("IRQ[%d]: IVE[%d], Qid = %d, e_color = %d, c_color = %d, intr_type = %d\n",
+				irq, vidx, qid, coal_entry->color,
+				color, intr_type);
+
+		if (descq->conf.ping_pong_en &&
+			descq->conf.q_type == Q_C2H && descq->conf.st)
+			descq->ping_pong_rx_time = timestamp;
 
 		if (descq->conf.fp_descq_isr_top) {
 			descq->conf.fp_descq_isr_top(descq->q_hndl,
@@ -230,16 +244,27 @@ static void data_intr_aggregate(struct xlnx_dma_dev *xdev, int vidx, int irq)
 			intr_cidx_info->sw_cidx = 0;
 		} else
 			counter++;
-
+		num_entries_processed++;
 		ring_entry = (coal_entry->intr_ring_base + counter);
 	} while (1);
 
-	if (descq)
+	if (descq) {
 		queue_intr_cidx_update(descq->xdev,
+			descq->conf.qidx, &coal_entry->intr_cidx_info);
+	} else if (num_entries_processed == 0) {
+		pr_warn("No entries processed\n");
+		descq = xdev->prev_descq;
+		if (descq) {
+			pr_warn("Doing stale update\n");
+			queue_intr_cidx_update(descq->xdev,
 				descq->conf.qidx, &coal_entry->intr_cidx_info);
+		}
+	}
+
 }
 
-static void data_intr_direct(struct xlnx_dma_dev *xdev, int vidx, int irq)
+static void data_intr_direct(struct xlnx_dma_dev *xdev, int vidx, int irq,
+			u64 timestamp)
 {
 	struct qdma_descq *descq;
 	unsigned long flags;
@@ -253,6 +278,11 @@ static void data_intr_direct(struct xlnx_dma_dev *xdev, int vidx, int irq)
 		descq = container_of(entry, struct qdma_descq, intr_list);
 		if (!descq)
 			continue;
+
+		if (descq->conf.ping_pong_en &&
+				descq->conf.q_type == Q_C2H && descq->conf.st)
+			descq->ping_pong_rx_time = timestamp;
+
 		if (descq->conf.fp_descq_isr_top) {
 			descq->conf.fp_descq_isr_top(descq->q_hndl,
 					descq->conf.quld);
@@ -271,15 +301,17 @@ static void data_intr_direct(struct xlnx_dma_dev *xdev, int vidx, int irq)
 static irqreturn_t data_intr_handler(int vector_index, int irq, void *dev_id)
 {
 	struct xlnx_dma_dev *xdev = dev_id;
+	u64 timestamp;
 
 	pr_debug("%s: Data IRQ fired on Funtion#%05x: index=%d, vector=%d\n",
 		xdev->mod_name, xdev->func_id, vector_index, irq);
+	timestamp = rdtsc_gettime();
 
 	if ((xdev->conf.qdma_drv_mode == INDIRECT_INTR_MODE) ||
 			(xdev->conf.qdma_drv_mode == AUTO_MODE))
-		data_intr_aggregate(xdev, vector_index, irq);
+		data_intr_aggregate(xdev, vector_index, irq, timestamp);
 	else
-		data_intr_direct(xdev, vector_index, irq);
+		data_intr_direct(xdev, vector_index, irq, timestamp);
 
 	return IRQ_HANDLED;
 }
@@ -565,8 +597,7 @@ int intr_setup(struct xlnx_dma_dev *xdev)
 #ifndef MBOX_INTERRUPT_DISABLE
 	/** Dedicate 1 vector for mailbox interrupts */
 	if ((xdev->version_info.device_type == QDMA_DEVICE_SOFT) &&
-			(xdev->version_info.vivado_release >=
-					QDMA_VIVADO_2019_1))
+	(xdev->version_info.vivado_release >= QDMA_VIVADO_2019_1))
 		num_vecs_req++;
 #endif
 
@@ -623,8 +654,7 @@ int intr_setup(struct xlnx_dma_dev *xdev)
 
 #ifndef MBOX_INTERRUPT_DISABLE
 	if ((xdev->version_info.device_type == QDMA_DEVICE_SOFT) &&
-			(xdev->version_info.vivado_release >=
-					QDMA_VIVADO_2019_1)) {
+	(xdev->version_info.vivado_release >= QDMA_VIVADO_2019_1)) {
 		/* Mail box interrupt */
 		rv = intr_vector_setup(xdev, i, INTR_TYPE_MBOX,
 				mbox_intr_handler);
@@ -687,10 +717,10 @@ exit:
 
 
 #ifndef __QDMA_VF__
-static irqreturn_t irq_legacy(int irq, void *param)
+static irqreturn_t irq_legacy(int irq, void *irq_data)
 {
 	struct list_head *entry, *tmp;
-	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)param;
+	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)irq_data;
 	irqreturn_t ret = IRQ_NONE;
 
 	if (!xdev) {
@@ -932,7 +962,8 @@ int qdma_queue_service(unsigned long dev_hndl, unsigned long id, int budget,
 
 	descq = qdma_device_get_descq_by_id(xdev, id, NULL, 0, 0);
 	if (descq)
-		return qdma_descq_service_cmpl_update(descq, budget, c2h_upd_cmpl);
+		return qdma_descq_service_cmpl_update(descq,
+					budget, c2h_upd_cmpl);
 
 	return -EINVAL;
 }

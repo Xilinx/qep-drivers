@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -17,7 +17,6 @@
  * the file called "COPYING".
  */
 
-
 #define pr_fmt(fmt) KBUILD_MODNAME ":%s: " fmt, __func__
 
 #include "qdma_debugfs_queue.h"
@@ -31,7 +30,7 @@
 #ifdef DEBUGFS
 #define DEBUGFS_QUEUE_DESC_SZ	(100)
 #define DEBUGFS_QUEUE_INFO_SZ	(256)
-#define DEBUGFS_QUEUE_CTXT_SZ	(2 * 4096)
+#define DEBUGFS_QUEUE_CTXT_SZ	(24 * 1024)
 
 #define DEBUGFS_CTXT_ELEM(reg, pos, size)   \
 	((reg >> pos) & ~(~0 << size))
@@ -373,7 +372,7 @@ static int create_cmpt_q_dbg_files(struct qdma_descq *descq,
  *****************************************************************************/
 static int q_dbg_file_open(struct inode *inode, struct file *fp)
 {
-	int dev_id = -1;
+	unsigned long dev_id = -1;
 	int qidx = -1;
 	struct dbgfs_q_priv *priv = NULL;
 	int rv = 0;
@@ -415,8 +414,10 @@ static int q_dbg_file_open(struct inode *inode, struct file *fp)
 	}
 
 	/* convert this string as hex integer */
-	rv = kstrtoint((const char *)dev_name, 16, &dev_id);
+	rv = kstrtoul((const char *)dev_name, 16, &dev_id);
 	if (rv < 0) {
+		pr_err("%s, kstrtoint failed for %s, Error:%d\n", __func__,
+			dev_dir->d_iname, rv);
 		rv = -ENODEV;
 		return rv;
 	}
@@ -472,10 +473,8 @@ static int qdbg_cntxt_read(unsigned long dev_hndl, unsigned long id,
 		char **data, int *data_len, enum dbgfs_desc_type type)
 {
 	int rv = 0;
-	int len = 0;
 	char *buf = NULL;
 	int buflen = DEBUGFS_QUEUE_CTXT_SZ;
-	struct qdma_descq_context ctxt;
 	struct qdma_descq *descq = NULL;
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
 
@@ -497,79 +496,20 @@ static int qdbg_cntxt_read(unsigned long dev_hndl, unsigned long id,
 		return -EINVAL;
 	}
 
-	/** initialize the context */
-	memset(&ctxt, 0, sizeof(struct qdma_descq_context));
-	/** read the descq context for the given qid */
-	rv = qdma_descq_context_read(descq->xdev, descq->qidx_hw,
-			descq->conf.st, descq->conf.q_type, &ctxt);
+	rv = qdma_descq_context_dump(descq, buf, buflen);
 	if (rv < 0) {
-		len += sprintf(buf + len, "%s read context failed %d.\n",
+		pr_err("%s: Failed to dump the context, rv = %d",
 				descq->conf.name, rv);
-		buf[len] = '\0';
-
-		*data = buf;
-		*data_len = buflen;
-		return rv;
+		return descq->xdev->hw.qdma_get_error_code(rv);
 	}
 
-	if (type == DBGFS_DESC_TYPE_CMPT) {
-		/** convert CMPT context to human readable text */
-		len += snprintf(buf + len, buflen - len, "CMPT CTXT:\n");
-		if (descq->xdev->conf.qdma_drv_mode == INDIRECT_INTR_MODE ||
-				descq->xdev->conf.qdma_drv_mode == AUTO_MODE)
-			qdma_fill_cmpt_ctxt(&ctxt.cmpt_ctxt, 1);
-		else
-			qdma_fill_cmpt_ctxt(&ctxt.cmpt_ctxt, 0);
 
-		len += qdma_parse_ctxt_to_buf(QDMA_CMPT_CNTXT,
-				&xdev->version_info,
-				buf + len, buflen - len);
-	} else {
-		/** convert SW context to human readable text */
-		len += snprintf(buf + len, buflen - len, "SOFTWARE CTXT:\n");
-		if (descq->xdev->conf.qdma_drv_mode == INDIRECT_INTR_MODE ||
-				descq->xdev->conf.qdma_drv_mode == AUTO_MODE)
-			qdma_fill_sw_ctxt(&ctxt.sw_ctxt, 1);
-		else
-			qdma_fill_sw_ctxt(&ctxt.sw_ctxt, 0);
-		len += qdma_parse_ctxt_to_buf(QDMA_SW_CNTXT,
-				&xdev->version_info,
-				buf + len, buflen - len);
-
-		/** convert hardware context to human readable text */
-		len += snprintf(buf + len, buflen - len, "HARDWARE CTXT:\n");
-		qdma_fill_hw_ctxt(&ctxt.hw_ctxt);
-		len += qdma_parse_ctxt_to_buf(QDMA_HW_CNTXT,
-				&xdev->version_info,
-				buf + len, buflen - len);
-		if (!(descq->conf.st && descq->conf.q_type))
-			goto cntxt_exit;
-
-		/** convert credit context to human readable text */
-		len += snprintf(buf + len, buflen - len, "CREDIT CTXT:\n");
-		qdma_fill_credit_ctxt(&ctxt.cr_ctxt);
-		len += qdma_parse_ctxt_to_buf(QDMA_CR_CNTXT,
-				&xdev->version_info,
-				buf + len, buflen - len);
-
-		if (type == DBGFS_DESC_TYPE_C2H) {
-			/** convert prefetch context to human readable text */
-			len += snprintf(buf + len, buflen - len,
-							"PREFETCH CTXT:\n");
-			qdma_fill_pfetch_ctxt(&ctxt.pfetch_ctxt);
-			len += qdma_parse_ctxt_to_buf(QDMA_PFETCH_CNTXT,
-					&xdev->version_info,
-					buf + len, buflen - len);
-		}
-	}
-
-cntxt_exit:
-	buf[len] = '\0';
+	buf[rv] = '\0';
 
 	*data = buf;
 	*data_len = buflen;
 
-	return len;
+	return rv;
 }
 
 /*****************************************************************************/

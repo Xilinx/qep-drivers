@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -17,12 +17,13 @@
  * the file called "COPYING".
  */
 
+
 #ifdef DEBUGFS
 #define pr_fmt(fmt) KBUILD_MODNAME ":%s: " fmt, __func__
 
 #include "qdma_debugfs_dev.h"
 #include "qdma_reg_dump.h"
-#include "qdma_access.h"
+#include "qdma_access_common.h"
 #include "qdma_context.h"
 #include "libqdma_export.h"
 #include "qdma_intr.h"
@@ -124,11 +125,24 @@ static int dbgfs_dump_qdma_regs(unsigned long dev_hndl, char *dev_name,
 	int len = 0;
 	int rv;
 	char *buf = NULL;
-	int buflen = qdma_reg_dump_buf_len() + BANNER_LEN;
+	int buflen;
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
 
 	if (!xdev)
 		return -EINVAL;
+
+#ifndef __QDMA_VF__
+	rv = qdma_acc_reg_dump_buf_len((void *)dev_hndl,
+			xdev->version_info.ip_type, &buflen);
+#else
+	rv = qdma_acc_reg_dump_buf_len((void *)dev_hndl,
+			xdev->version_info.ip_type, &buflen);
+#endif
+	if (rv < 0) {
+		pr_err("Failed to get reg dump buffer length\n");
+		return rv;
+	}
+	buflen += BANNER_LEN;
 
 	/** allocate memory */
 	buf = (char *) kzalloc(buflen, GFP_KERNEL);
@@ -144,13 +158,8 @@ static int dbgfs_dump_qdma_regs(unsigned long dev_hndl, char *dev_name,
 		return len;
 	}
 	len += rv;
-#ifndef __QDMA_VF__
-	rv = xdev->hw.qdma_dump_config_regs((void *)dev_hndl, 0,
-			buf + len, buflen - len);
-#else
-	rv = xdev->hw.qdma_dump_config_regs((void *)dev_hndl, 1,
-			buf + len, buflen - len);
-#endif
+
+	rv = qdma_config_reg_dump(dev_hndl, buf + len, buflen - len);
 	if (rv < 0) {
 		pr_warn("Not able to dump Config Bar register values, err = %d\n",
 					rv);
@@ -203,7 +212,7 @@ static int dbgfs_dump_qdma_info(unsigned long dev_hndl, char *dev_name,
 			(conf->master_pf) ? "True" : "False");
 	len += snprintf(buf + len, buflen - len, "%-36s: %d\n", "QBase",
 			conf->qsets_base);
-	len += snprintf(buf + len, buflen - len, "%-36s: %d\n", "Max Qsets",
+	len += snprintf(buf + len, buflen - len, "%-36s: %u\n", "Max Qsets",
 			conf->qsets_max);
 	len += snprintf(buf + len, buflen - len, "%-36s: %d\n",
 			"Number of VFs", xdev->vf_count);
@@ -233,6 +242,7 @@ static int dbgfs_dump_qdma_info(unsigned long dev_hndl, char *dev_name,
 static int dbgfs_dump_intr_cntx(unsigned long dev_hndl, char *dev_name,
 		char **data, int *data_len)
 {
+
 	int len = 0;
 	int rv = 0;
 	char *buf = NULL;
@@ -269,16 +279,18 @@ static int dbgfs_dump_intr_cntx(unsigned long dev_hndl, char *dev_name,
 				*data_len = buflen;
 				return rv;
 			}
-			len += snprintf(buf + len, buflen - len,
-							"\tINTR CTXT:\n");
-			qdma_fill_intr_ctxt(&intr_ctxt);
-			len += qdma_parse_ctxt_to_buf(QDMA_INTR_CNTXT,
-					&xdev->version_info,
-					buf + len, buflen - len);
+
+			rv = xdev->hw.qdma_dump_intr_context(xdev,
+						&intr_ctxt, ring_index,
+						buf + len, buflen - len);
+			if (rv < 0) {
+				pr_err("Failed to dump intr context, rv = %d",
+						rv);
+				return xdev->hw.qdma_get_error_code(rv);
+			}
+			len += rv;
 		}
 	}
-
-	len += rv;
 
 	*data = buf;
 	*data_len = buflen;
@@ -344,7 +356,7 @@ static int dbgfs_dump_intr_ring(unsigned long dev_hndl, char *dev_name,
  *****************************************************************************/
 static int dev_dbg_file_open(struct inode *inode, struct file *fp)
 {
-	int dev_id = -1;
+	unsigned long dev_id = -1;
 	int rv = 0;
 	unsigned char dev_name[QDMA_DEV_NAME_SZ] = {0};
 	unsigned char *lptr = NULL, *rptr = NULL;
@@ -371,7 +383,7 @@ static int dev_dbg_file_open(struct inode *inode, struct file *fp)
 	}
 
 	/* convert this string as hex integer */
-	rv = kstrtoint((const char *)dev_name, 16, &dev_id);
+	rv = kstrtoul((const char *)dev_name, 16, &dev_id);
 	if (rv < 0) {
 		rv = -ENODEV;
 		return rv;
@@ -698,7 +710,8 @@ static ssize_t dev_intr_ring_read(struct file *fp, char __user *user_buffer,
  * @return	>0: size read
  * @return	<0: error
  *****************************************************************************/
-int create_dev_dbg_files(struct xlnx_dma_dev *xdev, struct dentry *dev_root)
+static int create_dev_dbg_files(struct xlnx_dma_dev *xdev,
+		struct dentry *dev_root)
 {
 	struct dentry  *fp[DBGFS_DEV_DBGF_END] = { NULL };
 	struct file_operations *fops = NULL;
@@ -743,7 +756,8 @@ int create_dev_dbg_files(struct xlnx_dma_dev *xdev, struct dentry *dev_root)
  * @return	>0: size read
  * @return	<0: error
  *****************************************************************************/
-int create_dev_intr_files(struct xlnx_dma_dev *xdev, struct dentry *intr_root)
+static int create_dev_intr_files(struct xlnx_dma_dev *xdev,
+		struct dentry *intr_root)
 {
 	struct dentry  *fp[DBGFS_DEV_DBGF_END] = { NULL };
 	struct file_operations *fops = NULL;
@@ -808,7 +822,8 @@ int dbgfs_dev_init(struct xlnx_dma_dev *xdev)
 	int rv = 0;
 
 	if (!xdev->conf.debugfs_dev_root) {
-		snprintf(dname, QDMA_DEV_NAME_SZ, "%02x:%02x:%x",
+		snprintf(dname, QDMA_DEV_NAME_SZ, "%04x:%02x:%02x:%x",
+				pci_domain_nr(pdev->bus),
 				pdev->bus->number,
 				PCI_SLOT(pdev->devfn),
 				PCI_FUNC(pdev->devfn));

@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,8 @@
 #include <linux/types.h>
 #include <linux/kernel.h>
 
-#define QDMA_SNPRINTF	snprintf
+#define QDMA_SNPRINTF_S(arg1, arg2, arg3, ...) \
+		snprintf(arg1, arg3, ##__VA_ARGS__)
 
 #define qdma_log_info(x_, ...) pr_info(x_, ##__VA_ARGS__)
 #define qdma_log_warning(x_, ...) pr_warn(x_, ##__VA_ARGS__)

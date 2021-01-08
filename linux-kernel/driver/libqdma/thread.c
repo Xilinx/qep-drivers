@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -67,11 +67,12 @@ static inline int xthread_work_pending(struct qdma_kthread *thp)
 
 static inline void xthread_reschedule(struct qdma_kthread *thp)
 {
-	if (thp->timeout) {
+	if (thp->kth_timeout) {
 		pr_debug_thread("%s rescheduling for %u seconds",
-				thp->name, thp->timeout);
-		qdma_waitq_wait_event_timeout(thp->waitq, thp->schedule,
-					      msecs_to_jiffies(thp->timeout));
+				thp->name, thp->kth_timeout);
+		qdma_waitq_wait_event_timeout(
+				thp->waitq, thp->schedule,
+				msecs_to_jiffies(thp->kth_timeout));
 	} else {
 		pr_debug_thread("%s rescheduling", thp->name);
 		qdma_waitq_wait_event(thp->waitq, thp->schedule);

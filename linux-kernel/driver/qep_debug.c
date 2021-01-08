@@ -157,6 +157,12 @@ static ssize_t stmn_read(struct file *filp, char __user *buffer, size_t count,
 		return 0;
 
 	xpriv = (struct qep_priv *)(filp->private_data);
+	if (xpriv->dev_state != QEP_DEV_STATE_UP)
+		return 0;
+
+	if (!qep_fdt_get_netip_enable(xpriv->pinfo, QEP_NETPF_STMN))
+		return 0;
+
 	len = STMN_MSG_BUF_LEN_MAX
 		+ (STMN_MSG_RAM_BUF_LEN * xpriv->netdev->real_num_tx_queues)
 		+ (STMN_MSG_RAM_BUF_LEN * xpriv->netdev->real_num_rx_queues);
@@ -169,12 +175,12 @@ static ssize_t stmn_read(struct file *filp, char __user *buffer, size_t count,
 	ret = stmn_print_msg(xpriv, msg, len);
 	if (ret < STMN_SUCCESS)
 		pr_warn("%s : stmn_print_msg() failed", __func__);
-
+#if 0
 	stmn_print_ram_status_msg(xpriv, msg, len,
 				  xpriv->netdev->real_num_tx_queues,
 				  xpriv->netdev->real_num_rx_queues,
 				  0);
-
+#endif
 	if (*ppos >= strlen(msg))
 		return 0;
 
@@ -197,6 +203,8 @@ static ssize_t cmac_read(struct file *filp, char __user *buffer, size_t count,
 	int ret;
 	unsigned int i, max_q = 0, len = CMAC_MSG_BUF_LEN_MAX;
 	u64 rx_pkt = 0, tx_pkt = 0;
+	uint32_t *lbus_offset = NULL;
+	struct qep_cmac_stats cmac_stats;
 
 	ret = check_valid_args(filp, buffer);
 	if (ret)
@@ -211,12 +219,15 @@ static ssize_t cmac_read(struct file *filp, char __user *buffer, size_t count,
 	if (xpriv->dev_state != QEP_DEV_STATE_UP)
 		goto func_exit;
 
+	memset(&cmac_stats, 0, sizeof(struct qep_cmac_stats));
 
-	ret = qep_cmac_stats_get(&xpriv->cmac_dev, xpriv->mac_stats);
+	ret = qep_cmac_stats_get(&xpriv->cmac_dev, &cmac_stats);
 	if (ret) {
 		pr_err(" %s: qep_cmac_stats_get() failed\n", __func__);
 		goto func_exit;
 	}
+
+	qep_cmac_stats_add(xpriv->mac_stats, &cmac_stats);
 
 	ret = qep_drv_stats_snprintf(xpriv->drv_stats, msg + strlen(msg),
 			len - strlen(msg));
@@ -224,13 +235,15 @@ static ssize_t cmac_read(struct file *filp, char __user *buffer, size_t count,
 		pr_err(" %s: qep_drv_stats_snprintf() failed\n", __func__);
 		goto func_exit;
 	}
-
-	ret = qep_cmac_stats_snprintf(xpriv->mac_stats, msg + strlen(msg),
+	snprintf(msg + strlen(msg), len - strlen(msg), "**\n");
+	ret = qep_cmac_stats_snprintf(&cmac_stats, msg + strlen(msg),
 			len - strlen(msg));
 	if (ret) {
 		pr_err(" %s: qep_cmac_stats_snprintf() failed\n", __func__);
 		goto func_exit;
 	}
+
+	snprintf(msg + strlen(msg), len - strlen(msg), "**\n");
 
 	ret = qep_cmac_status_snprintf(&xpriv->cmac_dev,
 			msg + strlen(msg), len - strlen(msg));
@@ -238,7 +251,7 @@ static ssize_t cmac_read(struct file *filp, char __user *buffer, size_t count,
 		pr_err(" %s: qep_cmac_status_snprintf() failed\n", __func__);
 		goto func_exit;
 	}
-
+	snprintf(msg + strlen(msg), len - strlen(msg), "**\n");
 	snprintf(msg + strlen(msg), len - strlen(msg), "QID TX RX\n");
 	max_q =  max_t(unsigned int, xpriv->netdev->real_num_tx_queues,
 			xpriv->netdev->real_num_rx_queues);
@@ -253,8 +266,10 @@ static ssize_t cmac_read(struct file *filp, char __user *buffer, size_t count,
 				"%d %llu %llu\n", i, tx_pkt, rx_pkt);
 	}
 
-	ret = qep_lbus_snprintf(xpriv->bar_base + QEP_TOP_BASE,
-			msg + strlen(msg),  len - strlen(msg));
+	lbus_offset = xpriv->bar_base +  qep_fdt_get_netip_offset(xpriv->pinfo,
+			QEP_NETPF_LBUS_CONV);
+	ret = qep_lbus_snprintf(lbus_offset, msg + strlen(msg),
+			len - strlen(msg));
 	if (ret) {
 		pr_err(" %s: qep_lbus_snprintf() failed\n", __func__);
 		goto func_exit;
@@ -351,34 +366,40 @@ static ssize_t pm_resume_write(struct file *filp, const char __user *buffer,
 	return count;
 }
 
+static int qep_file_release(struct inode *inode, struct file *fp)
+{
+	fp->private_data = NULL;
+	return 0;
+}
+
 static const struct file_operations config_fops = {
-	.owner = THIS_MODULE,
 	.open = config_open,
 	.read = config_read,
+	.release = qep_file_release,
 };
 
 static const struct file_operations stmn_fops = {
-	.owner = THIS_MODULE,
 	.open = stmn_open,
 	.read = stmn_read,
+	.release = qep_file_release,
 };
 
 static const struct file_operations cmac_fops = {
-	.owner = THIS_MODULE,
 	.open = stmn_open,
 	.read = cmac_read,
+	.release = qep_file_release,
 };
 
 static const struct file_operations pm_suspend_fops = {
-	.owner = THIS_MODULE,
 	.open =  stmn_open,
 	.write = pm_suspend_write,
+	.release = qep_file_release,
 };
 
 static const struct file_operations pm_resume_fops = {
-	.owner = THIS_MODULE,
 	.open = stmn_open,
 	.write = pm_resume_write,
+	.release = qep_file_release,
 };
 
 int qep_debugfs_dev_init(struct qep_priv *xpriv)
@@ -388,8 +409,9 @@ int qep_debugfs_dev_init(struct qep_priv *xpriv)
 	struct pci_dev *pdev = xpriv->pcidev;
 	struct dentry *debugfs_dev_pm_root;
 
-	snprintf(dname, QDMA_DEV_NAME_SZ, "%02x:%02x:%x", pdev->bus->number,
-		 PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
+	snprintf(dname, QDMA_DEV_NAME_SZ, "%04x:%02x:%02x:%x",
+		pci_domain_nr(pdev->bus), pdev->bus->number,
+		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
 
 	/* create a directory for the device in debugfs */
 	xpriv->debugfs_dev_root = debugfs_create_dir(dname, qep_debugfs_root);
@@ -457,6 +479,7 @@ func_exit:
 void qep_debugfs_dev_exit(struct qep_priv *xpriv)
 {
 	debugfs_remove_recursive(xpriv->debugfs_dev_root);
+	xpriv->debugfs_dev_root = NULL;
 }
 
 int qep_debugfs_init(void)

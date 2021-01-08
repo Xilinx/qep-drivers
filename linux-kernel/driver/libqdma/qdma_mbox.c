@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -102,7 +102,9 @@ int qdma_mbox_msg_send(struct xlnx_dma_dev *xdev, struct mbox_msg *m,
 {
 	struct qdma_mbox *mbox = &xdev->mbox;
 
+	m->resp_op_matched = 0;
 	m->wait_resp = wait_resp ? 1 : 0;
+	m->retry_cnt = (timeout_ms / 1000) + 1;
 
 #if defined(__QDMA_VF__)
 	if (xdev->reset_state == RESET_STATE_INVALID)
@@ -116,10 +118,8 @@ int qdma_mbox_msg_send(struct xlnx_dma_dev *xdev, struct mbox_msg *m,
 	/* kick start the tx */
 	queue_work(mbox->workq, &mbox->tx_work);
 
-	if (!wait_resp) {
-		m->retry_cnt = (timeout_ms / 1000) + 1;
+	if (!wait_resp)
 		return 0;
-	}
 
 	qdma_waitq_wait_event_timeout(m->waitq, m->resp_op_matched,
 			msecs_to_jiffies(timeout_ms));
@@ -185,11 +185,13 @@ static int mbox_rcv_one_msg(struct qdma_mbox *mbox)
 			queue_work(mbox->xdev->workq,
 					   &(mbox->xdev->reset_work));
 		} else if (rv == QDMA_MBOX_PF_RESET_DONE) {
-			qdma_mbox_msg_send(mbox->xdev, m_resp, 0,
-						QDMA_MBOX_MSG_TIMEOUT_MS);
 			mbox->xdev->reset_state =
 				RESET_STATE_RECV_PF_RESET_DONE;
 			qdma_waitq_wakeup(&mbox->xdev->wq);
+			qdma_mbox_msg_send(mbox->xdev, m_resp, 0,
+						QDMA_MBOX_MSG_TIMEOUT_MS);
+
+
 		}  else if (rv == QDMA_MBOX_PF_BYE) {
 			qdma_mbox_msg_send(mbox->xdev, m_resp, 0,
 						QDMA_MBOX_MSG_TIMEOUT_MS);
@@ -197,6 +199,9 @@ static int mbox_rcv_one_msg(struct qdma_mbox *mbox)
 				RESET_STATE_RECV_PF_OFFLINE_REQ;
 			queue_work(mbox->xdev->workq,
 					   &(mbox->xdev->reset_work));
+		} else {
+			pr_err("func_id=0x%x parent=0x%x", mbox->xdev->func_id,
+				   mbox->xdev->func_id_parent);
 		}
 
 	}
@@ -227,17 +232,22 @@ static int mbox_rcv_one_msg(struct qdma_mbox *mbox)
 		return -ENOMEM;
 
 	rv = qdma_mbox_pf_rcv_msg_handler(mbox->xdev,
-					  mbox->xdev->conf.pdev->bus->number,
+					  mbox->xdev->dma_device_index,
 					  mbox->xdev->func_id,
 					  m->raw, m_resp->raw);
 
-	if (rv == QDMA_MBOX_VF_OFFLINE) {
+	if (rv == QDMA_MBOX_VF_OFFLINE ||
+		rv == QDMA_MBOX_VF_RESET_BYE) {
 #ifdef CONFIG_PCI_IOV
 		uint8_t vf_func_id = qdma_mbox_vf_func_id_get(m->raw, QDMA_DEV);
 
 		xdev_sriov_vf_offline(mbox->xdev, vf_func_id);
 #endif
-		qdma_mbox_msg_free(m_resp);
+		if (rv == QDMA_MBOX_VF_RESET_BYE)
+			qdma_mbox_msg_send(mbox->xdev, m_resp, 0,
+				QDMA_MBOX_MSG_TIMEOUT_MS);
+		else
+			qdma_mbox_msg_free(m_resp);
 	} else if (rv == QDMA_MBOX_VF_ONLINE) {
 #ifdef CONFIG_PCI_IOV
 		uint8_t vf_func_id = qdma_mbox_vf_func_id_get(m->raw, QDMA_DEV);
@@ -368,10 +378,19 @@ static void mbox_rx_work(struct work_struct *work)
 	}
 
 	if (rv == -QDMA_ERR_MBOX_ALL_ZERO_MSG) {
+#ifdef __QDMA_VF__
+		if (xdev->reset_state == RESET_STATE_IDLE) {
+			mbox_stop = 1;
+			pr_info("func_id=0x%x parent=0x%x %s: rcv'ed all zeros msg, disable mbox processing.\n",
+				xdev->func_id, xdev->func_id_parent,
+				xdev->conf.name);
+		}
+#else
 		mbox_stop = 1;
+		pr_info("PF func_id=0x%x %s: rcv'ed all zero mbox msg, disable mbox processing.\n",
+			xdev->func_id, xdev->conf.name);
+#endif
 
-		pr_info("%s: rcv'ed all zero mbox msg, disable mbox processing.\n",
-			xdev->conf.name);
 	} else if (xlnx_dma_device_flag_check(xdev, XDEV_FLAG_OFFLINE))
 		mbox_stop = 1;
 
@@ -416,6 +435,10 @@ void qdma_mbox_stop(struct xlnx_dma_dev *xdev)
 	uint8_t retry_count = 100;
 	int rv = 0;
 
+#ifndef __QDMA_VF__
+	if (!xdev->dev_cap.mailbox_en)
+		return;
+#endif
 	do {
 		spin_lock_bh(&mbox->list_lock);
 		if (list_empty(&mbox->tx_todo_list))
@@ -434,10 +457,8 @@ void qdma_mbox_stop(struct xlnx_dma_dev *xdev)
 	} while (retry_count != 0);
 	mbox_timer_stop(&xdev->mbox);
 	pr_debug("func_id=%d retry_count=%d\n", xdev->func_id, retry_count);
-	if ((xdev->version_info.device_type ==
-			QDMA_DEVICE_SOFT) &&
-		(xdev->version_info.vivado_release >=
-			QDMA_VIVADO_2019_1)) {
+	if ((xdev->version_info.device_type == QDMA_DEVICE_SOFT) &&
+	(xdev->version_info.vivado_release >= QDMA_VIVADO_2019_1)) {
 		if (!xdev->mbox.rx_poll)
 			qdma_mbox_disable_interrupts(xdev, QDMA_DEV);
 	}
@@ -445,10 +466,27 @@ void qdma_mbox_stop(struct xlnx_dma_dev *xdev)
 
 void qdma_mbox_start(struct xlnx_dma_dev *xdev)
 {
+
+#ifndef __QDMA_VF__
+	if (!xdev->dev_cap.mailbox_en)
+		return;
+#endif
 	if (xdev->mbox.rx_poll)
 		mbox_timer_start(&xdev->mbox);
 	else
 		qdma_mbox_enable_interrupts(xdev, QDMA_DEV);
+}
+
+void qdma_mbox_poll_start(struct xlnx_dma_dev *xdev)
+{
+
+#ifndef __QDMA_VF__
+	if (!xdev->dev_cap.mailbox_en)
+		return;
+#endif
+	xdev->mbox.rx_poll = 1;
+	qdma_mbox_disable_interrupts(xdev, QDMA_DEV);
+	mbox_timer_start(&xdev->mbox);
 }
 
 void qdma_mbox_cleanup(struct xlnx_dma_dev *xdev)
@@ -501,10 +539,8 @@ int qdma_mbox_init(struct xlnx_dma_dev *xdev)
 #endif
 	/* ack any received messages in the Q */
 	qdma_mbox_hw_init(xdev, QDMA_DEV);
-	if ((xdev->version_info.device_type ==
-			QDMA_DEVICE_SOFT) &&
-		(xdev->version_info.vivado_release >=
-			QDMA_VIVADO_2019_1)) {
+	if ((xdev->version_info.device_type == QDMA_DEVICE_SOFT) &&
+	(xdev->version_info.vivado_release >= QDMA_VIVADO_2019_1)) {
 		if ((xdev->conf.qdma_drv_mode != POLL_MODE) &&
 			(xdev->conf.qdma_drv_mode != LEGACY_INTR_MODE)) {
 			mbox->rx_poll = 0;

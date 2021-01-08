@@ -41,6 +41,11 @@
 #define STMN_BAR_NUM 2
 #define STMN_BAR_OFFSET 0x000D0000
 
+#define STMN_C2H_BUF_2048 2048
+#define STMN_C2H_BUF_4096 4096
+#define STMN_C2H_BUF_8192 8192
+#define STMN_C2H_BUF_16384 16384
+
 /****************************************************************************/
 /* Need Platform dependent implementation for Linux and DPDK */
 void stmn_reg_write(void *dev_hndl, uint32_t reg_offst, uint32_t val);
@@ -334,6 +339,7 @@ enum stmn_reg_group {
 };
 
 struct stmn_reg_offset {
+	uint32_t hw_config;
 	uint32_t idle_status;
 	uint32_t s_axis_dbg;
 	uint32_t ctrl_ram_status;
@@ -352,4 +358,7 @@ extern const char *stmn_reg_name_stats[STMN_REG_NAME_LEN_MAX];
 extern const struct stmn_reg_offset stmn_regs;
 
 int stmn_snap_stats(void *dev_hndl);
+int stmn_update_c2h_pfch_bypass_tag(void *dev_hndl, uint8_t tag);
+int stmn_queue_teardown_marker(void *dev_hndl, uint32_t start_qid,
+		uint32_t end_qid);
 #endif

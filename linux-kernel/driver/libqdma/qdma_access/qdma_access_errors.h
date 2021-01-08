@@ -1,5 +1,5 @@
 /*
- * Copyright(c) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright(c) 2019-2020 Xilinx, Inc. All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -57,8 +57,9 @@ enum qdma_access_error_codes {
 	QDMA_ERR_MBOX_INV_TMR_TH,
 	QDMA_ERR_MBOX_INV_MSG,
 	QDMA_ERR_MBOX_SEND_BUSY,
-	QDMA_ERR_MOBX_NO_MSG_IN,
-	QDMA_ERR_MBOX_ALL_ZERO_MSG,			/* 24 */
+	QDMA_ERR_MBOX_NO_MSG_IN,
+	QDMA_ERR_MBOX_REG_READ_FAILED,
+	QDMA_ERR_MBOX_ALL_ZERO_MSG,			/* 25 */
 };
 
 #endif /* QDMA_ACCESS_H_ */

@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -63,16 +63,16 @@ int qdma_set_qmax(unsigned long dev_hndl, int qbase, u32 qsets_max)
 
 
 	/* update the device with requested qmax and qbase */
-	rv = qdma_dev_update(xdev->conf.pdev->bus->number,
-			     xdev->func_id, qsets_max, &qbase);
+	rv = qdma_dev_update(xdev->dma_device_index, xdev->func_id,
+			qsets_max, &qbase);
 	if (rv < 0) {
 		pr_err("Failed to update dev entry, err = %d", rv);
 		return -EINVAL;
 	}
 	qdma_device_cleanup(xdev);
 
-	rv = qdma_dev_qinfo_get(xdev->conf.pdev->bus->number,
-			     xdev->func_id, &qbase, &qsets_max);
+	rv = qdma_dev_qinfo_get(xdev->dma_device_index, xdev->func_id,
+			&qbase, &qsets_max);
 	if (rv < 0) {
 		pr_err("Failed to get qinfo, err = %d", rv);
 		return -EINVAL;
@@ -349,7 +349,7 @@ int qdma_set_glbl_rng_sz(unsigned long dev_hndl, u32 *glbl_rng_sz)
 	}
 
 	rv = qdma_csr_read(xdev, &xdev->csr_info);
-	if (unlikely(rv < 0))
+	if (unlikely(rv < 0)) {
 		pr_err("Failed to read glbl csr, err = %d", rv);
 		return rv;
 	}

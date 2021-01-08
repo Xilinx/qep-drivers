@@ -228,57 +228,33 @@ static void qep_get_regs(struct net_device *netdev, struct ethtool_regs *regs,
 	unsigned int i = 0, ret = 0, reg_idx = 0;
 	struct global_csr_conf csr_conf;
 	struct qep_priv *xpriv = netdev_priv(netdev);
+	u32 offset;
+	u32 cmac_regs[] = {
+		XCMAC_CMAC_VERSION_REG_OFFSET,
+		XCMAC_CONFIGURATION_TX_REG1_OFFSET,
+		XCMAC_CONFIGURATION_RX_REG1_OFFSET,
+		XCMAC_CONFIG_TX_FLOW_CONTROL_REG1_OFFSET,
+		XCMAC_CONFIG_TX_FLOW_CONTROL_REFRESH_REG1_OFFSET,
+		XCMAC_CONFIG_TX_FLOW_CONTROL_REFRESH_REG2_OFFSET,
+		XCMAC_CONFIG_TX_FLOW_CONTROL_REFRESH_REG3_OFFSET,
+		XCMAC_CONFIG_TX_FLOW_CONTROL_REFRESH_REG4_OFFSET,
+		XCMAC_CONFIG_TX_FLOW_CONTROL_REFRESH_REG5_OFFSET,
+		XCMAC_CONFIG_TX_FLOW_CONTROL_QUANTA_REG1_OFFSET,
+		XCMAC_CONFIG_TX_FLOW_CONTROL_QUANTA_REG2_OFFSET,
+		XCMAC_CONFIG_TX_FLOW_CONTROL_QUANTA_REG3_OFFSET,
+		XCMAC_CONFIG_TX_FLOW_CONTROL_QUANTA_REG4_OFFSET,
+		XCMAC_CONFIG_TX_FLOW_CONTROL_QUANTA_REG5_OFFSET,
+		CONFIGURATION_RX_FLOW_CONTROL_REG1_OFFSET,
+		CONFIGURATION_RX_FLOW_CONTROL_REG2_OFFSET
+	};
 
 	memset(p, 0, QEP_REGS_LEN * sizeof(u32));
 
-	regs_buff[reg_idx++] =
-		xcmac_in32((u64)(xpriv->bar_base) + QEP_CMAC_100G_IP_BASE +
-			   XCMAC_CMAC_VERSION_REG_OFFSET);
-	regs_buff[reg_idx++] =
-		xcmac_in32((u64)(xpriv->bar_base) + QEP_CMAC_100G_IP_BASE +
-			   XCMAC_CONFIGURATION_TX_REG1_OFFSET);
-	regs_buff[reg_idx++] =
-		xcmac_in32((u64)(xpriv->bar_base) + QEP_CMAC_100G_IP_BASE +
-			   XCMAC_CONFIGURATION_RX_REG1_OFFSET);
-	regs_buff[reg_idx++] =
-		xcmac_in32((u64)(xpriv->bar_base) + QEP_CMAC_100G_IP_BASE +
-			   XCMAC_CONFIG_TX_FLOW_CONTROL_REG1_OFFSET);
-	regs_buff[reg_idx++] =
-		xcmac_in32((u64)(xpriv->bar_base) + QEP_CMAC_100G_IP_BASE +
-			   XCMAC_CONFIG_TX_FLOW_CONTROL_REFRESH_REG1_OFFSET);
-	regs_buff[reg_idx++] =
-		xcmac_in32((u64)(xpriv->bar_base) + QEP_CMAC_100G_IP_BASE +
-			   XCMAC_CONFIG_TX_FLOW_CONTROL_REFRESH_REG2_OFFSET);
-	regs_buff[reg_idx++] =
-		xcmac_in32((u64)(xpriv->bar_base) + QEP_CMAC_100G_IP_BASE +
-			   XCMAC_CONFIG_TX_FLOW_CONTROL_REFRESH_REG3_OFFSET);
-	regs_buff[reg_idx++] =
-		xcmac_in32((u64)(xpriv->bar_base) + QEP_CMAC_100G_IP_BASE +
-			   XCMAC_CONFIG_TX_FLOW_CONTROL_REFRESH_REG4_OFFSET);
-	regs_buff[reg_idx++] =
-		xcmac_in32((u64)(xpriv->bar_base) + QEP_CMAC_100G_IP_BASE +
-			   XCMAC_CONFIG_TX_FLOW_CONTROL_REFRESH_REG5_OFFSET);
-	regs_buff[reg_idx++] =
-		xcmac_in32((u64)(xpriv->bar_base) + QEP_CMAC_100G_IP_BASE +
-			   XCMAC_CONFIG_TX_FLOW_CONTROL_QUANTA_REG1_OFFSET);
-	regs_buff[reg_idx++] =
-		xcmac_in32((u64)(xpriv->bar_base) + QEP_CMAC_100G_IP_BASE +
-			   XCMAC_CONFIG_TX_FLOW_CONTROL_QUANTA_REG2_OFFSET);
-	regs_buff[reg_idx++] =
-		xcmac_in32((u64)(xpriv->bar_base) + QEP_CMAC_100G_IP_BASE +
-			   XCMAC_CONFIG_TX_FLOW_CONTROL_QUANTA_REG3_OFFSET);
-	regs_buff[reg_idx++] =
-		xcmac_in32((u64)(xpriv->bar_base) + QEP_CMAC_100G_IP_BASE +
-			   XCMAC_CONFIG_TX_FLOW_CONTROL_QUANTA_REG4_OFFSET);
-	regs_buff[reg_idx++] =
-		xcmac_in32((u64)(xpriv->bar_base) + QEP_CMAC_100G_IP_BASE +
-			   XCMAC_CONFIG_TX_FLOW_CONTROL_QUANTA_REG5_OFFSET);
-	regs_buff[reg_idx++] =
-		xcmac_in32((u64)(xpriv->bar_base) + QEP_CMAC_100G_IP_BASE +
-			   CONFIGURATION_RX_FLOW_CONTROL_REG1_OFFSET);
-	regs_buff[reg_idx++] =
-		xcmac_in32((u64)(xpriv->bar_base) + QEP_CMAC_100G_IP_BASE +
-			   CONFIGURATION_RX_FLOW_CONTROL_REG2_OFFSET);
+	offset = qep_fdt_get_netip_offset(xpriv->pinfo, QEP_NETPF_CMAC_IP);
+	for (i = 0; i < sizeof(cmac_regs) / sizeof(u32); i++) {
+		regs_buff[reg_idx++] =  xcmac_in32((u64)(xpriv->bar_base) +
+			offset + cmac_regs[i]);
+	}
 
 	ret = qdma_global_csr_get(xpriv->dev_handle, 0,
 			QDMA_GLOBAL_CSR_ARRAY_SZ, &csr_conf);
@@ -467,8 +443,8 @@ static void qep_get_channels(struct net_device *netdev,
 		return;
 	}
 
-	ch->max_rx = QEP_NUM_MAX_QUEUES;
-	ch->max_tx = QEP_NUM_MAX_QUEUES;
+	ch->max_rx = xpriv->pinfo->stmn_queue_max;
+	ch->max_tx =  xpriv->pinfo->stmn_queue_max;
 	ch->max_other = 0;
 	ch->max_combined = 0;
 	ch->rx_count = xpriv->netdev->real_num_rx_queues;
@@ -502,11 +478,11 @@ static int qep_set_channels(struct net_device *netdev,
 		return -EINVAL;
 	}
 
-	if ((ch->rx_count > QEP_NUM_MAX_QUEUES) ||
-	    (ch->tx_count > QEP_NUM_MAX_QUEUES)) {
+	if ((ch->rx_count >  xpriv->pinfo->stmn_queue_max) ||
+	    (ch->tx_count >  xpriv->pinfo->stmn_queue_max)) {
 		qep_err(drv, "%s: Tx Ch count %d Rx Ch count %d passed more than max supported %d\n",
 				__func__, ch->tx_count,
-				ch->rx_count, QEP_NUM_MAX_QUEUES);
+				ch->rx_count,  xpriv->pinfo->stmn_queue_max);
 		return -EINVAL;
 	}
 
@@ -1081,7 +1057,7 @@ static void qep_get_reta(struct qep_priv *xpriv, u32 *indir)
 	unsigned long flags;
 
 	io_addr = (void __iomem *)((u64)xpriv->bar_base +
-			QEP_RSS_OFFSET);
+		qep_fdt_get_netip_offset(xpriv->pinfo, QEP_NETPF_RSS));
 
 	spin_lock_irqsave(&xpriv->stats_lock, flags);
 	for (i = 0; i < reta_size; i++)
@@ -1100,7 +1076,7 @@ static int qep_set_reta(struct qep_priv *xpriv, const u32 *indir)
 	unsigned long flags;
 
 	io_addr = (void __iomem *)((u64)xpriv->bar_base +
-			QEP_RSS_OFFSET);
+		qep_fdt_get_netip_offset(xpriv->pinfo, QEP_NETPF_RSS));
 
 	for (i = 0; i < reta_size; i++) {
 		if (indir[i] > xpriv->netdev->real_num_rx_queues) {
@@ -1722,8 +1698,9 @@ int qep_reset(struct net_device *netdev, u32 *reset)
 	}
 
 	if (*reset & ETH_RESET_DMA) {
-		void __iomem *io_addr = (void __iomem *)((u64)xpriv->bar_base
-				+  QEP_BASE_OFFSET);
+		void __iomem *io_addr = (void __iomem *)((u64)xpriv->bar_base +
+				qep_fdt_get_netip_offset(xpriv->pinfo,
+					QEP_NETPF_QAP_BASE));
 		writel(1, (void __iomem *)((u64)io_addr
 				+ QEP_BASE_QDMA_RESET_CONTROL_OFFSET));
 
